@@ -17,7 +17,8 @@ units_block=$(require_block missing-units "$DEPLOY_SH_BLOCKS")
 units_tmp=$(mktemp -d)
 mkdir -p "$units_tmp/app/deploy/systemd" "$units_tmp/system"
 for unit in webcmp.service webcmp-huey.service webcmp-autodeploy.service \
-    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path
+    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path \
+    webcmp-backup.service
 do
     : > "$units_tmp/app/deploy/systemd/$unit"
 done
@@ -32,6 +33,7 @@ missing_units_run() {
         HUEY_UNIT=webcmp-huey
         AUTODEPLOY_UNIT=webcmp-autodeploy
         APPLY_UNIT=webcmp-apply
+        BACKUP_TIMER=webcmp-backup
         for assignment in "$@"; do
             eval "export $assignment"
         done
@@ -43,7 +45,8 @@ missing_units_run() {
 # --- Todo instalado -------------------------------------------------------
 
 for unit in webcmp.service webcmp-huey.service webcmp-autodeploy.service \
-    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path
+    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path \
+    webcmp-backup.service
 do
     : > "$units_tmp/system/$unit"
 done
@@ -61,24 +64,33 @@ assert_eq 'reporta las dos piezas del panel cuando faltan' \
 
 # --- Nombres renderizados -------------------------------------------------
 #
-# install.sh renderiza cuatro unidades con el nombre de una variable. Un deploy
+# install.sh renderiza cinco unidades con el nombre de una variable. Un deploy
 # que compare contra el nombre del archivo reportaria un faltante falso en un
 # servidor perfectamente instalado, y el operador aprenderia a ignorar el error.
 
 rm -f "$units_tmp/system/"*
 for unit in cmpweb.service cmphuey.service cmpapply.service cmpapply.path \
-    cmpauto.service cmpauto.path
+    cmpauto.service cmpauto.path cmpbackup.service
 do
     : > "$units_tmp/system/$unit"
 done
 assert_eq 'respeta los nombres configurados de las unidades' '' \
     "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
-        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply)"
+        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
 
 rm -f "$units_tmp/system/cmpweb.service"
 assert_eq 'con nombres configurados reporta el nombre renderizado' 'cmpweb.service' \
     "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
-        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply)"
+        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
+: > "$units_tmp/system/cmpweb.service"
+
+# El timer del respaldo tambien: un timer instalado con otro nombre tiene que
+# compararse contra el nombre que install.sh le puso, no contra el del archivo.
+rm -f "$units_tmp/system/cmpbackup.service"
+assert_eq 'reporta el timer del respaldo con el nombre configurado' 'cmpbackup.service' \
+    "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
+        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
+: > "$units_tmp/system/cmpbackup.service"
 
 # --- Sin checkout ---------------------------------------------------------
 #
@@ -105,6 +117,12 @@ assert_eq 'el guard corre antes de instalar requirements' 'antes' \
     "$(if [ "$guard_line" -lt "$pip_line" ]; then echo antes; else echo despues; fi)"
 assert_contains 'el guard manda a instalar las piezas' \
     'install-apply-units.sh' "$deploy_src"
+assert_contains 'el guard manda a instalar el respaldo diario' \
+    'install-backup-units.sh' "$deploy_src"
+# `missing-units` usa $BACKUP_TIMER: sin default, un deploy real muere con
+# "unbound variable" en lugar de comparar contra el nombre de la unidad.
+assert_contains 'deploy.sh define un default para BACKUP_TIMER' \
+    'BACKUP_TIMER:=' "$deploy_src"
 assert_contains 'el guard explica por que el deploy no las instala' \
     'copiar units desde ahi seria ejecutar como root' "$deploy_src"
 
