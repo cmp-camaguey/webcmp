@@ -21,7 +21,7 @@ El orden importa:
 | 4 | `pip install -r requirements/prod.txt` | Antes de los gates, que importan las deps |
 | 5 | `makemigrations --check --dry-run` | Falla si un cambio de modelo no trae su migracion. Ver la nota de abajo |
 | 6 | Gate: `check --deploy` con la config real | Ver la nota de abajo |
-| 7 | `pg_dump` **si hay migraciones pendientes** | Es la unica vuelta atras de un esquema destructivo. Falla cerrado. Ver **Respaldo antes de migrar** |
+| 7 | `pg_dump` **si hay migraciones pendientes** | Es la unica vuelta atras de un esquema destructivo. Falla cerrado. Ver **Respaldo antes de migrar** y **Respaldo diario** |
 | 8 | `migrate`, `migrate --check` y `create_role_groups` | Antes de que el codigo nuevo atienda un request. El `--check` confirma que no queda nada sin aplicar; los grupos de rol necesitan los permisos que `migrate` acaba de crear |
 | 9 | `collectstatic` | Antes de que el codigo nuevo emita HTML que los referencia |
 | 10 | `systemctl restart` de ambos units | `reload` NO alcanza, ver la nota de abajo |
@@ -73,6 +73,30 @@ esquema nuevo, sin `--clean` el restore falla a mitad.
 `webcmp-deploy --check` avisa si no hay `pg_dump` en el `PATH`. Lo instala
 `install.sh` (`postgresql-client`); si se saca a mano, el proximo deploy con
 migraciones se niega a correr.
+
+### Respaldo diario
+
+El respaldo previo a migrar existe solo cuando hay algo que migrar: un mes sin
+deploys es un mes sin respaldo. `webcmp-backup.timer` cubre ese hueco.
+
+- Corre a las 03:15 hora local con `Persistent=true`: si el servidor estuvo
+  apagado a esa hora, se ejecuta al arrancar en vez de saltear el dia.
+- Ejecuta `webcmp-deploy --backup`: la misma implementacion y las mismas
+  credenciales que el respaldo previo a migrar. Escribe en `DB_BACKUP_DIR`, deja
+  el archivo `root:root 0600` y aplica `DB_BACKUP_KEEP` igual que el deploy.
+- Se instala con `install-backup-units.sh`; `install.sh` tambien lo deja en una
+  instalacion nueva. `deploy.sh` se niega a desplegar si el commit trae unidades
+  que no estan instaladas.
+
+```bash
+sudo bash deploy/install-backup-units.sh
+sudo systemctl list-timers webcmp-backup.timer   # proxima corrida
+journalctl -u webcmp-backup                      # resultado de la ultima
+sudo webcmp-deploy --backup                      # el mismo respaldo, a mano
+```
+
+Restaurar un respaldo programado es identico al caso anterior: `pg_restore` con
+el sitio parado y como root.
 
 ### Gate de migraciones en el merge a `main`
 
