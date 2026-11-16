@@ -9,6 +9,7 @@
 #   sudo /usr/local/sbin/webcmp-deploy <commit-sha> [ref-de-respaldo]
 #   sudo /usr/local/sbin/webcmp-deploy --configure   # (re)escribe /etc/webcmp/deploy.env
 #   sudo /usr/local/sbin/webcmp-deploy --check        # valida la config, no despliega
+#   sudo /usr/local/sbin/webcmp-deploy --backup       # respaldo de la base (timer diario)
 #
 # Que hace, en este orden (el orden ES la garantia):
 #   1. lock, para que dos despliegues no se pisen
@@ -106,7 +107,7 @@ progress() {
 # <<< TEST-BLOCK: deploy-progress
 
 # --------------------------------------------------------------------------
-# Modos: deploy (por defecto, el camino de CI) | --configure | --check
+# Modos: deploy (por defecto, el camino de CI) | --configure | --check | --backup
 # --------------------------------------------------------------------------
 #
 # Se resuelve ANTES de sourcear la config y antes de todo preflight, y por una
@@ -124,6 +125,7 @@ while [ $# -gt 0 ]; do
         -h|--help)     usage ;;
         --configure)   MODE=configure; shift; break ;;
         --check)       MODE=check; shift; break ;;
+        --backup)      MODE=backup; shift; break ;;
         *)             break ;;
     esac
 done
@@ -391,13 +393,17 @@ fi
 # migracion destructiva llega a main, el dump es la unica vuelta atras.
 : "${DB_BACKUP_DIR:=/var/backups/webcmp/db}"
 : "${DB_BACKUP_KEEP:=10}"
+# Nombre de la unidad que corre el respaldo diario. La instala
+# `install-backup-units.sh` (o `install.sh`) y `--check` la busca con este nombre:
+# una unidad instalada con otro nombre deja el respaldo sin correr y sin error.
+: "${BACKUP_TIMER:=webcmp-backup}"
 
 readonly APP_DIR DEPLOY_USER GUNICORN_UNIT HUEY_UNIT ENCRYPTION_ENV PYTHON
 readonly PUBLIC_HOSTNAME PROXY_MODE HEALTHCHECK_URL HEALTHCHECK_RESOLVE
 readonly HEALTHCHECK_UNIX_SOCKET HEALTHCHECK_HOST_HEADER HEALTHCHECK_INSECURE
 readonly HEALTHCHECK_URL_DEFINED HEALTHCHECK_RESOLVE_DEFINED
 readonly PIP_CACHE_DIR MPLCONFIGDIR
-readonly DB_BACKUP_DIR DB_BACKUP_KEEP
+readonly DB_BACKUP_DIR DB_BACKUP_KEEP BACKUP_TIMER
 # El array se congela aparte: `readonly PIP_CMD` sin `-a` no protege el contenido
 # de un array en bash < 5.0.
 readonly -a PIP_CMD
@@ -583,9 +589,10 @@ missing_units() {
     for f in "$APP_DIR"/deploy/systemd/*.service "$APP_DIR"/deploy/systemd/*.path; do
         [ -e "$f" ] || continue
         base=${f##*/}
-        # Solo estas cuatro pueden instalarse con otro nombre, porque install.sh
-        # las renderiza desde GUNICORN_UNIT, HUEY_UNIT, AUTODEPLOY_UNIT y
-        # APPLY_UNIT. El resto se instala con el nombre del archivo.
+        # Solo estas cinco pueden instalarse con otro nombre, porque install.sh
+        # las renderiza desde GUNICORN_UNIT, HUEY_UNIT, AUTODEPLOY_UNIT,
+        # APPLY_UNIT y BACKUP_TIMER. El resto se instala con el nombre del
+        # archivo.
         case "$base" in
             webcmp.service) base=$GUNICORN_UNIT.service ;;
             webcmp-huey.service) base=$HUEY_UNIT.service ;;
@@ -593,6 +600,7 @@ missing_units() {
                 base=${base/webcmp-autodeploy/$AUTODEPLOY_UNIT}
                 ;;
             webcmp-apply.service | webcmp-apply.path) base=${base/webcmp-apply/$APPLY_UNIT} ;;
+            webcmp-backup.service) base=$BACKUP_TIMER.service ;;
         esac
         [ -f "$dir/$base" ] || printf '%s\n' "$base"
     done
@@ -652,7 +660,7 @@ check_units() {
         if [ -z "$missing" ]; then
             check_ok 'Todas las unidades de deploy/systemd/ estan instaladas.'
         else
-            check_fail "Faltan unidades que el codigo necesita: $(printf '%s ' $missing)(deploy/install-apply-units.sh o deploy/install.sh)."
+            check_fail "Faltan unidades que el codigo necesita: $(printf '%s ' $missing)(deploy/install-apply-units.sh, deploy/install-backup-units.sh o deploy/install.sh)."
         fi
     fi
     # Instalada no es lo mismo que operativa: una unidad presente y deshabilitada
@@ -854,6 +862,19 @@ check_db_backup() {
         check_ok "Directorio de respaldos: $DB_BACKUP_DIR ($count guardados; se conservan $DB_BACKUP_KEEP)."
     else
         check_skip "Todavia no existe $DB_BACKUP_DIR: se crea en el primer deploy con migraciones."
+    fi
+    # Instalada no es lo mismo que activa: un timer presente y detenido deja la
+    # base sin respaldo diario, y no falla nada a la vista.
+    if [ -f "$SYSTEMD_UNIT_DIR/$BACKUP_TIMER.timer" ]; then
+        if "$SYSTEMCTL" is-enabled --quiet "$BACKUP_TIMER.timer" 2>/dev/null \
+            && "$SYSTEMCTL" is-active --quiet "$BACKUP_TIMER.timer" 2>/dev/null
+        then
+            check_ok "Respaldo diario activo ($BACKUP_TIMER.timer)."
+        else
+            check_fail "Hay $BACKUP_TIMER.timer pero no esta habilitado y activo: el respaldo diario no corre."
+        fi
+    else
+        check_skip "Respaldo diario no instalado ($BACKUP_TIMER.timer): solo se respalda antes de migrar."
     fi
 }
 
@@ -1094,6 +1115,33 @@ prune_db_backups() {
 }
 # <<< TEST-BLOCK: prune-db-backups
 
+# --------------------------------------------------------------------------
+# Modo --backup: el respaldo que dispara el timer diario
+# --------------------------------------------------------------------------
+#
+# Vive aca y no en un script aparte para no tener dos implementaciones del
+# respaldo: `db_dump` resuelve las credenciales desde `settings.DATABASES` —el
+# mismo .env con el que se despliega— y `prune_db_backups` aplica la misma
+# retencion. Una copia en otro archivo se desincronizaria sin que nada falle.
+#
+# Va antes del `trap rollback`: un respaldo no despliega nada, asi que no hay
+# codigo que revertir.
+if [ "$MODE" = backup ]; then
+    command -v pg_dump >/dev/null 2>&1 \
+        || die "No hay pg_dump en el PATH: sin pg_dump no hay respaldo.
+  Instalalo con: apt-get install -y postgresql-client"
+    log "Respaldo programado de la base"
+    backup_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-scheduled.dump"
+    if ! db_dump "$backup_file"; then
+        rm -f "$backup_file"
+        die "El respaldo de la base fallo."
+    fi
+    chmod 0600 "$backup_file"
+    log "Respaldo: $backup_file ($(du -h "$backup_file" | cut -f1))"
+    prune_db_backups
+    exit 0
+fi
+
 # La trampa es EXIT y no ERR. No es indistinto: `trap ... ERR` NO se dispara
 # cuando el script hace `exit`, y `die()` -que es como termina practicamente todo
 # el deploy, incluido el health check- justamente hace `exit 1`. Con ERR, un deploy
@@ -1142,6 +1190,7 @@ que el proceso web puede editar.
 
 Instalalas como root y volve a desplegar:
   sudo bash $APP_DIR/deploy/install-apply-units.sh   # boton 'Aplicar cambios'
+  sudo bash $APP_DIR/deploy/install-backup-units.sh  # respaldo diario
   sudo bash $APP_DIR/deploy/install.sh               # el resto de las unidades"
 fi
 
