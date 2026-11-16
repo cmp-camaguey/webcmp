@@ -74,6 +74,25 @@ assert_contains 'install-backup-units.sh --help explica el uso' \
 assert_contains 'install-backup-units.sh --help nombra el timer' \
     'webcmp-backup.timer' "$backup_install_help"
 
+# --- Modo --backup: alcanzable y serializado ------------------------------
+#
+# El bloque del respaldo vive despues de las definiciones de `db_dump` y
+# `prune_db_backups`, y el script pide un commit-sha y toma el lock antes de
+# eso. Un reordenamiento puede dejarlo inalcanzable —el timer fallaria todas las
+# noches con un mensaje de uso— sin que ningun otro assert se entere.
+
+backup_src=$(cat "$DEPLOY_SH")
+backup_line=$(grep -n 'if \[ "$MODE" = backup \]' "$DEPLOY_SH" | tail -1 | cut -d: -f1)
+db_dump_line=$(grep -n '^db_dump()' "$DEPLOY_SH" | head -1 | cut -d: -f1)
+first_deploy_step=$(grep -n 'Instalando requirements/prod.txt' "$DEPLOY_SH" | head -1 | cut -d: -f1)
+
+assert_eq 'el respaldo corre despues de definir db_dump' 'despues' \
+    "$(if [ "$backup_line" -gt "$db_dump_line" ]; then echo despues; else echo antes; fi)"
+assert_eq 'el respaldo corre antes del primer paso del deploy' 'antes' \
+    "$(if [ "$backup_line" -lt "$first_deploy_step" ]; then echo antes; else echo despues; fi)"
+assert_contains 'el respaldo no exige un commit-sha' '[ "$MODE" = deploy ]' "$backup_src"
+assert_contains 'el respaldo espera el lock del deploy' 'flock -w 900 9' "$backup_src"
+
 # El preflight de root va ANTES de cualquier mutacion. Se comprueba el codigo y
 # el mensaje, no solo "falla": un exit 1 por una variable sin definir tambien
 # seria 1 y no probaria nada.

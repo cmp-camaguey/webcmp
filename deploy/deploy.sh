@@ -909,14 +909,29 @@ export PIP_CACHE_DIR
 install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 0700 "$MPLCONFIGDIR"
 
 target_sha=${1:-}
-[ -n "$target_sha" ] || die "Uso: $0 <commit-sha> [ref-de-respaldo]"
+# `--backup` no despliega: no hay SHA que desplegar. Pedirlo igual haria que el
+# timer fallara todas las noches con un mensaje de uso.
+if [ "$MODE" = deploy ]; then
+    [ -n "$target_sha" ] || die "Uso: $0 <commit-sha> [ref-de-respaldo]"
+fi
 
 # --------------------------------------------------------------------------
 # Lock: dos pushes seguidos no pueden migrar a la vez
 # --------------------------------------------------------------------------
+#
+# El respaldo diario toma el mismo lock pero ESPERA: un `pg_dump` que corre
+# mientras `migrate` cambia el esquema no es un respaldo. Abortar en cambio
+# perderia el respaldo del dia por un deploy que estaba terminando; el tope queda
+# por debajo del TimeoutStartSec de webcmp-backup.service, asi que la unidad
+# reporta el motivo en vez de morir por timeout.
 
 exec 9>"$LOCKFILE"
-flock -n 9 || die "Ya hay un despliegue en curso (lock $LOCKFILE). No se toca nada."
+if [ "$MODE" = backup ]; then
+    flock -w 900 9 \
+        || die "Hay un despliegue en curso (lock $LOCKFILE) desde hace mas de 15 minutos. No se respalda mientras se migra."
+else
+    flock -n 9 || die "Ya hay un despliegue en curso (lock $LOCKFILE). No se toca nada."
+fi
 
 # --------------------------------------------------------------------------
 # Estado previo, para el rollback
@@ -933,7 +948,12 @@ db_dump_file=''
 # corrio: desplegar un commit recien pusheado fallaria con un "unknown revision"
 # antes de haber tocado nada, con un error que no dice nada del deploy. Se loguea
 # el SHA crudo y el corto se resuelve despues del checkout.
-log "Deploy $target_sha sobre $(gitapp rev-parse --short "$previous_sha")"
+#
+# En modo --backup no hay deploy que anunciar: el bloque de ese modo (mas abajo)
+# termina el script antes del primer paso que toca el servidor.
+if [ "$MODE" = deploy ]; then
+    log "Deploy $target_sha sobre $(gitapp rev-parse --short "$previous_sha")"
+fi
 
 # --------------------------------------------------------------------------
 # Rollback
@@ -1119,13 +1139,17 @@ prune_db_backups() {
 # Modo --backup: el respaldo que dispara el timer diario
 # --------------------------------------------------------------------------
 #
-# Vive aca y no en un script aparte para no tener dos implementaciones del
-# respaldo: `db_dump` resuelve las credenciales desde `settings.DATABASES` —el
-# mismo .env con el que se despliega— y `prune_db_backups` aplica la misma
-# retencion. Una copia en otro archivo se desincronizaria sin que nada falle.
+# Vive aca —despues de `db_dump` y `prune_db_backups`, antes del `trap
+# rollback` y antes del primer paso que toca el servidor— y no en un script
+# aparte, para no tener dos implementaciones del respaldo: `db_dump` resuelve las
+# credenciales desde `settings.DATABASES` —el mismo .env con el que se
+# despliega— y `prune_db_backups` aplica la misma retencion. Una copia en otro
+# archivo se desincronizaria sin que nada falle.
 #
-# Va antes del `trap rollback`: un respaldo no despliega nada, asi que no hay
-# codigo que revertir.
+# Toma el lock del deploy (ver la seccion "Lock", arriba) y espera en vez de
+# abortar: un `pg_dump` que corre mientras `migrate` cambia el esquema no es un
+# respaldo, pero perder el respaldo del dia por un deploy que estaba terminando
+# tampoco sirve.
 if [ "$MODE" = backup ]; then
     command -v pg_dump >/dev/null 2>&1 \
         || die "No hay pg_dump en el PATH: sin pg_dump no hay respaldo.
