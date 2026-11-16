@@ -147,6 +147,7 @@ Dependabot apunta a `dev` en los tres ecosistemas (`target-branch: dev`).
 | `apps/user_auth/` | Profile, login/logout, users, groups, LDAP auth (`LDAP3Backend`), password management |
 | `apps/core/` | FileHandlerMixin, SoftDeleteModel, utils, error views, CompanySettings, SiteConfiguration, EmailRecipientList/Recipient, templatetags, context_processors, middleware, mail_send |
 | `apps/dashboard/` | Solo DashboardView principal (vista agregada del panel) |
+| `apps/monitoring/` | RUM público, métricas HTTP por middleware, recursos del servidor y poda — ver [Monitoreo](docs/3-monitoreo.md) |
 | `apps/commercial/` | Customer, Service, ServiceSubscription, Invoice/InvoiceItem, Contract, Certificate — servicios comerciales y facturación |
 | `apps/meteo/` | Forecasts/ForecastRegions/ForecastExtendedDay, Warning (con warning_type), WeatherReport (today/tomorrow/commentary/note), Province, Town, Station |
 | `apps/home/` | Páginas públicas: tiempo, modelos, satélites, servicios, institución |
