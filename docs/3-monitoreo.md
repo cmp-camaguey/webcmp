@@ -28,7 +28,9 @@ vive en `templates/includes/dashboard/menu/_dashboard.html`.
 
 `static/dist/js/rum-beacon.js` envía los eventos a `POST /rum/collect/`
 (`monitoring:rum_collect`). Es la única entrada sin sesión porque la visitan
-también las páginas públicas, y por eso el contrato es cerrado:
+también las páginas públicas.
+
+### Qué acepta el endpoint
 
 - cuerpo máximo de 8 KB, rechazado antes de parsear;
 - JSON de un solo objeto con `kind` en `pageview`, `vitals` o `error`;
@@ -73,7 +75,7 @@ prueban el monitoreo lo reactivan con `override_settings(MONITORING_ENABLED=True
   la ruta rompe el beacon sin error visible.
 - **La poda.** Ver arriba: sin el import en `ready()` no hay error, solo datos que
   crecen.
-- **El contrato del beacon.** El endpoint es público; quitar el límite de cuerpo o
-  el throttling lo deja como escritura anónima sin freno.
+- **Lo que acepta el endpoint.** El endpoint es público; quitar el límite de
+  cuerpo o el throttling lo deja como escritura anónima sin freno.
 
 Pruebas: `python manage.py test apps.monitoring`.
