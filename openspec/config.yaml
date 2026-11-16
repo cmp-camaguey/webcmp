@@ -6,8 +6,8 @@ context: |
   Stack: Django 5.2, DRF 3.17, drf-spectacular, Python 3.14. Exact versions in
          requirements/base.txt.
   Architecture: Django monolith. Apps live under apps/ (api, user_auth, core,
-                dashboard, commercial, meteo, home, publications); config/ holds
-                settings, root urls, wsgi/asgi and Huey.
+                dashboard, commercial, meteo, home, publications, monitoring);
+                config/ holds settings, root urls, wsgi/asgi and Huey.
   UI: Tabler (Bootstrap 5) through Django Templates, formatted with djlint
       (2-space indent). Vanilla JS, no bundler and no build step.
   Persistence: PostgreSQL in all three profiles (dev, test, prod). Async: Huey.
