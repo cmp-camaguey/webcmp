@@ -151,3 +151,10 @@ assert_eq 'health: sin salida no se confirma el mantenimiento' 1 $?
 
 flag_probe 'SomeError: True' >/dev/null 2>&1
 assert_eq 'health: un True suelto en un error no confirma el mantenimiento' 1 $?
+
+# El diagnostico de "no se pudo leer el flag" vive en el stderr de
+# `systemd-run` (por que la unidad no arranco): un redirect a /dev/null ahi
+# lo tiraria. El ruido de la unidad no entra al pipe — `run_in_unit` lo manda
+# al stdout — asi que el redirect no ocultaba nada y si perdia el motivo.
+assert_not_contains 'health: la pregunta no descarta el stderr de systemd-run' \
+    '2>/dev/null' "$verdict_body"
