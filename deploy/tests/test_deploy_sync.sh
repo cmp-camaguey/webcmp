@@ -60,6 +60,30 @@ assert_eq 'webcmp-deploy-sync.sh --help sale 0' 0 "$sync_help_rc"
 assert_contains 'webcmp-deploy-sync.sh --help nombra --sha' '--sha' "$sync_help"
 assert_contains 'webcmp-deploy-sync.sh --help nombra --refresh' '--refresh' "$sync_help"
 
+# --- log() con --quiet no aborta bajo set -e --------------------------------
+
+# Regresion: log() era `[ "$QUIET" -eq 0 ] && printf ...`. Con --quiet el test
+# falla, la funcion devuelve 1 y `set -Eeuo pipefail` mata el script en el
+# PRIMER log: el sync salia en silencio sin instalar nada. Afectaba a las dos
+# llamadas reales, que usan --quiet: el sync inicial de install-deploy-sync.sh
+# y el que hace deploy.sh tras el checkout.
+#
+# No se puede correr el helper completo sin root (el manifest instala en
+# /usr/local/sbin y con -o root), asi que se pina el contrato de la funcion.
+log_fn=$(awk '/^log\(\) \{/{f=1} f{print} f && /^}$/{exit}' "$SYNC_SCRIPT")
+[ -n "$log_fn" ] || fail 'log() definida en webcmp-deploy-sync.sh' "$log_fn" 'vacio'
+
+set +e
+LOG_FN="$log_fn" QUIET=1 bash -c 'set -Eeuo pipefail; eval "$LOG_FN"; log "silencioso"' \
+    >/dev/null 2>&1
+log_quiet_rc=$?
+LOG_FN="$log_fn" QUIET=0 bash -c 'set -Eeuo pipefail; eval "$LOG_FN"; log "ruidoso"' \
+    >/dev/null 2>&1
+log_noisy_rc=$?
+set -e
+assert_eq 'log() con QUIET=1 no aborta bajo set -e' 0 "$log_quiet_rc"
+assert_eq 'log() con QUIET=0 no aborta bajo set -e' 0 "$log_noisy_rc"
+
 # --- Sin espejo: falla cerrado ---------------------------------------------
 
 set +e
@@ -96,6 +120,34 @@ assert_contains 'sync define render_content' 'render_content()' "$sync_src"
 assert_contains 'render sustituye /srv/webcmp' '/srv\/webcmp' "$sync_src"
 assert_contains 'render sustituye User=webcmp' 'User=webcmp/User=' "$sync_src"
 assert_contains 'render sustituye webcmp-huey' 'webcmp-huey/' "$sync_src"
+# install.sh renderiza los .timer (Documentation=/srv/webcmp y Unit=). Si el
+# sync no lo hace, instala un timer con el directorio equivocado en un server
+# con otro APP_DIR y nadie lo nota.
+assert_contains 'render cubre los .timer' 'systemd/*.timer' "$sync_src"
+
+# --- Manifest: 4 campos por entrada -----------------------------------------
+
+# El parser del helper exige EXACTAMENTE 4 campos (origen destino modo dueno).
+# Regresion: el manifest se alinea con espacios pero el parser usaba
+# IFS=$'\t', nunca dividia, src_path era la linea entera y el sync moria en la
+# primera entrada (y en silencio, porque log() con --quiet ya habia matado el
+# script antes).
+assert_not_contains 'el parser no exige tabuladores' "IFS=\$'\\t'" "$sync_src"
+
+manifest_entries=0
+while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case "$line" in \#*) continue ;; esac
+    read -r m_src m_dest m_mode m_owner m_extra <<< "$line"
+    if [ -n "${m_extra:-}" ] || [ -z "${m_dest:-}" ] || [ -z "${m_mode:-}" ] || [ -z "${m_owner:-}" ]; then
+        fail "manifest: 4 campos en '$line'" '4 campos' \
+            "extra='${m_extra:-}' dest='${m_dest:-}' modo='${m_mode:-}' owner='${m_owner:-}'"
+    else
+        manifest_entries=$((manifest_entries + 1))
+    fi
+done < "$REPO_ROOT/deploy/root-bundle.manifest"
+[ "$manifest_entries" -gt 0 ] || fail 'manifest con entradas' '> 0' '0'
+ok "manifest: $manifest_entries entradas con 4 campos"
 
 # --- Enganches ----------------------------------------------------------------
 
