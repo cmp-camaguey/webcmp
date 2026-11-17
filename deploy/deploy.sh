@@ -1354,6 +1354,10 @@ ensure_apply_path
 # Las cuatro estan validadas en el arranque (validate_healthcheck_target): un
 # valor mal formado tiene que morir con un mensaje que diga cual es, no con un
 # `000` veinte segundos mas tarde.
+#
+# Un sitio en modo de mantenimiento contesta 503 a proposito, y ese es el estado
+# en el que se despliega: "Aplicar cambios" del panel exige la ventana de
+# mantenimiento abierta. `health_verdict` distingue ese 503 de una caida real.
 progress healthcheck
 log "Health check"
 
@@ -1389,24 +1393,76 @@ printf '\n'
 # `|| true`, no `|| echo 000`. `--write-out '%{http_code}'` YA imprime `000` cuando
 # curl no logra conectarse, asi que un `|| echo 000` anade un segundo 000 y la
 # variable queda con `000000`. Ese valor no matchea el patron `000` del case de
-# abajo: un deploy con el sitio caido caia en el `*)` y decia "El sitio responde
-# 000000, se esperaba 2xx o 3xx", que no dice nada. El `000)` con el mensaje del
-# certificado autofirmado, que es el diagnostico util, era inalcanzable.
+# `health_verdict`: un deploy con el sitio caido caia en el `*)` y decia "El sitio
+# responde 000000, se esperaba 2xx o 3xx", que no dice nada. El `000)` con el
+# mensaje del certificado autofirmado, que es el diagnostico util, era
+# inalcanzable.
 code=$(curl "${hc_args[@]}" "$hc_url" || true)
 
-case "$code" in
-    2* | 3*) log "El sitio responde $code." ;;
-    000)
-        if [ -n "${HEALTHCHECK_INSECURE:-}" ]; then
-            die "Sin respuesta aun con --insecure (ver journalctl -u $GUNICORN_UNIT)."
-        fi
-        if [ -n "$HEALTHCHECK_UNIX_SOCKET" ]; then
-            die "Sin respuesta de $hc_url por el socket $HEALTHCHECK_UNIX_SOCKET.
+# >>> TEST-BLOCK: health-verdict
+# El modo de mantenimiento deja el sitio en 503 a proposito: el middleware
+# responde la pagina de mantenimiento a todo visitante anonimo y solo deja
+# pasar /login/ para que el operador pueda restaurarlo. Ese 503 no es una
+# caida, pero tampoco se puede dar por bueno sin comprobar nada: si el flag
+# esta encendido, se verifica que la aplicacion siga atendiendo en la ruta
+# exenta antes de dar el deploy por bueno.
+#
+# La pregunta al flag va por `manage`, en el mismo transient unit que el resto
+# del deploy (ENCRYPTION_KEY, PRODUCTION=1 y el usuario del sitio). Si no se
+# puede leer —base caida, venv roto— el resultado es "no se pudo confirmar" y
+# se aborta como antes: sin evidencia de que sea mantenimiento, un 503 sigue
+# siendo una caida.
+site_in_maintenance() {
+    manage shell -c \
+        'from apps.core.models import SiteConfiguration as S; c = S.objects.first(); print(c is not None and c.maintenance_mode)' \
+        2>/dev/null | grep -qx True
+}
+
+# La ruta exenta con los mismos argumentos de transporte que el health check
+# principal: mismo proxy, mismo Host, mismo TLS. Si /login/ no contesta 2xx o
+# 3xx el problema no es el modo de mantenimiento y el deploy aborta.
+health_probe_login() {
+    curl "${hc_args[@]}" "${hc_url%/}/login/" || true
+}
+
+# health_verdict <codigo>
+#
+# La decision del health check, separada del curl: las pruebas la ejercitan sin
+# tocar la red ni el sistema.
+health_verdict() {
+    local code=$1 code_login
+    case "$code" in
+        2* | 3*) log "El sitio responde $code." ;;
+        503)
+            if site_in_maintenance; then
+                code_login=$(health_probe_login)
+                case "$code_login" in
+                    2* | 3*)
+                        log "El sitio responde 503 con el modo de mantenimiento encendido."
+                        log "  La pagina publica no se verifica en esa ventana; /login/ responde $code_login."
+                        ;;
+                    *)
+                        die "El modo de mantenimiento esta encendido pero /login/ responde ${code_login:-sin respuesta}.
+La aplicacion no esta atendiendo: mira journalctl -u $GUNICORN_UNIT."
+                        ;;
+                esac
+            else
+                die "El sitio responde 503 y el modo de mantenimiento no lo explica, se esperaba 2xx o 3xx.
+Mira journalctl -u $GUNICORN_UNIT: un 503 aca puede ser la pagina de
+mantenimiento con el flag apagado, o una caida real de la aplicacion."
+            fi
+            ;;
+        000)
+            if [ -n "${HEALTHCHECK_INSECURE:-}" ]; then
+                die "Sin respuesta aun con --insecure (ver journalctl -u $GUNICORN_UNIT)."
+            fi
+            if [ -n "$HEALTHCHECK_UNIX_SOCKET" ]; then
+                die "Sin respuesta de $hc_url por el socket $HEALTHCHECK_UNIX_SOCKET.
 El health check configurado va directo a Gunicorn, no al sitio: si contesta 000,
 el problema esta en el servicio. Mira journalctl -u $GUNICORN_UNIT y que exista
 $HEALTHCHECK_UNIX_SOCKET con el servicio arriba."
-        fi
-        die "Sin respuesta de $hc_url.
+            fi
+            die "Sin respuesta de $hc_url.
 Si el servidor tiene un certificado autofirmado, poné
 HEALTHCHECK_INSECURE=1 en $CONFIG para este servidor de prueba.
 NUNCA en produccion: --insecure deja de detectar un certificado vencido o de otro
@@ -1414,9 +1470,13 @@ dominio, que es exactamente lo que el health check deberia estar mirando.
 Si el proxy es externo, revisá que el Nginx local de esta maquina este arriba
 (systemctl status nginx) y que HEALTHCHECK_RESOLVE apunte a 127.0.0.1 en el
 puerto HTTP del instalador, no al 443: el 443 de esta maquina no lo escucha nadie."
-        ;;
-    *) die "El sitio responde $code, se esperaba 2xx o 3xx." ;;
-esac
+            ;;
+        *) die "El sitio responde $code, se esperaba 2xx o 3xx." ;;
+    esac
+}
+# <<< TEST-BLOCK: health-verdict
+
+health_verdict "$code"
 
 # Desarma la trampa antes de imprimir el resumen: si fallara un `git rev-parse`
 # aca, el rollback intentaria volver al commit anterior... que es este mismo.

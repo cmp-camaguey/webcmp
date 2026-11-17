@@ -160,6 +160,39 @@ Los comandos de Django corren en una unidad transitoria con el mismo
 `EnvironmentFile` y `PRODUCTION=1` que `webcmp.service`. Sin `PRODUCTION` en el
 entorno, `manage.py` cae en el perfil `testing`, que no es el del servicio.
 
+### Health check
+
+Es el último paso y el que decide el rollback: un solo `curl` al destino de
+`HEALTHCHECK_URL` (por defecto el 443 de `127.0.0.1`, con SNI y `Host`) y se
+espera 2xx o 3xx.
+
+Un sitio en modo de mantenimiento contesta **503** a propósito: el middleware
+devuelve la página de mantenimiento a todo visitante anónimo y solo deja pasar
+`/login/`, para que el operador pueda restaurar el sitio. Esa es además la
+ventana en la que se despliega —**Aplicar cambios** del panel exige el modo de
+mantenimiento activo—, así que un deploy sano disparado con el flag encendido se
+revertiría solo.
+
+Por eso el 503 no se juzga a ciegas:
+
+| Respuesta | Resultado |
+|---|---|
+| 2xx o 3xx | pasa |
+| 503 + modo de mantenimiento encendido + `/login/` 2xx/3xx | pasa, avisando de que la página pública no se verifica en esa ventana |
+| 503 con el modo de mantenimiento apagado o ilegible | aborta (rollback) |
+| 503 con el mantenimiento encendido pero `/login/` sin 2xx/3xx | aborta (rollback) |
+| cualquier otro código | aborta (rollback) |
+
+La pregunta al flag va por `manage.py shell` en la misma unidad transitoria que
+el resto del deploy, y `/login/` se consulta con los mismos argumentos de
+transporte que el health check principal (mismo proxy, mismo `Host`, mismo TLS).
+Si la lectura del flag falla, se aborta: sin evidencia de que sea una ventana
+anunciada, un 503 sigue siendo una caída.
+
+Este comportamiento vive en `deploy/deploy.sh`, así que el servidor lo recibe
+junto con el resto del cambio (ver
+[**Cuando el cambio toca `deploy.sh`**](#cuando-el-cambio-toca-deploysh)).
+
 ## Rollback
 
 Automatico: si algo falla **despues** de `migrate`, el script vuelve al commit
