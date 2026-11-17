@@ -110,3 +110,8 @@ assert_contains 'install.sh instala el sync (setup_deploy_sync)' \
     'setup_deploy_sync' "$install_src"
 
 echo "Todos los tests de sync pasaron."
+
+# run.sh sourcea los tests en un solo shell y no usa errexit: devolverlo a su
+# estado original, o un test posterior que espere un fallo (el bloque root de
+# test_install_apply_units.sh) abortaria la suite sin imprimir nada.
+set +e
