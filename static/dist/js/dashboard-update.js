@@ -27,6 +27,7 @@
   var spinner = document.getElementById('update-navbar-spinner');
   var badge = document.getElementById('update-navbar-badge');
   var title = document.getElementById('update-navbar-title');
+  var version = document.getElementById('update-navbar-version');
   var text = document.getElementById('update-navbar-text');
   var detail = document.getElementById('update-navbar-detail');
   var button = document.getElementById('update-navbar-button');
@@ -175,6 +176,13 @@
     text.textContent = options.message || '';
     detail.textContent = options.detail || '';
 
+    // Chip de version, siempre con textContent. Sin texto no se deja un
+    // hueco vacio: el nodo se esconde.
+    if (version) {
+      version.textContent = options.versionText || '';
+      version.classList.toggle('d-none', !options.versionText);
+    }
+
     // Con barra, el texto "Desplegando…" sobra: la barra ocupa su lugar, no se
     // suma al lado. Si el template en cache no trae el bloque de progreso, el
     // texto se queda: esconderlo sin barra dejaria el desplegable vacio.
@@ -189,6 +197,20 @@
 
     button.classList.toggle('d-none', !options.action);
     button.disabled = !options.action || Boolean(options.busy);
+    // El label por defecto, o el que arma `render` con la version exacta del
+    // tag. El tag ya trae su `v`: aca no se compone ningun formato.
+    button.textContent = options.buttonLabel || 'Actualizar ahora';
+  }
+
+  // Version que muestra el chip: la que se esta instalando (tag exacto del
+  // commit remoto) mientras hay actualizacion o despliegue, y la que sirve el
+  // servidor en el resto de los estados. Sin tag exacto se cae al SHA corto:
+  // nunca un numero inventado.
+  function chipVersion(state) {
+    if (state.state === 'available' || state.state === 'running') {
+      return state.version || state.deployed_version || state.deployed_short || '';
+    }
+    return state.deployed_version || state.deployed_short || '';
   }
 
   function render(state) {
@@ -197,6 +219,7 @@
     paintCommits(state);
 
     var run = state.last_run || {};
+    var chip = chipVersion(state);
 
     if (state.state === 'running') {
       paint({
@@ -209,18 +232,28 @@
         // esta reiniciando" durante un `pip install` seria falso.
         progress: state.progress || null,
         busy: true,
+        versionText: chip,
       });
       return;
     }
 
     if (state.state === 'available') {
+      // Con tag exacto el boton y el detalle nombran la version; sin el, el
+      // rango de SHA de siempre. El detalle lleva el SHA corto del commit que
+      // se instala, para que el operador pueda contrastarlo con el tag.
+      var target = state.version;
       paint({
         badge: 'red',
         icon: 'ti ti-download',
         title: 'Actualización disponible',
-        message: state.deployed_short + ' → ' + state.latest_short,
-        detail: 'Instala el último commit de main en este servidor.',
+        message:
+          state.deployed_short + ' → ' + state.latest_short + (target ? ' · ' + target : ''),
+        detail: target
+          ? 'Instala ' + target + ' (' + state.latest_short + ')…'
+          : 'Instala el último commit de main en este servidor.',
         action: true,
+        buttonLabel: target ? 'Actualizar a ' + target : null,
+        versionText: chip,
       });
       return;
     }
@@ -242,6 +275,10 @@
           ? 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo; puedes reintentar.'
           : 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo.',
         action: retry,
+        // El reintento vuelve a desplegar el mismo commit pendiente: con tag
+        // exacto el boton nombra la version, igual que en `available`.
+        buttonLabel: retry && state.version ? 'Actualizar a ' + state.version : null,
+        versionText: chip,
       });
       return;
     }
@@ -251,7 +288,8 @@
         icon: 'ti ti-check',
         title: 'Despliegue completado',
         message: run.message || 'Despliegue completado.',
-        detail: 'Ahora se está sirviendo ' + (run.sha ? run.sha.slice(0, 7) : 'el nuevo commit') + '.',
+        detail: 'Ahora se está sirviendo ' + (chip || 'el nuevo commit') + '.',
+        versionText: chip,
       });
       return;
     }
@@ -263,7 +301,8 @@
     if (state.state === 'up_to_date') {
       paint({
         icon: 'ti ti-check',
-        message: 'El servidor está al día (' + (state.deployed_short || '—') + ').',
+        message: 'El servidor está al día (' + (chip || '—') + ').',
+        versionText: chip,
       });
       return;
     }
@@ -275,14 +314,28 @@
       detail: state.check_error
         ? 'El aviso vuelve solo cuando el repositorio responda.'
         : 'En desarrollo se simula con UPDATE_DEPLOYED_SHA_FILE; en el servidor lo escribe deploy.sh.',
+      versionText: chip,
     });
   }
 
-  // El log lo trae el backend en el momento en que se abre el modal, no en el
-  // polling: es un archivo de sistema y leerlo en cada ciclo (cada 2 s
-  // durante un despliegue) seria cargar el panel con un renglon de pip otra
-  // vez. textContent y no innerHTML: el contenido lo escribe root en el
-  // servidor, y aun asi no hay motivo para interpretarlo como markup.
+  // El log lo trae el backend al abrir el modal y, mientras el despliegue
+  // esta en curso, en cada ciclo de polling de estado (2 s). Leerlo en cada
+  // ciclo SIN modal abierto seria cargar el panel con un renglon de pip otra
+  // vez, por eso las condiciones son modal abierto + `running`, mas una
+  // ultima lectura al terminar. textContent y no innerHTML: el contenido lo
+  // escribe root en el servidor, y aun asi no hay motivo para interpretarlo
+  // como markup.
+  var logOpen = false;
+  var logInFlight = false;
+  var logWasRunning = false;
+
+  function nearBottom() {
+    // El lector esta "cerca del final" si le quedan menos de 2rem hasta el
+    // fondo. Quien se quedo leyendo una parte antigua del log no pierde su
+    // lugar cuando llega una linea nueva.
+    return logPre.scrollHeight - logPre.scrollTop - logPre.clientHeight < 32;
+  }
+
   function paintLog(payload) {
     if (!logPre) {
       return;
@@ -300,17 +353,28 @@
         ? 'Cola del log: el inicio se recortó por tamaño.'
         : 'Log completo del último intento.';
     }
+    // Antes de reemplazar el texto se decide si hay que scrollear: si el
+    // lector no esta al final, se conserva su posicion.
+    var keep = nearBottom();
     logPre.textContent = payload.log || '(sin salida)';
     // El resultado esta al final: un deploy que aborta imprime la causa en las
     // ultimas lineas, y abrir por arriba obligaria a scrollear hasta el fondo.
-    logPre.scrollTop = logPre.scrollHeight;
+    if (keep) {
+      logPre.scrollTop = logPre.scrollHeight;
+    }
   }
 
-  function loadLog() {
+  function loadLog(quiet) {
     if (!logUrl || !logPre) {
       return;
     }
-    if (logNote) {
+    // Una lectura en vuelo no se superpone: la del ciclo siguiente la pisa
+    // cuando responda. Sin esto, un servidor lento acumularia peticiones.
+    if (logInFlight) {
+      return;
+    }
+    logInFlight = true;
+    if (logNote && !quiet) {
       logNote.textContent = 'Cargando…';
     }
     window
@@ -326,14 +390,25 @@
         if (logNote) {
           logNote.textContent = 'No se pudo leer el log del servidor.';
         }
+      })
+      .then(function () {
+        logInFlight = false;
       });
   }
 
   if (logModal) {
-    logModal.addEventListener('show.bs.modal', loadLog);
+    logModal.addEventListener('show.bs.modal', function () {
+      logOpen = true;
+      loadLog();
+    });
+    logModal.addEventListener('hidden.bs.modal', function () {
+      logOpen = false;
+    });
   }
   if (logRefresh) {
-    logRefresh.addEventListener('click', loadLog);
+    logRefresh.addEventListener('click', function () {
+      loadLog();
+    });
   }
 
   function load() {
@@ -347,7 +422,16 @@
       })
       .then(function (state) {
         render(state);
-        schedule(state.state === 'running' ? POLL_BUSY_MS : POLL_IDLE_MS);
+        // Log en vivo: con el modal abierto, en cada ciclo que el despliegue
+        // sigue `running` se relée el log (el polling ya va a 2 s). Al salir
+        // de `running` (`logWasRunning`) hay una ultima lectura, que es la
+        // que trae el resultado final.
+        var running = state.state === 'running';
+        if (logOpen && (running || logWasRunning)) {
+          loadLog(true);
+        }
+        logWasRunning = running;
+        schedule(running ? POLL_BUSY_MS : POLL_IDLE_MS);
       })
       .catch(function () {
         // Un fallo de red no rompe el dashboard: se reintenta en el proximo ciclo.

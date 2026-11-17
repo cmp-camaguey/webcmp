@@ -796,6 +796,18 @@ deploy e `install.sh` al terminar la instalacion), y el
 ultimo de `main` de un `git ls-remote` contra el repositorio publico: sin
 credenciales, sin clave y sin tocar el checkout.
 
+El desplegable tambien muestra un **chip con la version**. La version es un tag
+que apunta **exacto** al commit: el mismo `git ls-remote` pide ademas
+`refs/tags/*` (con el peeled `^{}` de cada tag anotado) y el panel compara
+contra el commit desplegado. Si hay varios tags sobre el mismo commit, el
+orden es determinista: `v*` antes que cualquier otro nombre, y dentro de `v*`
+el estable antes que el prerelease. Sin tag exacto **no hay version**: el chip
+muestra el SHA corto y el boton conserva el texto "Actualizar ahora". Con
+version, el boton dice **"Actualizar a vX.Y.Z"** y el detalle **"Instala
+vX.Y.Z (sha)…"**. Un tag aproximado mentiria —en un hotfix sin tag diria que
+una version vieja sigue pendiente, y tras un revert diria una que ya no se
+sirve—, por eso no se muestra nunca uno.
+
 Cuando hay actualizacion pendiente, el desplegable muestra ademas **que cambio**:
 la API publica de GitHub resuelve el rango `deployed...latest` y se listan hasta
 10 mensajes, solo la primera linea de cada uno. Se consulta unicamente en ese
@@ -877,6 +889,21 @@ proveedor— es la unica forma de ver por que fallo.
 El boton esta siempre, no solo tras un fallo: sirve para confirmar que el ultimo
 despliegue salio bien. Si aun no corrio ningun intento con este archivo, el modal
 lo dice en vez de mostrar un error.
+
+### Log en vivo
+
+Con el modal abierto y el despliegue en curso, el panel **relée el log en cada
+ciclo de polling** de estado (2 s), asi el operador ve el despliegue correr sin
+apretar "Actualizar". Al terminar hay una ultima lectura, que es la que trae el
+resultado final. Solo esas condiciones: sin modal abierto o fuera de
+`running` no se lee el archivo, y una lectura anterior en vuelo no se
+superpone a la siguiente.
+
+El scroll solo sigue al final si el lector ya estaba cerca del fondo: quien se
+quedo leyendo una parte antigua del log no pierde su lugar cuando entra una
+linea nueva. Abrir el modal sigue scrolleando al final una vez, porque el
+resultado esta al final. Todo el contenido llega por `textContent`, nunca
+`innerHTML`. No hay SSE ni WebSocket: el polling que ya existe alcanza.
 
 El journal sigue siendo el registro completo (incluye lo de antes del primer
 intento con log y lo que escribe systemd):

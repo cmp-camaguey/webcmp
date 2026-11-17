@@ -89,9 +89,11 @@ class UpdateTestCase(TestCase):
     def set_run_status(self, **payload):
         self.write(self.status_file, json.dumps(payload))
 
-    def set_remote(self, sha=SHA_LATEST, error=None):
+    def set_remote(self, sha=SHA_LATEST, error=None, tags=None):
         patcher = mock.patch.object(
-            update_module, '_ls_remote', return_value={'sha': sha, 'error': error}
+            update_module,
+            '_ls_remote',
+            return_value={'sha': sha, 'error': error, 'tags': tags or {}},
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -593,7 +595,36 @@ class LsRemoteTest(TestCase):
     def test_parsea_el_sha(self):
         completed = mock.Mock(returncode=0, stdout=f'{SHA_LATEST}\trefs/heads/main\n', stderr='')
         with mock.patch.object(update_module.subprocess, 'run', return_value=completed):
-            self.assertEqual(update_module._ls_remote(), {'sha': SHA_LATEST, 'error': None})
+            self.assertEqual(
+                update_module._ls_remote(), {'sha': SHA_LATEST, 'error': None, 'tags': {}}
+            )
+
+    def test_pide_tambien_los_tags(self):
+        # Una sola llamada para la rama y los tags: mismo costo de red, mismo
+        # cache. Sin `refs/tags/*` el panel no puede nombrar versiones.
+        completed = mock.Mock(returncode=0, stdout=f'{SHA_LATEST}\trefs/heads/main\n', stderr='')
+        with mock.patch.object(update_module.subprocess, 'run', return_value=completed) as run:
+            update_module._ls_remote()
+
+        args = run.call_args.args[0]
+        self.assertIn(settings.UPDATE_BRANCH_REF, args)
+        self.assertIn('refs/tags/*', args)
+
+    def test_parsea_los_tags_con_su_peeled(self):
+        # Un tag anotado trae dos lineas: el objeto y el commit al que apunta
+        # (`^{}`). El que sirve para comparar es el peeled; el de un tag
+        # ligero es su unica linea.
+        stdout = (
+            f'{SHA_LATEST}\trefs/heads/main\n'
+            f'{"c" * 40}\trefs/tags/v0.8.0\n'
+            f'{SHA_DEPLOYED}\trefs/tags/v0.8.0^{{}}\n'
+            f'{SHA_LATEST}\trefs/tags/aviso\n'
+        )
+        completed = mock.Mock(returncode=0, stdout=stdout, stderr='')
+        with mock.patch.object(update_module.subprocess, 'run', return_value=completed):
+            payload = update_module._ls_remote()
+
+        self.assertEqual(payload['tags'], {'v0.8.0': SHA_DEPLOYED, 'aviso': SHA_LATEST})
 
     def test_git_ausente(self):
         with mock.patch.object(update_module.subprocess, 'run', side_effect=FileNotFoundError):
@@ -633,6 +664,66 @@ class LsRemoteTest(TestCase):
             update_module._ls_remote()
 
         self.assertEqual(run.call_args.kwargs['env']['GIT_TERMINAL_PROMPT'], '0')
+
+
+class VersionForTest(TestCase):
+    """La regla del tag exacto: version es solo un tag que apunte al commit."""
+
+    def test_devuelve_el_tag_que_apunta_exacto(self):
+        self.assertEqual(
+            update_module._version_for(SHA_DEPLOYED, {'v0.8.0': SHA_DEPLOYED}), 'v0.8.0'
+        )
+
+    def test_sin_tag_exacto_no_hay_version(self):
+        # Un tag aproximado mentiria: en un hotfix sin tag diria que una
+        # version vieja sigue pendiente, y tras un revert diria una que ya no
+        # se sirve. Sin evidencia, no se afirma.
+        self.assertIsNone(update_module._version_for(SHA_DEPLOYED, {'v0.8.0': SHA_LATEST}))
+        self.assertIsNone(update_module._version_for(SHA_DEPLOYED, {}))
+        self.assertIsNone(update_module._version_for(None, {'v0.8.0': SHA_DEPLOYED}))
+
+    def test_prefiere_v_sobre_otro_nombre(self):
+        tags = {'nota-interna': SHA_DEPLOYED, 'v0.8.0': SHA_DEPLOYED}
+        self.assertEqual(update_module._version_for(SHA_DEPLOYED, tags), 'v0.8.0')
+
+    def test_prefiere_estable_sobre_prerelease(self):
+        tags = {'v0.8.0-rc.1': SHA_DEPLOYED, 'v0.8.0': SHA_DEPLOYED}
+        self.assertEqual(update_module._version_for(SHA_DEPLOYED, tags), 'v0.8.0')
+
+    def test_sin_estable_se_queda_con_el_prerelease(self):
+        # Es el tag exacto que existe: decir "no hay version" ocultaria el
+        # release que el operador acaba de publicar.
+        tags = {'v0.8.0-rc.1': SHA_DEPLOYED}
+        self.assertEqual(update_module._version_for(SHA_DEPLOYED, tags), 'v0.8.0-rc.1')
+
+    def test_desempate_deterministico(self):
+        # Dos tags no-v apuntando al mismo commit: el orden tiene que ser
+        # estable entre corridas, o el chip parpadearia entre nombres.
+        tags = {'zzz': SHA_DEPLOYED, 'aaa': SHA_DEPLOYED}
+        self.assertEqual(update_module._version_for(SHA_DEPLOYED, tags), 'aaa')
+
+
+class BuildStateVersionTest(UpdateTestCase):
+    """Los dos campos de version que consume el chip y el boton."""
+
+    def test_version_del_remoto_y_del_desplegado(self):
+        tags = {'v0.7.3': SHA_DEPLOYED, 'v0.8.0': SHA_LATEST}
+        self.set_deployed()
+        self.set_remote(tags=tags)
+
+        payload = update_module.build_state()
+
+        self.assertEqual(payload['deployed_version'], 'v0.7.3')
+        self.assertEqual(payload['version'], 'v0.8.0')
+
+    def test_sin_tag_exacto_llegan_en_none(self):
+        self.set_deployed()
+        self.set_remote(tags={'v0.9.0': 'f' * 40})
+
+        payload = update_module.build_state()
+
+        self.assertIsNone(payload['deployed_version'])
+        self.assertIsNone(payload['version'])
 
 
 class DashboardNavbarTest(UpdateTestCase):
@@ -699,6 +790,17 @@ class DashboardNavbarTest(UpdateTestCase):
         self.assertIn('id="update-navbar-progress-step"', html)
         # La barra arranca oculta: fuera de `running` no se muestra.
         self.assertIn('progress progress-sm', html)
+
+    def test_el_desplegable_tiene_el_chip_de_version(self):
+        # El JS pinta la versión en `#update-navbar-version`; sin ese nodo el
+        # chip no aparece y nadie se entera (no hay error en consola).
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-navbar-version"', html)
 
     def test_el_aviso_tiene_el_spinner_de_tabler(self):
         # Mientras el servidor despliega, el icono del navbar se sustituye por

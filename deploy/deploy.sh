@@ -1412,10 +1412,15 @@ code=$(curl "${hc_args[@]}" "$hc_url" || true)
 # puede leer —base caida, venv roto— el resultado es "no se pudo confirmar" y
 # se aborta como antes: sin evidencia de que sea mantenimiento, un 503 sigue
 # siendo una caida.
+#
+# Sin redirigir el stderr a `/dev/null`: el de `systemd-run` —por que no arranco
+# la unidad— es la mitad de ese diagnostico y tiene que llegar al journal. El
+# stderr de la unidad no entra aca (`run_in_unit` lo manda al stdout) y el
+# filtro de la respuesta es `grep -qx True`.
 site_in_maintenance() {
     manage shell -c \
         'from apps.core.models import SiteConfiguration as S; c = S.objects.first(); print(c is not None and c.maintenance_mode)' \
-        2>/dev/null | grep -qx True
+        | grep -qx True
 }
 
 # La ruta exenta con los mismos argumentos de transporte que el health check
