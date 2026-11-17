@@ -37,7 +37,13 @@
 
   var statusUrl = root.getAttribute('data-status-url');
   var requestUrl = root.getAttribute('data-request-url');
+  var logUrl = root.getAttribute('data-log-url');
   var csrfToken = root.getAttribute('data-csrf-token');
+
+  var logModal = document.getElementById('update-log-modal');
+  var logNote = document.getElementById('update-log-note');
+  var logPre = document.getElementById('update-log-pre');
+  var logRefresh = document.getElementById('update-log-refresh');
 
   var timer = null;
 
@@ -233,8 +239,8 @@
         title: 'El despliegue falló',
         message: run.message || 'El despliegue falló.',
         detail: retry
-          ? 'Revisa el log del servidor. El commit anterior sigue sirviendo; puedes reintentar.'
-          : 'Revisa el log del servidor. El commit anterior sigue sirviendo.',
+          ? 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo; puedes reintentar.'
+          : 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo.',
         action: retry,
       });
       return;
@@ -270,6 +276,64 @@
         ? 'El aviso vuelve solo cuando el repositorio responda.'
         : 'En desarrollo se simula con UPDATE_DEPLOYED_SHA_FILE; en el servidor lo escribe deploy.sh.',
     });
+  }
+
+  // El log lo trae el backend en el momento en que se abre el modal, no en el
+  // polling: es un archivo de sistema y leerlo en cada ciclo (cada 2 s
+  // durante un despliegue) seria cargar el panel con un renglon de pip otra
+  // vez. textContent y no innerHTML: el contenido lo escribe root en el
+  // servidor, y aun asi no hay motivo para interpretarlo como markup.
+  function paintLog(payload) {
+    if (!logPre) {
+      return;
+    }
+    if (!payload.available) {
+      logPre.textContent = '';
+      if (logNote) {
+        logNote.textContent =
+          'Todavía no hay log: lo genera el primer despliegue que corra con este commit.';
+      }
+      return;
+    }
+    if (logNote) {
+      logNote.textContent = payload.truncated
+        ? 'Cola del log: el inicio se recortó por tamaño.'
+        : 'Log completo del último intento.';
+    }
+    logPre.textContent = payload.log || '(sin salida)';
+    // El resultado esta al final: un deploy que aborta imprime la causa en las
+    // ultimas lineas, y abrir por arriba obligaria a scrollear hasta el fondo.
+    logPre.scrollTop = logPre.scrollHeight;
+  }
+
+  function loadLog() {
+    if (!logUrl || !logPre) {
+      return;
+    }
+    if (logNote) {
+      logNote.textContent = 'Cargando…';
+    }
+    window
+      .fetch(logUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('status ' + response.status);
+        }
+        return response.json();
+      })
+      .then(paintLog)
+      .catch(function () {
+        if (logNote) {
+          logNote.textContent = 'No se pudo leer el log del servidor.';
+        }
+      });
+  }
+
+  if (logModal) {
+    logModal.addEventListener('show.bs.modal', loadLog);
+  }
+  if (logRefresh) {
+    logRefresh.addEventListener('click', loadLog);
   }
 
   function load() {

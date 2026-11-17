@@ -835,12 +835,30 @@ intentado. Un fallo viejo no mancha un commit nuevo: si `main` avanzo despues de
 intento, lo pendiente es otro commit y se anuncia como actualizacion normal.
 
 El motivo no esta en el panel a proposito (el stderr de `git` puede traer rutas del
-servidor). Esta en el journal:
+servidor): esta en el **log del despliegue**, que el propio desplegable abre detras
+del boton **"Ver log del despliegue"**. Es la cola de
+`/var/lib/webcmp/deploy.log`, que el ejecutor escribe en cada intento con la misma
+salida que manda al journal. Sin SSH al servidor —una vez entregada la maquina al
+proveedor— es la unica forma de ver por que fallo.
+
+El boton esta siempre, no solo tras un fallo: sirve para confirmar que el ultimo
+despliegue salio bien. Si aun no corrio ningun intento con este archivo, el modal
+lo dice en vez de mostrar un error.
+
+El journal sigue siendo el registro completo (incluye lo de antes del primer
+intento con log y lo que escribe systemd):
 
 ```bash
 cat /var/lib/webcmp/deploy-status.json          # status: failed + el sha intentado
+cat /var/lib/webcmp/deploy.log                  # cola del ultimo intento (mismo contenido)
 journalctl -u webcmp-autodeploy -n 80 --no-pager
 ```
+
+El archivo lo rota el propio ejecutor antes de cada corrida: si pasa de 512 KB
+(`DEPLOY_LOG_MAX_BYTES`) conserva la mitad. El panel devuelve menos (32 KB,
+`UPDATE_LOG_MAX_BYTES`), porque la causa del fallo esta al final y una linea de
+`pip install` puede pesar mas que la pantalla entera. Un log que no se puede
+escribir no tumba un deploy que salio bien: es una ayuda, no una dependencia.
 
 ### Archivos y permisos
 
@@ -850,6 +868,7 @@ journalctl -u webcmp-autodeploy -n 80 --no-pager
 | `/var/lib/webcmp` | `deploy:webcmp` | 2775 |
 | `/var/lib/webcmp/deploy-request` | `webcmp:webcmp` | 0644 |
 | `/var/lib/webcmp/deploy-status.json` | `deploy:webcmp` | 0644 |
+| `/var/lib/webcmp/deploy.log` | `deploy:webcmp` | 0644 |
 | `/var/lib/webcmp/deploy-progress.json` | `root:webcmp` | 0644 |
 | `/usr/local/sbin/webcmp-autodeploy` | `root:root` | 0755 |
 
@@ -876,6 +895,7 @@ disco y nadie la recoge. El deploy manual (`webcmp-deploy`) no se toca.
 ```bash
 systemctl status webcmp-autodeploy.path
 journalctl -u webcmp-autodeploy -n 50
+cat /var/lib/webcmp/deploy.log                  # cola del ultimo intento
 cat /var/lib/webcmp/deploy-status.json
 cat /var/lib/webcmp/deploy-progress.json   # paso en curso de la barra
 cat /etc/webcmp/deployed

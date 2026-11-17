@@ -46,12 +46,13 @@ REMOTE_FAILURE_TTL = 60
 # Estados que el ejecutor puede escribir. Cualquier otra cosa en el archivo se
 # ignora: el archivo lo escribe otro usuario y no es una entrada confiable.
 RUN_STATUSES = {'running', 'ok', 'failed'}
-# Mensaje fijo por estado. El detalle real va al log del servidor, no al panel:
-# el stderr de git puede contener rutas absolutas del servidor.
+# Mensaje fijo por estado. El detalle del fallo vive en el log, que el panel
+# muestra detras de "Ver log del despliegue": el stderr de git puede contener
+# rutas absolutas del servidor, y por eso el estado no lo reenvia tal cual.
 RUN_MESSAGES = {
     'running': 'Desplegando…',
     'ok': 'Despliegue completado.',
-    'failed': 'El despliegue fallo. Revisa el log del servidor.',
+    'failed': 'El despliegue fallo. Ver el log del despliegue.',
 }
 # Un `running` mas viejo que esto solo puede ser un estado huerfano: la unidad
 # de systemd tiene `TimeoutStartSec=45min`, asi que a la hora el ejecutor ya no
@@ -389,6 +390,45 @@ def deployment_progress():
     return {'step': None, 'message': PROGRESS_IDLE_MESSAGE, 'percent': None}
 
 
+def deploy_log():
+    """Cola del log del ultimo despliegue, o ``None`` si todavia no hay log.
+
+    Lo escribe ``deploy/autodeploy.sh`` en el mismo directorio que el estado,
+    con permisos 0644: el proceso web ya lee ahi ``deploy-status.json``. El
+    journal recibe lo mismo, pero el journal no se lee desde la web y este
+    panel es justamente lo que queda cuando nadie tiene SSH al servidor.
+
+    Se devuelve la cola y no el archivo entero. Un deploy que aborta en
+    ``pip install`` puede dejar megas que nadie va a leer en un navegador, y
+    la causa del fallo siempre esta al final.
+
+    El contenido NO se filtra: son rutas absolutas del servidor, y por eso el
+    estado no las reenvia. Aca llegan al superusuario que ya dispara los
+    deploys y ve el estado, que es el unico que puede leer el log.
+    """
+    path = settings.UPDATE_LOG_FILE
+    try:
+        with open(path, 'rb') as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            start = max(0, size - settings.UPDATE_LOG_MAX_BYTES)
+            handle.seek(start)
+            data = handle.read()
+    except FileNotFoundError:
+        return None
+    except OSError:
+        logger.warning('No se pudo leer %s', path, exc_info=True)
+        return None
+
+    text = data.decode('utf-8', errors='replace')
+    truncated = start > 0
+    if truncated:
+        # El corte puede caer a mitad de un renglon: arrancar en el siguiente
+        # evita presentar como inicio del log una linea a medias.
+        text = text.split('\n', 1)[1] if '\n' in text else ''
+    return {'log': text, 'truncated': truncated}
+
+
 def build_state(refresh=False, include_commits=True):
     """Estado que consume el panel. Una sola forma, la use quien la use.
 
@@ -487,6 +527,28 @@ class UpdateStatusView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def get(self, request, *args, **kwargs):
         return JsonResponse(build_state())
+
+
+class UpdateLogView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Cola del log del ultimo despliegue, como JSON.
+
+    Mismo publico que el estado: superusuario. ``raise_exception`` por lo mismo
+    que en las otras dos vistas de aca.
+    """
+
+    raise_exception = True
+    http_method_names = ['get']
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get(self, request, *args, **kwargs):
+        payload = deploy_log()
+        if payload is None:
+            # Sin archivo no hay log: el panel lo dice con palabras, no con un
+            # 404 que el navegador convierte en "No se pudo leer".
+            return JsonResponse({'available': False, 'log': '', 'truncated': False})
+        return JsonResponse({'available': True, **payload})
 
 
 class UpdateRequestView(LoginRequiredMixin, UserPassesTestMixin, View):
