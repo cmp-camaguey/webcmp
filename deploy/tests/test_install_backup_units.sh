@@ -17,10 +17,18 @@
 BACKUP_INSTALL_SH=$REPO_ROOT/deploy/install-backup-units.sh
 
 # Los units de origen se llaman como en el repo (`webcmp-backup.*`); solo cambia
-# el nombre del DESTINO. Buscar `$BACKUP_UNIT` dentro del checkout falla con
+# el nombre del DESTINO. Buscar `$BACKUP_TIMER` dentro del checkout falla con
 # cualquier nombre configurado.
 assert_not_contains 'backup: no busca el unit de origen con el nombre del destino' \
-    'deploy/systemd/$BACKUP_UNIT' "$(cat "$BACKUP_INSTALL_SH")"
+    'deploy/systemd/$BACKUP_TIMER' "$(cat "$BACKUP_INSTALL_SH")"
+
+# El nombre configurable tiene que ser el MISMO que verifica `deploy.sh --check`.
+# Con dos nombres, el instalador creaba `webcmp-backup` mientras el chequeo
+# buscaba otro: falso positivo permanente y un remedio que no destraba nada.
+assert_contains 'backup: el instalador usa el nombre que verifica deploy.sh' \
+    'BACKUP_TIMER' "$(cat "$BACKUP_INSTALL_SH")"
+assert_not_contains 'backup: el instalador no inventa un segundo nombre' \
+    'BACKUP_UNIT' "$(cat "$BACKUP_INSTALL_SH")"
 
 backup_pure=$(require_block unit-files "$BACKUP_INSTALL_SH")
 backup_main=$(require_block install-backup-units "$BACKUP_INSTALL_SH")
@@ -59,7 +67,7 @@ assert_not_contains 'backup: el servicio no conserva la ruta del checkout' \
     eval "$backup_pure"
     eval "$backup_main"
     APP_DIR=$backup_tmp/nope
-    BACKUP_UNIT=webcmp-backup
+    BACKUP_TIMER=webcmp-backup
     DEPLOY_SCRIPT=$backup_tmp/deploy
     UNIT_DIR=$backup_tmp/units
     SYSTEMCTL=true
@@ -79,7 +87,7 @@ cp "$REPO_ROOT/deploy/systemd/webcmp-backup.timer" "$backup_tmp/app/deploy/syste
     eval "$backup_pure"
     eval "$backup_main"
     APP_DIR=$backup_tmp/app
-    BACKUP_UNIT=webcmp-backup
+    BACKUP_TIMER=webcmp-backup
     DEPLOY_SCRIPT=$backup_tmp/no-existe
     UNIT_DIR=$backup_tmp/units
     SYSTEMCTL=true
@@ -100,7 +108,7 @@ chmod +x "$backup_tmp/deploy"
     eval "$backup_pure"
     eval "$backup_main"
     APP_DIR=$backup_tmp/app
-    BACKUP_UNIT=webcmp-backup
+    BACKUP_TIMER=webcmp-backup
     DEPLOY_SCRIPT=$backup_tmp/deploy
     UNIT_DIR=$backup_tmp/units
     SYSTEMCTL=true
@@ -130,7 +138,7 @@ STUB
     backup_install_run() {
         (
             APP_DIR=$backup_tmp/app
-            BACKUP_UNIT=webcmp-backup
+            BACKUP_TIMER=webcmp-backup
             DEPLOY_SCRIPT=$backup_tmp/deploy
             UNIT_DIR=$backup_tmp/units
             SYSTEMCTL=$backup_tmp/bin/systemctl

@@ -22,7 +22,7 @@
 #   sudo bash deploy/install-backup-units.sh --help
 #
 # Variables (mismos nombres y defaults que install.sh y deploy.env):
-#   APP_DIR, CONFIG_DIR, CONFIG, BACKUP_UNIT, DEPLOY_SCRIPT, SYSTEMCTL,
+#   APP_DIR, CONFIG_DIR, CONFIG, BACKUP_TIMER, DEPLOY_SCRIPT, SYSTEMCTL,
 #   UNIT_DIR, DRY_RUN
 #
 set -Eeuo pipefail
@@ -37,7 +37,7 @@ if [ -r "$CONFIG" ]; then
 fi
 
 : "${APP_DIR:=/srv/webcmp}"
-: "${BACKUP_UNIT:=webcmp-backup}"
+: "${BACKUP_TIMER:=webcmp-backup}"
 : "${DEPLOY_SCRIPT:=/usr/local/sbin/webcmp-deploy}"
 : "${SYSTEMCTL:=systemctl}"
 : "${UNIT_DIR:=/etc/systemd/system}"
@@ -117,7 +117,7 @@ Instala las unidades webcmp-backup.service y webcmp-backup.timer, recarga
 systemd y habilita el timer. No toca el .env, la base, el venv ni el codigo.
 Idempotente: una segunda corrida no reescribe nada.
 
-Variables: APP_DIR, CONFIG, BACKUP_UNIT, DEPLOY_SCRIPT, UNIT_DIR, DRY_RUN=1.
+Variables: APP_DIR, CONFIG, BACKUP_TIMER, DEPLOY_SCRIPT, UNIT_DIR, DRY_RUN=1.
 EOF
 }
 
@@ -138,7 +138,7 @@ install_backup_units() {
 
     # Los nombres de ORIGEN son los del repositorio y no cambian: `install.sh`
     # renderiza `deploy/systemd/webcmp-backup.service` a
-    # `/etc/systemd/system/$BACKUP_UNIT.service`. Buscar `$BACKUP_UNIT.service`
+    # `/etc/systemd/system/$BACKUP_TIMER.service`. Buscar `$BACKUP_TIMER.service`
     # dentro del checkout fallaria con cualquier nombre configurado.
     for piece in "$APP_DIR/deploy/systemd/webcmp-backup.service" \
         "$APP_DIR/deploy/systemd/webcmp-backup.timer"
@@ -156,30 +156,30 @@ install_backup_units() {
 
     log 'Unidades systemd'
     install_unit "$APP_DIR/deploy/systemd/webcmp-backup.service" \
-        "$UNIT_DIR/$BACKUP_UNIT.service" \
+        "$UNIT_DIR/$BACKUP_TIMER.service" \
         "/srv/webcmp<>$APP_DIR" \
         "ExecStart=/usr/local/sbin/webcmp-deploy<>ExecStart=$DEPLOY_SCRIPT"
 
     install_unit "$APP_DIR/deploy/systemd/webcmp-backup.timer" \
-        "$UNIT_DIR/$BACKUP_UNIT.timer" \
+        "$UNIT_DIR/$BACKUP_TIMER.timer" \
         "/srv/webcmp<>$APP_DIR" \
-        "Unit=webcmp-backup.service<>Unit=$BACKUP_UNIT.service"
+        "Unit=webcmp-backup.service<>Unit=$BACKUP_TIMER.service"
 
     run "$SYSTEMCTL" daemon-reload
     # `enable --now` sobre el timer: el servicio lo dispara el timer. Arrancarlo
     # ahora haria un respaldo que nadie pidio en este momento.
-    run "$SYSTEMCTL" enable --now "$BACKUP_UNIT.timer"
+    run "$SYSTEMCTL" enable --now "$BACKUP_TIMER.timer"
 
     if [ "$DRY_RUN" -eq 0 ]; then
-        "$SYSTEMCTL" is-active --quiet "$BACKUP_UNIT.timer" \
-            || die "El timer no quedo activo. Revisa: $SYSTEMCTL status $BACKUP_UNIT.timer"
+        "$SYSTEMCTL" is-active --quiet "$BACKUP_TIMER.timer" \
+            || die "El timer no quedo activo. Revisa: $SYSTEMCTL status $BACKUP_TIMER.timer"
     fi
 
     log 'Listo'
-    printf '  unidad:  %s (diario, 03:15 hora local)\n' "$BACKUP_UNIT.timer"
+    printf '  unidad:  %s (diario, 03:15 hora local)\n' "$BACKUP_TIMER.timer"
     printf '  ejecuta: %s --backup\n' "$DEPLOY_SCRIPT"
     printf '  destino: DB_BACKUP_DIR de %s\n' "$CONFIG"
-    printf '  logs:    journalctl -u %s\n' "$BACKUP_UNIT"
+    printf '  logs:    journalctl -u %s\n' "$BACKUP_TIMER"
 }
 # <<< TEST-BLOCK: install-backup-units
 
