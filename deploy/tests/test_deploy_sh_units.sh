@@ -64,7 +64,7 @@ assert_eq 'reporta las dos piezas del panel cuando faltan' \
 
 # --- Nombres renderizados -------------------------------------------------
 #
-# install.sh renderiza cinco unidades con el nombre de una variable. Un deploy
+# install.sh renderiza cuatro unidades con el nombre de una variable. Un deploy
 # que compare contra el nombre del archivo reportaria un faltante falso en un
 # servidor perfectamente instalado, y el operador aprenderia a ignorar el error.
 
@@ -84,10 +84,12 @@ assert_eq 'con nombres configurados reporta el nombre renderizado' 'cmpweb.servi
         AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
 : > "$units_tmp/system/cmpweb.service"
 
-# El timer del respaldo tambien: un timer instalado con otro nombre tiene que
-# compararse contra el nombre que install.sh le puso, no contra el del archivo.
+# El timer del respaldo NO cuenta: el deploy lo ignora a proposito. Bloquear el
+# deploy por una unidad que el sitio no necesita es peor que no tener respaldo
+# diario, porque el rollback devuelve el arbol al commit anterior y el runbook
+# que el mensaje imprime deja de existir. Lo reporta `--check`.
 rm -f "$units_tmp/system/cmpbackup.service"
-assert_eq 'reporta el timer del respaldo con el nombre configurado' 'cmpbackup.service' \
+assert_eq 'el respaldo diario no bloquea el deploy' '' \
     "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
         AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
 : > "$units_tmp/system/cmpbackup.service"
@@ -117,10 +119,11 @@ assert_eq 'el guard corre antes de instalar requirements' 'antes' \
     "$(if [ "$guard_line" -lt "$pip_line" ]; then echo antes; else echo despues; fi)"
 assert_contains 'el guard manda a instalar las piezas' \
     'install-apply-units.sh' "$deploy_src"
-assert_contains 'el guard manda a instalar el respaldo diario' \
-    'install-backup-units.sh' "$deploy_src"
-# `missing-units` usa $BACKUP_TIMER: sin default, un deploy real muere con
-# "unbound variable" en lugar de comparar contra el nombre de la unidad.
+# El respaldo diario queda fuera del guard: el bloque ni siquiera mira su nombre.
+assert_not_contains 'el guard no considera el respaldo diario' \
+    'BACKUP_TIMER' "$units_block"
+# `check_db_backup` usa $BACKUP_TIMER: sin default, `--check` muere con
+# "unbound variable" en lugar de informar el estado del timer.
 assert_contains 'deploy.sh define un default para BACKUP_TIMER' \
     'BACKUP_TIMER:=' "$deploy_src"
 assert_contains 'el guard explica por que el deploy no las instala' \

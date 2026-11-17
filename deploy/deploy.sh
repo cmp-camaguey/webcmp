@@ -589,10 +589,9 @@ missing_units() {
     for f in "$APP_DIR"/deploy/systemd/*.service "$APP_DIR"/deploy/systemd/*.path; do
         [ -e "$f" ] || continue
         base=${f##*/}
-        # Solo estas cinco pueden instalarse con otro nombre, porque install.sh
-        # las renderiza desde GUNICORN_UNIT, HUEY_UNIT, AUTODEPLOY_UNIT,
-        # APPLY_UNIT y BACKUP_TIMER. El resto se instala con el nombre del
-        # archivo.
+        # Solo estas cuatro pueden instalarse con otro nombre, porque install.sh
+        # las renderiza desde GUNICORN_UNIT, HUEY_UNIT, AUTODEPLOY_UNIT y
+        # APPLY_UNIT. El resto se instala con el nombre del archivo.
         case "$base" in
             webcmp.service) base=$GUNICORN_UNIT.service ;;
             webcmp-huey.service) base=$HUEY_UNIT.service ;;
@@ -600,7 +599,15 @@ missing_units() {
                 base=${base/webcmp-autodeploy/$AUTODEPLOY_UNIT}
                 ;;
             webcmp-apply.service | webcmp-apply.path) base=${base/webcmp-apply/$APPLY_UNIT} ;;
-            webcmp-backup.service) base=$BACKUP_TIMER.service ;;
+            # El timer del respaldo NO bloquea el deploy. Dos razones, y la
+            # segunda es la que importa: el sitio sirve igual sin respaldo diario
+            # (es una red de seguridad, no una dependencia), y este guard corre
+            # DESPUES del checkout con el rollback armado — abortar devuelve el
+            # arbol al commit anterior, o sea que el runbook que el mensaje
+            # imprime deja de existir en el mismo instante en que lo lees.
+            # `--check` reporta el faltante con el comando exacto, que es donde el
+            # operador lo mira sin que el deploy falle.
+            webcmp-backup.service) continue ;;
         esac
         [ -f "$dir/$base" ] || printf '%s\n' "$base"
     done
@@ -660,7 +667,7 @@ check_units() {
         if [ -z "$missing" ]; then
             check_ok 'Todas las unidades de deploy/systemd/ estan instaladas.'
         else
-            check_fail "Faltan unidades que el codigo necesita: $(printf '%s ' $missing)(deploy/install-apply-units.sh, deploy/install-backup-units.sh o deploy/install.sh)."
+            check_fail "Faltan unidades que el codigo necesita: $(printf '%s ' $missing)(deploy/install-apply-units.sh o deploy/install.sh)."
         fi
     fi
     # Instalada no es lo mismo que operativa: una unidad presente y deshabilitada
@@ -874,7 +881,10 @@ check_db_backup() {
             check_fail "Hay $BACKUP_TIMER.timer pero no esta habilitado y activo: el respaldo diario no corre."
         fi
     else
-        check_skip "Respaldo diario no instalado ($BACKUP_TIMER.timer): solo se respalda antes de migrar."
+        # Falla y no aviso: sin timer la base solo se respalda cuando hay un
+        # deploy con migraciones, y un mes sin deploys es un mes sin respaldo.
+        # No bloquea el deploy (ver `missing_units`), asi que este es el aviso.
+        check_fail "Respaldo diario no instalado ($BACKUP_TIMER.timer): la base solo se respalda antes de migrar. Instalalo con: sudo bash deploy/install-backup-units.sh"
     fi
 }
 
@@ -1150,6 +1160,7 @@ prune_db_backups() {
 # abortar: un `pg_dump` que corre mientras `migrate` cambia el esquema no es un
 # respaldo, pero perder el respaldo del dia por un deploy que estaba terminando
 # tampoco sirve.
+# >>> TEST-BLOCK: backup-mode
 if [ "$MODE" = backup ]; then
     command -v pg_dump >/dev/null 2>&1 \
         || die "No hay pg_dump en el PATH: sin pg_dump no hay respaldo.
@@ -1165,6 +1176,7 @@ if [ "$MODE" = backup ]; then
     prune_db_backups
     exit 0
 fi
+# <<< TEST-BLOCK: backup-mode
 
 # La trampa es EXIT y no ERR. No es indistinto: `trap ... ERR` NO se dispara
 # cuando el script hace `exit`, y `die()` -que es como termina practicamente todo
@@ -1214,7 +1226,6 @@ que el proceso web puede editar.
 
 Instalalas como root y volve a desplegar:
   sudo bash $APP_DIR/deploy/install-apply-units.sh   # boton 'Aplicar cambios'
-  sudo bash $APP_DIR/deploy/install-backup-units.sh  # respaldo diario
   sudo bash $APP_DIR/deploy/install.sh               # el resto de las unidades"
 fi
 
