@@ -817,6 +817,22 @@ class DashboardNavbarTest(UpdateTestCase):
         # Arranca oculto: solo se muestra en `running`.
         self.assertIn('spinner-border spinner-border-sm text-blue d-none', html)
 
+    def test_el_modal_del_log_no_tiene_footer_con_botones(self):
+        # El modal se cierra con la X del header y el log se recarga solo
+        # mientras despliega (polling a 2 s mas una lectura final al salir de
+        # `running`). El footer con «Actualizar» y «Cerrar» solo estorbaba y
+        # tapaba las ultimas lineas, que es donde esta el resultado.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+        modal = html.split('id="update-log-modal"', 1)[1].split('<!-- Tema Claro|Oscuro -->', 1)[0]
+
+        self.assertNotIn('modal-footer', modal)
+        self.assertNotIn('update-log-refresh', modal)
+        self.assertNotIn('>Cerrar</button>', modal)
+
     def test_el_aviso_no_se_renderiza_para_no_superusuario(self):
         self.client.force_login(self.plain)
 

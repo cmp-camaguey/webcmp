@@ -101,7 +101,9 @@
     El contenido lo trae el JS al abrir: el log cambia en cada intento y
     renderizarlo en cada visita al dashboard seria leer un archivo de sistema
     en cada pagina del panel. El `pre` scrollea solo hasta el final, que es
-    donde esta el resultado.
+    donde esta el resultado. El log NO se filtra (tiene rutas absolutas del
+    servidor): el JS lo pinta con textContent, nunca con innerHTML. El modal
+    se cierra con la X del header; el log se recarga solo durante el deploy.
   {% endcomment %}
   <div class="modal fade"
        id="update-log-modal"
@@ -118,22 +120,15 @@
                   aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
-          <p class="text-secondary small mb-2" id="update-log-note">Cargando…</p>
+          <p class="text-secondary small mb-3 d-none" id="update-log-note"></p>
           <pre id="update-log-pre"
-               class="mb-0"
+               class="mb-0 bg-dark text-light p-3 rounded font-monospace"
                style="max-height: 60vh;
                       overflow: auto;
                       white-space: pre-wrap;
                       word-break: break-word;
-                      font-size: 0.75rem"></pre>
-        </div>
-        <div class="modal-footer">
-          <button type="button"
-                  class="btn btn-sm btn-outline-secondary"
-                  id="update-log-refresh">Actualizar</button>
-          <button type="button"
-                  class="btn btn-sm btn-secondary"
-                  data-bs-dismiss="modal">Cerrar</button>
+                      font-size: 0.75rem;
+                      line-height: 1.7"></pre>
         </div>
       </div>
     </div>
