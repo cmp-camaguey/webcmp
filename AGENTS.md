@@ -157,7 +157,7 @@ Dependabot apunta a `dev` en los tres ecosistemas (`target-branch: dev`).
 ## Convenciones
 
 - **UI**: exclusivamente Tabler.io (Bootstrap 5).
-- **Badges**: siempre el light variant `bg-*-lt` de Tabler, sin `text-*-fg`. El default es `bg-blue-lt`; se varía sólo el color según la necesidad (`bg-green-lt` para estados positivos, `bg-red-lt` para negativos, etc.). Nunca `bg-secondary-lt` para badges de estado: en modo claro no se distingue.
+- **Badges**: siempre el light variant `bg-*-lt` de Tabler, sin `text-*-fg`. El color se elige según la necesidad de cada badge (`bg-blue-lt`, `bg-green-lt` para estados positivos, `bg-red-lt` para negativos, etc.); no hay color fijo. Nunca `bg-secondary-lt` para badges de estado: en modo claro no se distingue.
 - **Permisos**: `default_permissions = ()` + 4 personalizados: `view_*`, `add_*`, `change_*`, `delete_*` (en español). No existen por defecto.
 - **Middleware**: `CheckUserProfileMiddleware` → `MaintenanceModeMiddleware`. El segundo deja pasar `/login/` y `/logout/` para que un usuario con sesión abierta pueda cerrarla durante el mantenimiento.
 - **Auth**: LDAP opcional (`LDAP3Backend`) → fallback `ModelBackend`. `Profile` se crea por señal `post_save`; los usuarios LDAP llevan `is_ldap=True`.
