@@ -15,6 +15,10 @@
 # Estado que escribe (JSON) para que el panel lo muestre:
 #   {"status": "running|ok|failed", "sha": "<sha|null>", "finished_at": "<iso|null>"}
 #
+# Y el log del intento (texto, 0644) en $DEPLOY_LOG, que el panel muestra
+# detras de "Ver log del despliegue": el journal recibe exactamente lo mismo,
+# pero el journal nadie lo lee sin SSH.
+#
 set -Eeuo pipefail
 
 readonly REPO_URL=${REPO_URL:-https://github.com/cmp-camaguey/webcmp.git}
@@ -29,9 +33,50 @@ readonly DEPLOY_SCRIPT=${DEPLOY_SCRIPT:-/usr/local/sbin/webcmp-deploy}
 # root:root 0755 — crear el archivo ahi falla con "Permission denied" antes de
 # cualquier otra cosa. `deploy.sh` si puede usar /var/lock porque lo invoca sudo.
 readonly LOCKFILE=${LOCKFILE:-/var/lib/webcmp/autodeploy.lock}
+# Log del intento, que el panel muestra detras de "Ver log del despliegue".
+# Mismo directorio que el estado y mismos permisos (0644): el proceso web ya
+# lee ahi `deploy-status.json`, y un log que el panel no puede leer no arregla
+# nada. El journal sigue recibiendo lo mismo; este archivo es para quien no
+# tiene SSH al servidor.
+readonly DEPLOY_LOG=${DEPLOY_LOG:-/var/lib/webcmp/deploy.log}
+# Nadie rota este archivo, asi que lo rota el propio ejecutor antes de cada
+# corrida: con el tope a la mitad el archivo nunca pasa de ~1.5x el tope.
+readonly DEPLOY_LOG_MAX_BYTES=${DEPLOY_LOG_MAX_BYTES:-524288}
 
-log() { printf '%s autodeploy: %s\n' "$(date -Is)" "$*"; }
+log() {
+    local line
+    line="$(date -Is) autodeploy: $*"
+    printf '%s\n' "$line"
+    # `|| true` y no mas: el log es una ayuda, no una dependencia. Un disco
+    # lleno no puede tumbar el despliegue por no poder anotar que empezo.
+    printf '%s\n' "$line" >>"$DEPLOY_LOG" 2>/dev/null || true
+}
 die() { log "ERROR: $*"; exit 1; }
+
+# Prepara el log: lo crea si falta con permisos legibles para el proceso web y
+# lo recorta si se paso del tope. Corre ANTES del primer `log`, que si no lo
+# encontrara lo crearia con el umask del usuario de despliegue.
+prepare_log() {
+    if [ ! -f "$DEPLOY_LOG" ]; then
+        : >>"$DEPLOY_LOG" 2>/dev/null || return 0
+    fi
+    chmod 0644 "$DEPLOY_LOG" 2>/dev/null || true
+
+    local size
+    size=$(wc -c <"$DEPLOY_LOG" 2>/dev/null || printf '0')
+    [ "$size" -gt "$DEPLOY_LOG_MAX_BYTES" ] || return 0
+
+    # `tail -c` y no un recorte por lineas: el tope es de bytes y una linea de
+    # `pip install` puede pesar mas que un bloque razonable de renglones.
+    if tail -c "$((DEPLOY_LOG_MAX_BYTES / 2))" "$DEPLOY_LOG" >"$DEPLOY_LOG.tmp" 2>/dev/null; then
+        mv -f "$DEPLOY_LOG.tmp" "$DEPLOY_LOG" 2>/dev/null || rm -f "$DEPLOY_LOG.tmp" 2>/dev/null
+    else
+        rm -f "$DEPLOY_LOG.tmp" 2>/dev/null
+    fi
+    chmod 0644 "$DEPLOY_LOG" 2>/dev/null || true
+}
+
+prepare_log
 
 # Instante en que este intento empezo. Va en las TRES escrituras de estado, no
 # solo en `running`: asi el panel puede distinguir un despliegue en curso de uno
@@ -103,10 +148,25 @@ log "Desplegando $target"
 # `sudo -n`: nunca preguntar. El sudoers de deploy cubre exactamente este
 # comando; si faltara, esto falla en vez de quedarse esperando una contrasena
 # que nadie va a escribir.
-if sudo -n "$DEPLOY_SCRIPT" "$target"; then
+#
+# La salida del deploy va al journal (stdout) Y al archivo, en vivo: es la
+# misma corriente, `tee` la divide. El panel no puede leer el journal y este
+# archivo existe justamente para que el fallo se vea sin SSH.
+#
+# `PIPESTATUS[0]` y no el `pipefail` del script: lo que decide es el codigo del
+# deploy, no el de `tee`. Un `tee` que no puede escribir (disco lleno, permiso)
+# no puede tumbar un despliegue que salio bien. Por eso ademas `set +e` alrededor:
+# con `pipefail` activo, el mismo `tee` fallido mataria el script aca.
+set +e
+sudo -n "$DEPLOY_SCRIPT" "$target" 2>&1 | tee -a "$DEPLOY_LOG"
+deploy_rc=${PIPESTATUS[0]}
+set -e
+chmod 0644 "$DEPLOY_LOG" 2>/dev/null || true
+
+if [ "$deploy_rc" -eq 0 ]; then
     write_status ok "$target"
     log "Despliegue OK: $target"
 else
     write_status failed "$target"
-    die "El despliegue fallo. Ver: journalctl -u webcmp-autodeploy"
+    die "El despliegue fallo. Ver el log en el panel (Actualizar, 'Ver log del despliegue') o: journalctl -u webcmp-autodeploy"
 fi

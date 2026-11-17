@@ -45,12 +45,15 @@ class UpdateTestCase(TestCase):
         self.status_file = os.path.join(self.tmpdir, 'deploy-status.json')
         self.request_file = os.path.join(self.tmpdir, 'deploy-request')
         self.progress_file = os.path.join(self.tmpdir, 'deploy-progress.json')
+        self.log_file = os.path.join(self.tmpdir, 'deploy.log')
 
         override = override_settings(
             UPDATE_DEPLOYED_SHA_FILE=self.deployed_file,
             UPDATE_STATUS_FILE=self.status_file,
             UPDATE_REQUEST_FILE=self.request_file,
             UPDATE_PROGRESS_FILE=self.progress_file,
+            UPDATE_LOG_FILE=self.log_file,
+            UPDATE_LOG_MAX_BYTES=1024,
         )
         override.enable()
         self.addCleanup(override.disable)
@@ -74,6 +77,7 @@ class UpdateTestCase(TestCase):
 
         self.status_url = reverse('dashboard:update_status')
         self.request_url = reverse('dashboard:update_request')
+        self.log_url = reverse('dashboard:update_log')
 
     def write(self, path, content):
         with open(path, 'w', encoding='utf-8') as handle:
@@ -512,6 +516,75 @@ class UpdateRequestViewTest(UpdateTestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertIn('no acepta peticiones', response.json()['reason'])
+
+
+class UpdateLogViewTest(UpdateTestCase):
+    """Cola del log del despliegue, tras «Ver log del despliegue».
+
+    Mismo contrato que el estado: un archivo que escribe otro usuario. La
+    diferencia es que el log NO se filtra —son rutas absolutas del servidor—,
+    y por eso el publico se limita al superusuario que ya dispara los deploys.
+    """
+
+    def test_anonimo_recibe_403_y_no_un_redirect(self):
+        response = self.client.get(self.log_url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_superusuario_recibe_403(self):
+        self.client.force_login(self.plain)
+        response = self.client.get(self.log_url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_sin_archivo_avisa_que_no_hay_log(self):
+        # En desarrollo no existe el archivo. No es un error: el panel lo dice
+        # con palabras en vez de un 404 que el JS convierte en "No se pudo
+        # leer".
+        self.client.force_login(self.admin)
+        response = self.client.get(self.log_url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['available'])
+        self.assertEqual(payload['log'], '')
+
+    def test_devuelve_el_log_completo(self):
+        self.write(self.log_file, '==> Instalando requirements\n==> Desplegado abc1234.\n')
+        self.client.force_login(self.admin)
+
+        payload = self.client.get(self.log_url).json()
+
+        self.assertTrue(payload['available'])
+        self.assertFalse(payload['truncated'])
+        self.assertIn('==> Desplegado abc1234.', payload['log'])
+
+    def test_devuelve_la_cola_y_lo_marca(self):
+        # El tope es de bytes: una sola linea de `pip install` puede pesar mas
+        # que la pantalla. Se devuelve la cola (donde esta la causa del fallo)
+        # y se avisa de que el inicio se corto.
+        lineas = ''.join(f'linea {i:04d} de relleno del log del deploy\n' for i in range(200))
+        self.write(self.log_file, lineas + 'ERROR: el sitio responde 503\n')
+        self.client.force_login(self.admin)
+
+        payload = self.client.get(self.log_url).json()
+
+        self.assertTrue(payload['available'])
+        self.assertTrue(payload['truncated'])
+        self.assertIn('ERROR: el sitio responde 503', payload['log'])
+        # Con el tope de 1024 bytes no cabe ni la primera linea.
+        self.assertNotIn('linea 0000', payload['log'])
+
+    def test_un_archivo_ilegible_no_revienta_el_panel(self):
+        # Mismo trato que el estado: un OSError se registra y se responde como
+        # "no hay log", nunca con un 500 en el modal.
+        with mock.patch('builtins.open', side_effect=OSError):
+            payload = update_module.deploy_log()
+
+        self.assertIsNone(payload)
+
+    def test_el_mensaje_de_fallo_apunta_al_log(self):
+        # El estado no puede reenviar el detalle (stderr con rutas absolutas),
+        # asi que el mensaje fijo tiene que mandar al usuario al modal.
+        self.assertIn('log', update_module.RUN_MESSAGES['failed'])
 
 
 class LsRemoteTest(TestCase):
