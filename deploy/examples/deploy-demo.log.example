@@ -1,0 +1,21 @@
+[1;34m==> Iniciando despliegue automático[0m
+[1;34m==> Obteniendo cambios de refs/heads/main[0m
+ · Already up to date.
+[1;32m==> Instalando dependencias en /home/webcmp/.venv[0m
+ · Requirement already satisfied: django==5.2
+2026-11-17T09:12:03-0500 autodeploy: fetch origin main
+[1;32m==> Ejecutando la suite completa[0m
+ · Ran 2014 tests in 42.318s
+ · OK
+[1;32m==> Recolectando estáticos[0m
+ · 0 static files copied, 312 unchanged.
+␛[1;32m==> Reiniciando servicios␛[0m
+2026-11-17T09:13:47-0500 autodeploy: systemctl restart webcmp webcmp-huey
+ · OK: webcmp responde 200 en /health/
+␛[1;34m==> Desplegado v1.4.2 (abc1234)␛[0m
+
+␛[1;31m==> Comprobación posterior␛[0m
+ · ERROR: el worker de Huey no respondió en el primer intento; reintentando
+2026-11-17T09:14:02-0500 autodeploy: health check del worker recuperado
+ · OK: Huey responde 200 en /health/huey/
+␛[1;32m==> Fin del despliegue␛[0m

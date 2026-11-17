@@ -42,3 +42,11 @@ OBS_LOCAL_ONLY = resolve_obs_local_only(OBS_LOCAL_ONLY_DEFAULT)
 
 if os.getenv('LDAP_SERVER_URI'):
     logging.getLogger('ldap3_auth').setLevel(logging.DEBUG)
+
+# El modal «Ver log del despliegue» solo lee UPDATE_LOG_FILE: en dev el archivo
+# de producción no existe y el botón no tendría nada que mostrar. Apuntarlo a
+# un ejemplo versionado deja ver el render real (ANSI limpio, colores y
+# numeración). Un UPDATE_LOG_FILE
+# explícito del entorno gana: base.py ya lo respetó al importarse.
+if 'UPDATE_LOG_FILE' not in os.environ:
+    UPDATE_LOG_FILE = str(BASE_DIR / 'deploy' / 'examples' / 'deploy-demo.log.example')

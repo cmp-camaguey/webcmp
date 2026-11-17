@@ -589,6 +589,42 @@ class UpdateLogViewTest(UpdateTestCase):
         self.assertIn('log', update_module.RUN_MESSAGES['failed'])
 
 
+class DevDemoLogFixtureTest(UpdateTestCase):
+    """El log de ejemplo que hace visible el modal en el perfil `dev`.
+
+    Es el mismo codigo de produccion leyendo otros datos: si el fixture deja
+    de ejercitar una rama del render, el modal en dev deja de ser una
+    previsualizacion fiel y este test lo detecta.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.fixture = Path(settings.BASE_DIR) / 'deploy' / 'examples' / 'deploy-demo.log.example'
+
+    def test_el_fixture_ejerce_todo_el_render_del_modal(self):
+        contenido = self.fixture.read_text(encoding='utf-8')
+        # ESC real y el glifo ␛ que deja el copiado; secciones, OK/ERROR y
+        # lineas de journal son las seis ramas de `logLineKind`.
+        for marca in ('\x1b[', '␛[', '==>', 'OK', 'ERROR', 'autodeploy:'):
+            with self.subTest(marca=marca):
+                self.assertIn(marca, contenido)
+
+    def test_deploy_log_sirve_el_fixture_como_log_real(self):
+        # El backend NO limpia ANSI: eso lo hace el JS con textContent. Aca se
+        # comprueba que el archivo de ejemplo entra por el mismo camino que el
+        # log del servidor, sin logica de simulacion en la vista.
+        with override_settings(UPDATE_LOG_FILE=str(self.fixture), UPDATE_LOG_MAX_BYTES=64 * 1024):
+            self.client.force_login(self.admin)
+            payload = self.client.get(self.log_url).json()
+
+        self.assertTrue(payload['available'])
+        self.assertFalse(payload['truncated'])
+        self.assertIn('==>', payload['log'])
+        self.assertIn('\x1b[', payload['log'])
+        self.assertIn('␛[', payload['log'])
+
+
 class LsRemoteTest(TestCase):
     """El parseo de ``git ls-remote``: es la unica salida de red del panel."""
 
