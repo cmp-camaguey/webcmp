@@ -157,7 +157,7 @@
              id="cost-total-indicador"
              role="status"
              aria-live="polite">
-          <span class="badge bg-danger" id="cost-total-badge">Suma actual: 0 % — debe ser 100 %</span>
+          <span class="badge bg-danger-lt" id="cost-total-badge">Suma actual: 0 % — debe ser 100 %</span>
         </div>
         <datalist id="centros-de-costo">
           {% for centro in centros_de_costo %}<option value="{{ centro }}"></option>{% endfor %}
@@ -884,8 +884,8 @@
     badge.textContent = completo
       ? 'Suma actual: ' + monto + ' %'
       : 'Suma actual: ' + monto + ' % — debe ser 100 %';
-    badge.classList.toggle('bg-success', completo);
-    badge.classList.toggle('bg-danger', !completo);
+    badge.classList.toggle('bg-success-lt', completo);
+    badge.classList.toggle('bg-danger-lt', !completo);
   }
 
   // Reindexa las filas del reparto desde 0 y sincroniza el management form.

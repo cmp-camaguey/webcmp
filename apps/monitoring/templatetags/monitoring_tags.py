@@ -71,7 +71,7 @@ def duration(seconds):
 
 
 # Estado de un bloque de disponibilidad y calificación de un Web Vital
-# comparten escala de color: verde bueno, ámbar aviso, rojo malo, gris sin datos.
+# comparten escala de color: verde bueno, ámbar aviso, rojo malo, azul sin datos.
 _STATE_CLASSES = {
     'ok': 'success',
     'good': 'success',
@@ -79,7 +79,7 @@ _STATE_CLASSES = {
     'needs-improvement': 'warning',
     'down': 'danger',
     'poor': 'danger',
-    'nodata': 'secondary',
+    'nodata': 'azure',
 }
 
 

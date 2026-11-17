@@ -58,7 +58,7 @@
           {% elif execution.status == 'RETRYING' %}
             <span class="badge bg-warning-lt">Reintentando</span>
           {% elif execution.status == 'REVOKED' %}
-            <span class="badge bg-secondary-lt">Revocada</span>
+            <span class="badge bg-red-lt">Revocada</span>
           {% endif %}
         </td>
         <td class="text-center">{{ execution.attempts }}</td>
