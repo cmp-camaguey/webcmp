@@ -194,6 +194,12 @@ done < "$REPO_ROOT/deploy/root-bundle.manifest"
 [ "$manifest_entries" -gt 0 ] || fail 'manifest con entradas' '> 0' '0'
 ok "manifest: $manifest_entries entradas con 4 campos"
 
+# Regresion de bootstrap: sin esta entrada el sync no puede actualizarse a si
+# mismo, y un arreglo del helper nunca llegaria al server por el sync (solo a
+# mano o re-corriendo install-deploy-sync.sh).
+assert_contains 'el manifest instala al propio helper' \
+    'deploy/webcmp-deploy-sync.sh' "$(cat "$REPO_ROOT/deploy/root-bundle.manifest")"
+
 # --- Enganches ----------------------------------------------------------------
 
 deploy_src=$(cat "$DEPLOY_SH")

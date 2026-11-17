@@ -9,6 +9,10 @@
 deploy/deploy.sh                                                         /usr/local/sbin/webcmp-deploy                               0755    root:root
 deploy/autodeploy.sh                                                     /usr/local/sbin/webcmp-autodeploy                          0755    root:root
 deploy/apply-env.sh                                                      /usr/local/sbin/webcmp-apply-env                           0755    root:root
+# El helper entra en la lista: sin esta linea el sync no puede actualizarse a
+# si mismo y un arreglo suyo quedaria solo en el checkout. Es seguro: bash ya
+# leyo el archivo a memoria y el mv -T del install es atomico.
+deploy/webcmp-deploy-sync.sh                                             /usr/local/sbin/webcmp-deploy-sync.sh                      0755    root:root
 
 # Unidades systemd
 deploy/systemd/webcmp.service                                            /etc/systemd/system/webcmp.service                          0644    root:root
