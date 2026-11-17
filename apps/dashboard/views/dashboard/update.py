@@ -109,10 +109,22 @@ def _read_text(path):
 
 
 def _ls_remote():
-    """SHA de ``main`` segun el remoto, o el motivo por el que no se pudo."""
+    """SHA de ``main`` segun el remoto, sus tags, o el motivo del fallo.
+
+    Ademas de la rama pide ``refs/tags/*`` en la misma llamada: mismo costo
+    de red y el mismo cache. De cada tag se conserva el SHA peeled
+    (``refs/tags/<tag>^{}``, el commit real tras un tag anotado); un tag
+    ligero trae una sola linea y su propio SHA ya es el commit.
+    """
     try:
         process = subprocess.run(
-            ['git', 'ls-remote', settings.UPDATE_REPO_URL, settings.UPDATE_BRANCH_REF],
+            [
+                'git',
+                'ls-remote',
+                settings.UPDATE_REPO_URL,
+                settings.UPDATE_BRANCH_REF,
+                'refs/tags/*',
+            ],
             capture_output=True,
             text=True,
             timeout=settings.UPDATE_CHECK_TIMEOUT,
@@ -127,26 +139,66 @@ def _ls_remote():
         )
     except FileNotFoundError:
         logger.warning('git no esta instalado en el servidor')
-        return {'sha': None, 'error': 'git no está instalado en el servidor.'}
+        return {'sha': None, 'tags': {}, 'error': 'git no está instalado en el servidor.'}
     except subprocess.TimeoutExpired:
         logger.warning('git ls-remote supero %ss', settings.UPDATE_CHECK_TIMEOUT)
-        return {'sha': None, 'error': 'El repositorio no respondió a tiempo.'}
+        return {'sha': None, 'tags': {}, 'error': 'El repositorio no respondió a tiempo.'}
     except OSError:
         logger.warning('No se pudo ejecutar git ls-remote', exc_info=True)
-        return {'sha': None, 'error': 'No se pudo consultar el repositorio.'}
+        return {'sha': None, 'tags': {}, 'error': 'No se pudo consultar el repositorio.'}
 
     if process.returncode != 0:
         logger.warning(
             'git ls-remote fallo (%s): %s', process.returncode, process.stderr.strip()[:500]
         )
-        return {'sha': None, 'error': 'No se pudo consultar el repositorio.'}
+        return {'sha': None, 'tags': {}, 'error': 'No se pudo consultar el repositorio.'}
 
-    fields = process.stdout.split()
-    if not fields or not SHA_RE.match(fields[0]):
+    sha = None
+    tags = {}
+    for line in process.stdout.splitlines():
+        fields = line.split()
+        if len(fields) != 2 or not SHA_RE.match(fields[0]):
+            continue
+        ref = fields[1]
+        if ref.endswith('^{}'):
+            # El peeled llega despues de la linea del tag y la sobrescribe:
+            # comparar contra el objeto del tag seria nunca matchear.
+            name = ref[len('refs/tags/') : -3]
+            tags[name] = fields[0]
+        elif ref.startswith('refs/tags/'):
+            tags[ref[len('refs/tags/') :]] = fields[0]
+        elif ref == settings.UPDATE_BRANCH_REF:
+            sha = fields[0]
+
+    if sha is None:
         logger.warning('git ls-remote devolvio algo inesperado: %r', process.stdout[:200])
-        return {'sha': None, 'error': 'El repositorio respondió algo inesperado.'}
+        return {'sha': None, 'tags': {}, 'error': 'El repositorio respondió algo inesperado.'}
 
-    return {'sha': fields[0], 'error': None}
+    return {'sha': sha, 'tags': tags, 'error': None}
+
+
+def _version_for(sha, tags):
+    """Tag que apunta **exacto** a ``sha``, o ``None`` si no hay ninguno.
+
+    La version es solo un tag que nombra al commit que se sirve: un tag
+    aproximado mentiria —en un hotfix sin tag diria que una version vieja
+    sigue pendiente, y tras un revert diria una que ya no esta—. Entre varios
+    tags apuntando al mismo commit la preferencia es determinista: ``v*``
+    antes que cualquier otro nombre, y dentro de ``v*`` el estable antes que
+    el prerelease.
+    """
+    if not sha:
+        return None
+    candidates = [name for name, target in tags.items() if target == sha]
+    if not candidates:
+        return None
+
+    def rank(name):
+        is_v = name.startswith('v')
+        stable = is_v and re.fullmatch(r'v\d+(?:\.\d+)*', name) is not None
+        return (0 if is_v else 1, 0 if stable else 1, name)
+
+    return min(candidates, key=rank)
 
 
 def remote_sha(refresh=False):
@@ -449,6 +501,9 @@ def build_state(refresh=False, include_commits=True):
     deployed = deployed_sha()
     remote = remote_sha(refresh=refresh)
     run = last_run()
+    # Un cache escrito antes de este cambio no trae `tags`: sin esa guarda el
+    # panel reventaria con KeyError hasta que expire el TTL.
+    tags = remote.get('tags') or {}
 
     if run and run['status'] == 'running' and not _run_is_stale(run):
         state = 'running'
@@ -502,6 +557,10 @@ def build_state(refresh=False, include_commits=True):
         'reason': reason,
         'deployed': deployed,
         'deployed_short': deployed[:7] if deployed else None,
+        # Versiones como string o None, jamas inventadas: el chip y el boton
+        # muestran el SHA si no hay tag exacto (ver `_version_for`).
+        'deployed_version': _version_for(deployed, tags),
+        'version': _version_for(remote['sha'], tags),
         'latest': remote['sha'],
         'latest_short': remote['sha'][:7] if remote['sha'] else None,
         'check_error': remote['error'],
