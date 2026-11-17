@@ -112,6 +112,8 @@ HUEY_UNIT=${HUEY_UNIT:-webcmp-huey}
 # El .path se habilita y vigila; el .service lo arranca systemd, nunca a mano.
 AUTODEPLOY_UNIT=${AUTODEPLOY_UNIT:-webcmp-autodeploy}
 APPLY_UNIT=${APPLY_UNIT:-webcmp-apply}
+# Timer del respaldo diario. `deploy.sh` lo busca con este nombre en --check.
+BACKUP_TIMER=${BACKUP_TIMER:-webcmp-backup}
 GUNICORN_SOCKET=${GUNICORN_SOCKET:-/run/$GUNICORN_UNIT/gunicorn.sock}
 
 # scripts/generate_env.py usa PEP 758 (except sin parentesis, `except A, B:`),
@@ -3398,14 +3400,63 @@ setup_apply() {
     echo "  estado:   journalctl -u $APPLY_UNIT"
 }
 
+# Respaldo diario de la base. El dump lo hace `webcmp-deploy --backup`: la misma
+# implementacion que el respaldo previo a migrar, con las credenciales que ya
+# resuelve desde `settings.DATABASES`. Este setup solo deja el disparador.
+#
+# El timer corre como root porque el dump necesita leer /etc/webcmp/deploy.env y
+# escribir en DB_BACKUP_DIR (0700 root:root). Lo que ejecuta no acepta
+# argumentos, asi que no hay nada que un archivo del checkout pueda redirigir.
+setup_backup() {
+    local tmp
+
+    log "Respaldo diario de la base"
+
+    if [ -f "$APP_DIR/deploy/systemd/webcmp-backup.service" ] \
+        || need_checkout 'se renderizaria webcmp-backup.service'
+    then
+        tmp=$(mktemp)
+        render_template "$APP_DIR/deploy/systemd/webcmp-backup.service" "$tmp" \
+            "/srv/webcmp<>$APP_DIR" \
+            || { rm -f "$tmp"; die "No se pudo renderizar webcmp-backup.service."; }
+        install_if_changed "$tmp" "/etc/systemd/system/$BACKUP_TIMER.service" 0644 root root
+        rm -f "$tmp"
+    fi
+
+    if [ -f "$APP_DIR/deploy/systemd/webcmp-backup.timer" ] \
+        || need_checkout 'se renderizaria webcmp-backup.timer'
+    then
+        tmp=$(mktemp)
+        # El `Unit=` del timer se renderiza tambien, por la misma razon que en
+        # setup_apply: un timer apuntando al nombre viejo queda habilitado y no
+        # dispara nada, sin un solo error que lo delate.
+        render_template "$APP_DIR/deploy/systemd/webcmp-backup.timer" "$tmp" \
+            "/srv/webcmp<>$APP_DIR" \
+            "Unit=webcmp-backup.service<>Unit=$BACKUP_TIMER.service" \
+            || { rm -f "$tmp"; die "No se pudo renderizar webcmp-backup.timer."; }
+        install_if_changed "$tmp" "/etc/systemd/system/$BACKUP_TIMER.timer" 0644 root root
+        rm -f "$tmp"
+    fi
+
+    run systemctl daemon-reload
+    # `enable --now` sobre el timer; el servicio lo dispara el timer, no se
+    # arranca a mano: un respaldo a mitad del install no lo pidio nadie.
+    run systemctl enable --now "$BACKUP_TIMER.timer"
+
+    echo "  timer:   $BACKUP_TIMER.timer (diario, 03:15 hora local)"
+    echo "  logs:    journalctl -u $BACKUP_TIMER"
+}
+
 if [ "$SKIP_DEPLOY_SCAFFOLD" -eq 1 ]; then
     log "Andamiaje del deploy por boton: omitido (--skip-deploy-scaffold)"
     log "Boton 'Actualizar' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
     log "Boton 'Aplicar cambios' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
+    log "Respaldo diario de la base: omitido (depende de webcmp-deploy, del andamiaje)"
 else
     setup_deploy_scaffold
     setup_autodeploy
     setup_apply
+    setup_backup
 fi
 
 # --- C.12 Arranque de los servicios --------------------------------------

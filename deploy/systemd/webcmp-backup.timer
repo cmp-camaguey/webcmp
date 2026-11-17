@@ -1,0 +1,17 @@
+[Unit]
+Description=Respaldo diario de la base de webcmp
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Timer]
+# Hora local del servidor. 03:15 y no 03:00 a proposito: el worker de Huey y el
+# deploy del panel tambien despiertan de madrugada, y un dump compitiendo con
+# ellos alarga el bloqueo de lectura de la base sin ganar nada.
+OnCalendar=*-*-* 03:15:00
+# Si el servidor estuvo apagado a esa hora, corre al arrancar en vez de saltear
+# el dia: un respaldo perdido no se recupera despues.
+Persistent=true
+RandomizedDelaySec=300
+Unit=webcmp-backup.service
+
+[Install]
+WantedBy=timers.target
