@@ -211,17 +211,20 @@ assert_not_contains 'README-deploy no manda apagar sshd' \
 # Los grupos de rol se crean en los dos caminos, y despues de `migrate`: una base
 # sin ellos deja al usuario no-superusuario con el dashboard vacio, y un modelo
 # nuevo desplegado sin ellos aparece en el menu solo para el superusuario.
+# En install.sh el paso sigue siendo explicito (`run manage create_role_groups`);
+# en deploy.sh viaja dentro de `manage deploy_apply`, que lo ejecuta despues de
+# `migrate` y antes de `collectstatic`.
 install_src=$(cat "$INSTALL_SH")
 deploy_src=$(cat "$DEPLOY_SH")
 assert_contains 'install.sh crea los grupos de rol' \
     'run manage create_role_groups' "$install_src"
-assert_contains 'deploy.sh crea los grupos de rol' \
-    'manage create_role_groups' "$deploy_src"
+assert_contains 'deploy.sh aplica migraciones, grupos y estaticos' \
+    'manage deploy_apply' "$deploy_src"
 install_groups_line=$(grep -n 'run manage create_role_groups' "$INSTALL_SH" | tail -1 | cut -d: -f1)
 install_migrate_line=$(grep -n 'run manage migrate --check' "$INSTALL_SH" | tail -1 | cut -d: -f1)
-deploy_groups_line=$(grep -n 'manage create_role_groups' "$DEPLOY_SH" | tail -1 | cut -d: -f1)
-deploy_migrate_line=$(grep -n 'manage migrate --check' "$DEPLOY_SH" | tail -1 | cut -d: -f1)
 assert_eq 'install.sh crea los grupos despues de migrate --check' \
     'despues' "$(if [ "$install_groups_line" -gt "$install_migrate_line" ]; then echo despues; else echo antes; fi)"
-assert_eq 'deploy.sh crea los grupos despues de migrate --check' \
-    'despues' "$(if [ "$deploy_groups_line" -gt "$deploy_migrate_line" ]; then echo despues; else echo antes; fi)"
+deploy_apply_line=$(grep -n 'manage deploy_apply' "$DEPLOY_SH" | tail -1 | cut -d: -f1)
+deploy_check_line=$(grep -n 'manage deploy_check' "$DEPLOY_SH" | tail -1 | cut -d: -f1)
+assert_eq 'deploy.sh aplica despues de los gates' \
+    'despues' "$(if [ "$deploy_apply_line" -gt "$deploy_check_line" ]; then echo despues; else echo antes; fi)"

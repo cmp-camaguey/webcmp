@@ -72,7 +72,7 @@ else
         PROGRESS_FILE=$readonly_dir/deploy-progress.json
         eval "$progress_body"
         set -e
-        progress migrate
+        progress apply
         printf 'sobrevivio'
     ) >"$tmp/out" 2>&1
     rc=$?
@@ -88,7 +88,7 @@ fi
 # paso anterior, que es peor que no tener barra: dice "respaldando" mientras el
 # script instala dependencias.
 
-for step in code deps checks backup migrate static restart healthcheck rollback; do
+for step in code deps checks backup apply restart healthcheck rollback; do
     assert_contains "deploy.sh anuncia el paso '$step'" "progress $step" \
         "$(cat "$DEPLOY_SH")"
 done
