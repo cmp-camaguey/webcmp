@@ -19,9 +19,9 @@
   <td>{{ object.valid_until|local_datetime:"d/m/Y" }}</td>
   <td>
     {% if object.valid_until >= now %}
-      <span class="badge badge-outline text-green">Vigente</span>
+      <span class="badge bg-green-lt">Vigente</span>
     {% else %}
-      <span class="badge badge-outline text-red">Expirado</span>
+      <span class="badge bg-red-lt">Expirado</span>
     {% endif %}
   </td>
   <td>{{ object.user.get_full_name|default:object.user }}</td>

@@ -13,11 +13,12 @@
 - [x] 4. Documentación OpenSpec del cambio. (todas)
 - [x] 5. `make test-deploy` en verde (274 ok, 0 fallos). (S4)
 - [x] 6. PR a `dev`: #246, squash `708be70`. (S6)
-- [ ] 7. Antes de la entrega del contenedor, reinstalar en el server las dos
+- [x] 7. Antes de la entrega del contenedor, reinstalar en el server las dos
       copias root desde el checkout ya desplegado —único paso manual; después
       de él ningún camino de 037 ni de 038 exige un comando en el server:
       `sudo install -o root -g root -m 0755 /srv/webcmp/deploy/deploy.sh /usr/local/sbin/webcmp-deploy` (S6)
       `sudo install -o root -g root -m 0755 /srv/webcmp/deploy/autodeploy.sh /usr/local/sbin/webcmp-autodeploy` (037: sin esto `/var/lib/webcmp/deploy.log` no se escribe y el modal del panel sale vacío)
+       Ejecutadas el 2026-11-17 tras el deploy de v0.7.4, sin salida (éxito).
 - [x] 8. Quitar el `2>/dev/null` de `site_in_maintenance` (hallazgo del
       verificador independiente): `run_in_unit` fusiona el stderr de la unidad
       transitoria en el stdout, así que el redirect no ocultaba el ruido que

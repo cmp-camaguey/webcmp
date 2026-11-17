@@ -34,7 +34,7 @@
           {{ coauthor.first_name }} {{ coauthor.last_name }}{% if not forloop.last %}, {% endif %}
         {% endfor %}
         {% if coauthors|length > 3 %}
-          <span class="badge bg-secondary-lt"
+          <span class="badge bg-blue-lt"
                 data-bs-toggle="tooltip"
                 data-bs-placement="bottom"
                 title="{% for co in coauthors %}{{ co.first_name }} {{ co.last_name }}{% if not forloop.last %}, {% endif %}{% endfor %}">+{{ coauthors|length|add:'-3' }}</span>

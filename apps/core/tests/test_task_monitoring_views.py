@@ -213,7 +213,7 @@ class TaskMonitoringViewTests(TestCase):
             TaskExecutionLog.STATUS_EXECUTING: 'bg-primary-lt',
             TaskExecutionLog.STATUS_ERROR: 'bg-danger-lt',
             TaskExecutionLog.STATUS_RETRYING: 'bg-warning-lt',
-            TaskExecutionLog.STATUS_REVOKED: 'bg-secondary-lt',
+            TaskExecutionLog.STATUS_REVOKED: 'bg-red-lt',
         }[estado]
         self.assertIn(clase, content, f'no se renderizó ninguna fila {estado}')
         inicio = content.index(f'class="badge {clase}"')

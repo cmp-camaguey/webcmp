@@ -24,9 +24,9 @@
   <td>{{ object.user.get_full_name|default:object.user.username }}</td>
   <td>
     {% if object.service_type == 'commercial' %}
-      <span class="badge badge-outline text-blue">Comercial</span>
+      <span class="badge bg-blue-lt">Comercial</span>
     {% else %}
-      <span class="badge badge-outline text-green">Público</span>
+      <span class="badge bg-green-lt">Público</span>
     {% endif %}
   </td>
   <td>
@@ -38,9 +38,9 @@
   </td>
   <td>
     {% if object.record_active %}
-      <span class="badge badge-outline text-green">Activa</span>
+      <span class="badge bg-green-lt">Activa</span>
     {% else %}
-      <span class="badge badge-outline text-secondary">Desactivada</span>
+      <span class="badge bg-red-lt">Desactivada</span>
     {% endif %}
   </td>
   <td class="text-end">

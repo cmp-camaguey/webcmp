@@ -9,18 +9,18 @@
       <div class="d-flex align-items-center flex-wrap gap-1">
         <h3 class="mb-1">{{ object.username }}</h3>
         {% if object.profile.is_ldap %}
-          <span class="badge badge-outline text-purple"
+          <span class="badge bg-purple-lt"
                 data-bs-toggle="tooltip"
                 data-bs-placement="bottom"
                 title="Usuario LDAP">LDAP</span>
         {% endif %}
         {% if object.is_superuser %}
-          <span class="badge badge-outline text-green">Superusuario</span>
+          <span class="badge bg-green-lt">Superusuario</span>
         {% elif object.is_staff %}
-          <span class="badge badge-outline text-blue">Staff</span>
+          <span class="badge bg-blue-lt">Staff</span>
         {% endif %}
         {% if not object.is_active %}
-          <span class="badge badge-outline text-red">Inactivo</span>
+          <span class="badge bg-red-lt">Inactivo</span>
         {% endif %}
       </div>
       <div class="text-secondary">

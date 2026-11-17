@@ -75,7 +75,7 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="fw-bold">{{ notification.title }}</span>
               {% if not notification.is_read %}
-                <span class="badge bg-blue text-blue-fg">Sin leer</span>
+                <span class="badge bg-blue-lt">Sin leer</span>
               {% endif %}
               <span class="text-secondary small ms-auto">{{ notification.created_at|time_since }}</span>
             </div>
