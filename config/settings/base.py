@@ -602,6 +602,14 @@ UPDATE_STATUS_FILE = os.getenv('UPDATE_STATUS_FILE', '/var/lib/webcmp/deploy-sta
 UPDATE_PROGRESS_FILE = os.getenv('UPDATE_PROGRESS_FILE', '/var/lib/webcmp/deploy-progress.json')
 # El panel escribe la peticion; una unidad systemd .path la recoge al aparecer.
 UPDATE_REQUEST_FILE = os.getenv('UPDATE_REQUEST_FILE', '/var/lib/webcmp/deploy-request')
+# El ejecutor escribe aca el log del intento (texto, 0644). El panel lo muestra
+# detras de "Ver log del despliegue": el journal no se lee desde la web y, una
+# vez entregado el servidor, nadie tendra SSH para leerlo.
+UPDATE_LOG_FILE = os.getenv('UPDATE_LOG_FILE', '/var/lib/webcmp/deploy.log')
+# Cuanto del log devuelve el panel. El archivo lo rota el ejecutor a 512 KB;
+# el panel devuelve menos porque una sola linea de `pip install` puede pesar
+# mas que la pantalla entera.
+UPDATE_LOG_MAX_BYTES = int(os.getenv('UPDATE_LOG_MAX_BYTES', str(32 * 1024)))
 # Boton "Aplicar cambios" del panel de entorno (change 033-entorno-servidor).
 # Mismo mecanismo y mismo directorio: el proceso web escribe la peticion, la
 # unidad `webcmp-apply.path` la recoge y reinicia los servicios. El panel nunca

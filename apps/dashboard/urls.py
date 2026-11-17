@@ -16,7 +16,11 @@ from apps.dashboard.views.dashboard.site_monitoring import (
     SiteMonitoringDataView,
     SiteMonitoringView,
 )
-from apps.dashboard.views.dashboard.update import UpdateRequestView, UpdateStatusView
+from apps.dashboard.views.dashboard.update import (
+    UpdateLogView,
+    UpdateRequestView,
+    UpdateStatusView,
+)
 
 app_name = 'dashboard'
 
@@ -41,6 +45,7 @@ urlpatterns = [
     # Actualizaciones del servidor (estado y petición de despliegue)
     path('update/', UpdateStatusView.as_view(), name='update_status'),
     path('update/request/', UpdateRequestView.as_view(), name='update_request'),
+    path('update/log/', UpdateLogView.as_view(), name='update_log'),
     # Notificaciones operativas (change 026)
     path('notifications/', NotificationListView.as_view(), name='notifications'),
     path(
