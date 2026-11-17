@@ -159,7 +159,7 @@
     // dentro del desplegable, que solo se ve si el admin lo abre.
     badge.className =
       'badge badge-pill position-absolute top-0 start-100 translate-middle ' +
-      (options.badge ? 'bg-' + options.badge : 'd-none');
+      (options.badge ? 'bg-' + options.badge + '-lt' : 'd-none');
     badge.classList.toggle('d-none', !options.badge);
 
     icon.className = 'icon ' + (options.icon || 'ti ti-refresh');

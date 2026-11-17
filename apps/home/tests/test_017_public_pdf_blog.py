@@ -63,7 +63,7 @@ class AvisosBlogCardTests(TestCase):
 
     def test_no_badge_rendered(self):
         self._create_warning()
-        self.assertNotContains(self._get_page(), 'badge bg-primary mb-2')
+        self.assertNotContains(self._get_page(), 'badge bg-blue-lt mb-2')
 
     def test_hardcoded_title_string_is_gone(self):
         self._create_warning()

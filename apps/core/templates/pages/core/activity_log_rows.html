@@ -34,7 +34,7 @@
   {% elif object.action_flag == 6 %}
     <span class="badge bg-purple-lt">Mantenimiento</span>
   {% else %}
-    <span class="badge bg-secondary-lt">{{ object.get_action_flag_display }}</span>
+    <span class="badge bg-blue-lt">{{ object.get_action_flag_display }}</span>
   {% endif %}
 </td>
 <td>{{ object.object_repr|local_datetime_in_text|truncatechars:60 }}</td>

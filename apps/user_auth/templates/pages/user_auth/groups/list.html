@@ -47,7 +47,7 @@
             {% endwith %}
           {% endfor %}
           {% if perm_count > 4 %}
-            <span class="badge bg-secondary-lt">+{{ perm_count|add:'-4' }}</span>
+            <span class="badge bg-blue-lt">+{{ perm_count|add:'-4' }}</span>
           {% endif %}
         </div>
         <small class="text-muted d-block mt-1">{{ perm_count }} permiso{{ perm_count|pluralize }}</small>

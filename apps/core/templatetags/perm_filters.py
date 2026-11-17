@@ -146,9 +146,9 @@ def get_permission_badge_class(perm_type):
         'add': 'bg-blue-lt',
         'change': 'bg-orange-lt',
         'delete': 'bg-red-lt',
-        'other': 'bg-secondary-lt',
+        'other': 'bg-blue-lt',
     }
-    return classes.get(perm_type, 'bg-secondary-lt')
+    return classes.get(perm_type, 'bg-blue-lt')
 
 
 @register.filter

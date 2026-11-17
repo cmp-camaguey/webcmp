@@ -14,9 +14,9 @@
   <td>{{ object.issued_date|local_datetime:"d/m/Y" }}</td>
   <td>
     {% if object.record_active %}
-      <span class="badge badge-outline text-green">Activo</span>
+      <span class="badge bg-green-lt">Activo</span>
     {% else %}
-      <span class="badge badge-outline text-secondary">Desactivado</span>
+      <span class="badge bg-red-lt">Desactivado</span>
     {% endif %}
   </td>
   <td class="text-end">
