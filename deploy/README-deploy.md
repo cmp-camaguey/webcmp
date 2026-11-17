@@ -85,8 +85,9 @@ deploys es un mes sin respaldo. `webcmp-backup.timer` cubre ese hueco.
   credenciales que el respaldo previo a migrar. Escribe en `DB_BACKUP_DIR`, deja
   el archivo `root:root 0600` y aplica `DB_BACKUP_KEEP` igual que el deploy.
 - Se instala con `install-backup-units.sh`; `install.sh` tambien lo deja en una
-  instalacion nueva. `deploy.sh` se niega a desplegar si el commit trae unidades
-  que no estan instaladas.
+  instalacion nueva. El deploy NO se bloquea si falta: el sitio sirve igual sin
+  respaldo diario. Quien avisa es `webcmp-deploy --check`, que falla con el
+  comando exacto hasta que esté instalado y activo.
 
 ```bash
 sudo bash deploy/install-backup-units.sh
