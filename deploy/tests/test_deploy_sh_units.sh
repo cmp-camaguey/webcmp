@@ -17,7 +17,8 @@ units_block=$(require_block missing-units "$DEPLOY_SH_BLOCKS")
 units_tmp=$(mktemp -d)
 mkdir -p "$units_tmp/app/deploy/systemd" "$units_tmp/system"
 for unit in webcmp.service webcmp-huey.service webcmp-autodeploy.service \
-    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path
+    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path \
+    webcmp-backup.service
 do
     : > "$units_tmp/app/deploy/systemd/$unit"
 done
@@ -32,6 +33,7 @@ missing_units_run() {
         HUEY_UNIT=webcmp-huey
         AUTODEPLOY_UNIT=webcmp-autodeploy
         APPLY_UNIT=webcmp-apply
+        BACKUP_TIMER=webcmp-backup
         for assignment in "$@"; do
             eval "export $assignment"
         done
@@ -43,7 +45,8 @@ missing_units_run() {
 # --- Todo instalado -------------------------------------------------------
 
 for unit in webcmp.service webcmp-huey.service webcmp-autodeploy.service \
-    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path
+    webcmp-autodeploy.path webcmp-apply.service webcmp-apply.path \
+    webcmp-backup.service
 do
     : > "$units_tmp/system/$unit"
 done
@@ -67,18 +70,29 @@ assert_eq 'reporta las dos piezas del panel cuando faltan' \
 
 rm -f "$units_tmp/system/"*
 for unit in cmpweb.service cmphuey.service cmpapply.service cmpapply.path \
-    cmpauto.service cmpauto.path
+    cmpauto.service cmpauto.path cmpbackup.service
 do
     : > "$units_tmp/system/$unit"
 done
 assert_eq 'respeta los nombres configurados de las unidades' '' \
     "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
-        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply)"
+        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
 
 rm -f "$units_tmp/system/cmpweb.service"
 assert_eq 'con nombres configurados reporta el nombre renderizado' 'cmpweb.service' \
     "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
-        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply)"
+        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
+: > "$units_tmp/system/cmpweb.service"
+
+# El timer del respaldo NO cuenta: el deploy lo ignora a proposito. Bloquear el
+# deploy por una unidad que el sitio no necesita es peor que no tener respaldo
+# diario, porque el rollback devuelve el arbol al commit anterior y el runbook
+# que el mensaje imprime deja de existir. Lo reporta `--check`.
+rm -f "$units_tmp/system/cmpbackup.service"
+assert_eq 'el respaldo diario no bloquea el deploy' '' \
+    "$(missing_units_run GUNICORN_UNIT=cmpweb HUEY_UNIT=cmphuey \
+        AUTODEPLOY_UNIT=cmpauto APPLY_UNIT=cmpapply BACKUP_TIMER=cmpbackup)"
+: > "$units_tmp/system/cmpbackup.service"
 
 # --- Sin checkout ---------------------------------------------------------
 #
@@ -105,6 +119,13 @@ assert_eq 'el guard corre antes de instalar requirements' 'antes' \
     "$(if [ "$guard_line" -lt "$pip_line" ]; then echo antes; else echo despues; fi)"
 assert_contains 'el guard manda a instalar las piezas' \
     'install-apply-units.sh' "$deploy_src"
+# El respaldo diario queda fuera del guard: el bloque ni siquiera mira su nombre.
+assert_not_contains 'el guard no considera el respaldo diario' \
+    'BACKUP_TIMER' "$units_block"
+# `check_db_backup` usa $BACKUP_TIMER: sin default, `--check` muere con
+# "unbound variable" en lugar de informar el estado del timer.
+assert_contains 'deploy.sh define un default para BACKUP_TIMER' \
+    'BACKUP_TIMER:=' "$deploy_src"
 assert_contains 'el guard explica por que el deploy no las instala' \
     'copiar units desde ahi seria ejecutar como root' "$deploy_src"
 

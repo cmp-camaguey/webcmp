@@ -264,6 +264,14 @@ tmp/
 # openspec/specs/ y el directorio del cambio queda como registro local.
 openspec/changes/archive/
 
+### Historial local de ODD ###
+# Los documentos de feature acompañan el trabajo en curso y se respaldan en
+# Engram; los cerrados no se versionan.
+odd/
+
+# Export del contrato OpenAPI: se genera en /api/schema/ y no se versiona.
+/schema.yml
+
 ### Estado local de herramientas ###
 # Hook personal por máquina, encadenado desde `.githooks/pre-commit`. Nunca se
 # versiona: el proyecto no depende del revisor que corre en tu equipo.

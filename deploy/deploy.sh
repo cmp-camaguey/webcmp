@@ -9,6 +9,7 @@
 #   sudo /usr/local/sbin/webcmp-deploy <commit-sha> [ref-de-respaldo]
 #   sudo /usr/local/sbin/webcmp-deploy --configure   # (re)escribe /etc/webcmp/deploy.env
 #   sudo /usr/local/sbin/webcmp-deploy --check        # valida la config, no despliega
+#   sudo /usr/local/sbin/webcmp-deploy --backup       # respaldo de la base (timer diario)
 #
 # Que hace, en este orden (el orden ES la garantia):
 #   1. lock, para que dos despliegues no se pisen
@@ -106,7 +107,7 @@ progress() {
 # <<< TEST-BLOCK: deploy-progress
 
 # --------------------------------------------------------------------------
-# Modos: deploy (por defecto, el camino de CI) | --configure | --check
+# Modos: deploy (por defecto, el camino de CI) | --configure | --check | --backup
 # --------------------------------------------------------------------------
 #
 # Se resuelve ANTES de sourcear la config y antes de todo preflight, y por una
@@ -124,6 +125,7 @@ while [ $# -gt 0 ]; do
         -h|--help)     usage ;;
         --configure)   MODE=configure; shift; break ;;
         --check)       MODE=check; shift; break ;;
+        --backup)      MODE=backup; shift; break ;;
         *)             break ;;
     esac
 done
@@ -391,13 +393,17 @@ fi
 # migracion destructiva llega a main, el dump es la unica vuelta atras.
 : "${DB_BACKUP_DIR:=/var/backups/webcmp/db}"
 : "${DB_BACKUP_KEEP:=10}"
+# Nombre de la unidad que corre el respaldo diario. La instala
+# `install-backup-units.sh` (o `install.sh`) y `--check` la busca con este nombre:
+# una unidad instalada con otro nombre deja el respaldo sin correr y sin error.
+: "${BACKUP_TIMER:=webcmp-backup}"
 
 readonly APP_DIR DEPLOY_USER GUNICORN_UNIT HUEY_UNIT ENCRYPTION_ENV PYTHON
 readonly PUBLIC_HOSTNAME PROXY_MODE HEALTHCHECK_URL HEALTHCHECK_RESOLVE
 readonly HEALTHCHECK_UNIX_SOCKET HEALTHCHECK_HOST_HEADER HEALTHCHECK_INSECURE
 readonly HEALTHCHECK_URL_DEFINED HEALTHCHECK_RESOLVE_DEFINED
 readonly PIP_CACHE_DIR MPLCONFIGDIR
-readonly DB_BACKUP_DIR DB_BACKUP_KEEP
+readonly DB_BACKUP_DIR DB_BACKUP_KEEP BACKUP_TIMER
 # El array se congela aparte: `readonly PIP_CMD` sin `-a` no protege el contenido
 # de un array en bash < 5.0.
 readonly -a PIP_CMD
@@ -593,6 +599,15 @@ missing_units() {
                 base=${base/webcmp-autodeploy/$AUTODEPLOY_UNIT}
                 ;;
             webcmp-apply.service | webcmp-apply.path) base=${base/webcmp-apply/$APPLY_UNIT} ;;
+            # El timer del respaldo NO bloquea el deploy. Dos razones, y la
+            # segunda es la que importa: el sitio sirve igual sin respaldo diario
+            # (es una red de seguridad, no una dependencia), y este guard corre
+            # DESPUES del checkout con el rollback armado — abortar devuelve el
+            # arbol al commit anterior, o sea que el runbook que el mensaje
+            # imprime deja de existir en el mismo instante en que lo lees.
+            # `--check` reporta el faltante con el comando exacto, que es donde el
+            # operador lo mira sin que el deploy falle.
+            webcmp-backup.service) continue ;;
         esac
         [ -f "$dir/$base" ] || printf '%s\n' "$base"
     done
@@ -855,6 +870,22 @@ check_db_backup() {
     else
         check_skip "Todavia no existe $DB_BACKUP_DIR: se crea en el primer deploy con migraciones."
     fi
+    # Instalada no es lo mismo que activa: un timer presente y detenido deja la
+    # base sin respaldo diario, y no falla nada a la vista.
+    if [ -f "$SYSTEMD_UNIT_DIR/$BACKUP_TIMER.timer" ]; then
+        if "$SYSTEMCTL" is-enabled --quiet "$BACKUP_TIMER.timer" 2>/dev/null \
+            && "$SYSTEMCTL" is-active --quiet "$BACKUP_TIMER.timer" 2>/dev/null
+        then
+            check_ok "Respaldo diario activo ($BACKUP_TIMER.timer)."
+        else
+            check_fail "Hay $BACKUP_TIMER.timer pero no esta habilitado y activo: el respaldo diario no corre."
+        fi
+    else
+        # Falla y no aviso: sin timer la base solo se respalda cuando hay un
+        # deploy con migraciones, y un mes sin deploys es un mes sin respaldo.
+        # No bloquea el deploy (ver `missing_units`), asi que este es el aviso.
+        check_fail "Respaldo diario no instalado ($BACKUP_TIMER.timer): la base solo se respalda antes de migrar. Instalalo con: sudo bash deploy/install-backup-units.sh"
+    fi
 }
 
 if [ "$MODE" = check ]; then
@@ -888,14 +919,29 @@ export PIP_CACHE_DIR
 install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 0700 "$MPLCONFIGDIR"
 
 target_sha=${1:-}
-[ -n "$target_sha" ] || die "Uso: $0 <commit-sha> [ref-de-respaldo]"
+# `--backup` no despliega: no hay SHA que desplegar. Pedirlo igual haria que el
+# timer fallara todas las noches con un mensaje de uso.
+if [ "$MODE" = deploy ]; then
+    [ -n "$target_sha" ] || die "Uso: $0 <commit-sha> [ref-de-respaldo]"
+fi
 
 # --------------------------------------------------------------------------
 # Lock: dos pushes seguidos no pueden migrar a la vez
 # --------------------------------------------------------------------------
+#
+# El respaldo diario toma el mismo lock pero ESPERA: un `pg_dump` que corre
+# mientras `migrate` cambia el esquema no es un respaldo. Abortar en cambio
+# perderia el respaldo del dia por un deploy que estaba terminando; el tope queda
+# por debajo del TimeoutStartSec de webcmp-backup.service, asi que la unidad
+# reporta el motivo en vez de morir por timeout.
 
 exec 9>"$LOCKFILE"
-flock -n 9 || die "Ya hay un despliegue en curso (lock $LOCKFILE). No se toca nada."
+if [ "$MODE" = backup ]; then
+    flock -w 900 9 \
+        || die "Hay un despliegue en curso (lock $LOCKFILE) desde hace mas de 15 minutos. No se respalda mientras se migra."
+else
+    flock -n 9 || die "Ya hay un despliegue en curso (lock $LOCKFILE). No se toca nada."
+fi
 
 # --------------------------------------------------------------------------
 # Estado previo, para el rollback
@@ -912,7 +958,12 @@ db_dump_file=''
 # corrio: desplegar un commit recien pusheado fallaria con un "unknown revision"
 # antes de haber tocado nada, con un error que no dice nada del deploy. Se loguea
 # el SHA crudo y el corto se resuelve despues del checkout.
-log "Deploy $target_sha sobre $(gitapp rev-parse --short "$previous_sha")"
+#
+# En modo --backup no hay deploy que anunciar: el bloque de ese modo (mas abajo)
+# termina el script antes del primer paso que toca el servidor.
+if [ "$MODE" = deploy ]; then
+    log "Deploy $target_sha sobre $(gitapp rev-parse --short "$previous_sha")"
+fi
 
 # --------------------------------------------------------------------------
 # Rollback
@@ -1093,6 +1144,39 @@ prune_db_backups() {
         | xargs -r rm -f
 }
 # <<< TEST-BLOCK: prune-db-backups
+
+# --------------------------------------------------------------------------
+# Modo --backup: el respaldo que dispara el timer diario
+# --------------------------------------------------------------------------
+#
+# Vive aca —despues de `db_dump` y `prune_db_backups`, antes del `trap
+# rollback` y antes del primer paso que toca el servidor— y no en un script
+# aparte, para no tener dos implementaciones del respaldo: `db_dump` resuelve las
+# credenciales desde `settings.DATABASES` —el mismo .env con el que se
+# despliega— y `prune_db_backups` aplica la misma retencion. Una copia en otro
+# archivo se desincronizaria sin que nada falle.
+#
+# Toma el lock del deploy (ver la seccion "Lock", arriba) y espera en vez de
+# abortar: un `pg_dump` que corre mientras `migrate` cambia el esquema no es un
+# respaldo, pero perder el respaldo del dia por un deploy que estaba terminando
+# tampoco sirve.
+# >>> TEST-BLOCK: backup-mode
+if [ "$MODE" = backup ]; then
+    command -v pg_dump >/dev/null 2>&1 \
+        || die "No hay pg_dump en el PATH: sin pg_dump no hay respaldo.
+  Instalalo con: apt-get install -y postgresql-client"
+    log "Respaldo programado de la base"
+    backup_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-scheduled.dump"
+    if ! db_dump "$backup_file"; then
+        rm -f "$backup_file"
+        die "El respaldo de la base fallo."
+    fi
+    chmod 0600 "$backup_file"
+    log "Respaldo: $backup_file ($(du -h "$backup_file" | cut -f1))"
+    prune_db_backups
+    exit 0
+fi
+# <<< TEST-BLOCK: backup-mode
 
 # La trampa es EXIT y no ERR. No es indistinto: `trap ... ERR` NO se dispara
 # cuando el script hace `exit`, y `die()` -que es como termina practicamente todo

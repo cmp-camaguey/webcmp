@@ -33,6 +33,7 @@ está en [Instalación](docs/1-instalacion.md).
 | --- | --- |
 | [Instalación](docs/1-instalacion.md) | De un clon vacío a `runserver`: PostgreSQL, `.env`, dependencias |
 | [Desarrollo](docs/2-desarrollo.md) | Perfiles de configuración, tests, worker de Huey y correos |
+| [Monitoreo](docs/3-monitoreo.md) | RUM del navegador, métricas HTTP, retención y poda |
 | [Despliegue](deploy/README-deploy.md) | Servidor, Nginx, deploy automático, respaldo y rollback |
 | [AGENTS.md](AGENTS.md) | Arquitectura, convenciones y reglas duras del proyecto |
 | [SECURITY.md](SECURITY.md) | Cómo reportar una vulnerabilidad |
