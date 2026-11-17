@@ -11,7 +11,10 @@ User=root
 Group=root
 # El script lee /var/lib/webcmp-sync.mirror (root:root 0700) y escribe en
 # /usr/local/sbin/ y /etc/systemd/system/. No toca el checkout.
-ExecStart=/usr/local/sbin/webcmp-deploy-sync.sh --quiet
+# --refresh: el timer corre sin --sha, asi que necesita actualizar el espejo
+# para resolver refs/heads/main al dia. El refspec de destino en el helper es lo
+# que hace que el fetch mueva refs/heads/main en el bare.
+ExecStart=/usr/local/sbin/webcmp-deploy-sync.sh --quiet --refresh
 # Un sync no deberia tardar mas de 30s (git fetch + extract + install). Si el
 # espejo esta corrupto o la red cuelga, mejor fallar y reintentar despues.
 TimeoutStartSec=60
