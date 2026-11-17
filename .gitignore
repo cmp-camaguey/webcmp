@@ -157,6 +157,8 @@ wheels/
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
+# Excepto el manifiesto de sync root (deploy/root-bundle.manifest)
+!deploy/root-bundle.manifest
 *.spec
 
 # Installer logs

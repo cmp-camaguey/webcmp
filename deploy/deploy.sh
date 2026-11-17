@@ -856,6 +856,24 @@ check_django() {
     fi
 }
 
+check_sync_state() {
+    log "Sync de artefactos root"
+    local sync_state=/var/lib/webcmp/deploy-sync.json
+    if [ ! -f "$sync_state" ]; then
+        check_skip "Sin estado de sync: el servidor no tiene el sync instalado."
+        check_skip '  Instalar: sudo bash deploy/install-deploy-sync.sh'
+        return
+    fi
+    local sha installed_at
+    sha=$(grep -o '"sha":"[^"]*"' "$sync_state" | cut -d'"' -f4 || true)
+    installed_at=$(grep -o '"installed_at":"[^"]*"' "$sync_state" | cut -d'"' -f4 || true)
+    if [ -n "$sha" ]; then
+        check_ok "Sync: SHA $(printf '%.7s' "$sha") instalado el ${installed_at:-desconocido}"
+    else
+        check_fail "deploy-sync.json existe pero no tiene SHA."
+    fi
+}
+
 check_db_backup() {
     log "Respaldo de la base"
     if command -v pg_dump >/dev/null 2>&1; then
@@ -894,6 +912,7 @@ if [ "$MODE" = check ]; then
     check_files
     check_units
     check_sudoers
+    check_sync_state
     check_healthcheck
     check_django
     check_db_backup
@@ -1209,6 +1228,27 @@ fi
 gitapp fetch --quiet origin
 gitapp checkout --force --quiet "$target_sha"
 current_sha=$(gitapp rev-parse HEAD)
+
+# 1a. Sync de artefactos root
+#
+# Extrae los scripts y unidades del manifest (root-bundle.manifest) del SHA que
+# acabo de checkout, y los instala atómicamente en /usr/local/sbin/ y
+# /etc/systemd/system/. No lee el working tree del checkout (es de $DEPLOY_USER):
+# solo git show contra el espejo root (root:root). Si el sync falla, no aborta el
+# deploy: el script instalado sigue siendo root-owned y conocido, y
+# `missing_units` detecta la unidad que faltó como red de seguridad.
+#
+# El espejo se actualiza con `webcmp-sync.timer` (diario, 04:30). El sync que
+# corre aca solo extrae; no hace fetch. Si el SHA no esta en el espejo (deploy
+# a un commit muy reciente), el sync lo reporta y `missing_units` sigue cubriendo.
+if [ -x /usr/local/sbin/webcmp-deploy-sync.sh ]; then
+    # `--refresh`: el commit que acabo de checkout puede ser el mas reciente de
+    # main, y el espejo (diario a las 04:30) no lo tiene todavia. El fetch del
+    # espejo es barato (solo refs/heads/main) y evita un sync que falle por no
+    # encontrar el SHA.
+    /usr/local/sbin/webcmp-deploy-sync.sh --quiet --refresh --sha "$current_sha" \
+        || warn "Sync de artefactos root fallo (fail-open; missing_units cubre el hueco)."
+fi
 
 # 1b. Unidades systemd que este commit necesita
 #
