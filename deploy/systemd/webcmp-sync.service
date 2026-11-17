@@ -1,0 +1,22 @@
+[Unit]
+Description=Sincronizacion de artefactos root para webcmp-deploy
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# root: el espejo y los archivos instalados son root-owned
+User=root
+Group=root
+# El script lee /var/lib/webcmp-sync.mirror (root:root 0700) y escribe en
+# /usr/local/sbin/ y /etc/systemd/system/. No toca el checkout.
+ExecStart=/usr/local/sbin/webcmp-deploy-sync.sh --quiet
+# Un sync no deberia tardar mas de 30s (git fetch + extract + install). Si el
+# espejo esta corrupto o la red cuelga, mejor fallar y reintentar despues.
+TimeoutStartSec=60
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# El script necesita leer el espejo y escribir en /usr/local/sbin y /etc/systemd
+ReadWritePaths=/var/lib/webcmp /usr/local/sbin /etc/systemd/system

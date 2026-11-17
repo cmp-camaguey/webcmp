@@ -1,0 +1,23 @@
+# Lista de archivos que el sync instala en /usr/local/sbin/ y /etc/systemd/system/
+
+# Cada entrada es la ruta en deploy/, el destino final, la clase (script/root-unit)
+# y los permisos. Un archivo nuevo no entra por existir solo.
+
+# Scripts de deploy
+deploy/deploy.sh                                                         /usr/local/sbin/webcmp-deploy                               0755    root:root
+deploy/autodeploy.sh                                                     /usr/local/sbin/webcmp-autodeploy                          0755    root:root
+deploy/apply-env.sh                                                      /usr/local/sbin/webcmp-apply-env                           0755    root:root
+
+# Unidades systemd
+deploy/systemd/webcmp.service                                            /etc/systemd/system/webcmp.service                          0644    root:root
+deploy/systemd/webcmp-huey.service                                        /etc/systemd/system/webcmp-huey.service                     0644    root:root
+deploy/systemd/webcmp-apply.service                                       /etc/systemd/system/webcmp-apply.service                    0644    root:root
+deploy/systemd/webcmp-apply.path                                          /etc/systemd/system/webcmp-apply.path                       0644    root:root
+deploy/systemd/webcmp-autodeploy.service                                  /etc/systemd/system/webcmp-autodeploy.service               0644    root:root
+deploy/systemd/webcmp-autodeploy.path                                     /etc/systemd/system/webcmp-autodeploy.path                  0644    root:root
+deploy/systemd/webcmp-backup.service                                      /etc/systemd/system/webcmp-backup.service                   0644    root:root
+deploy/systemd/webcmp-backup.timer                                        /etc/systemd/system/webcmp-backup.timer                     0644    root:root
+
+# Sync de artefactos root
+deploy/systemd/webcmp-sync.service                                        /etc/systemd/system/webcmp-sync.service                     0644    root:root
+deploy/systemd/webcmp-sync.timer                                          /etc/systemd/system/webcmp-sync.timer                         0644    root:root
