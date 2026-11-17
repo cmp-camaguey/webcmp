@@ -64,7 +64,11 @@ done
 
 if [ "$REFRESH" -eq 1 ]; then
     log "Actualizando espejo desde $REMOTE_URL ($BRANCH_REF)"
-    git -C "$SYNC_MIRROR" fetch --quiet origin "$BRANCH_REF" || warn "No se pudo actualizar el espejo"
+    # El refspec NECESITA destino (`origen:origen`). Sin el, en un bare el fetch
+    # solo actualiza FETCH_HEAD: no crea ni mueve refs/heads/main, y el timer
+    # (que corre sin --sha) resolveria para siempre el SHA viejo.
+    git -C "$SYNC_MIRROR" fetch --quiet origin "$BRANCH_REF:$BRANCH_REF" \
+        || warn "No se pudo actualizar el espejo"
 fi
 
 # --- Resolver SHA ---

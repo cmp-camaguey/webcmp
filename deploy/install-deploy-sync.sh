@@ -50,7 +50,10 @@ fi
 if [ -d "$SYNC_MIRROR/objects" ]; then
     log "Espejo ya existe en $SYNC_MIRROR (actualizando)"
     if [ "$DRY_RUN" -eq 0 ]; then
-        git -C "$SYNC_MIRROR" fetch --quiet origin "$BRANCH_REF" || warn "No se pudo actualizar el espejo"
+        # Refspec con destino: sin el, en un bare el fetch no crea ni mueve
+        # refs/heads/main y el timer resolveria el SHA viejo.
+        git -C "$SYNC_MIRROR" fetch --quiet origin "$BRANCH_REF:$BRANCH_REF" \
+            || warn "No se pudo actualizar el espejo"
     fi
 else
     log "Creando espejo bare en $SYNC_MIRROR"
@@ -63,7 +66,7 @@ else
         trap 'rm -rf "$tmp_mirror"' EXIT
         git init --bare "$tmp_mirror" >/dev/null 2>&1
         git -C "$tmp_mirror" remote add origin "$REMOTE_URL" >/dev/null 2>&1
-        git -C "$tmp_mirror" fetch --quiet origin "$BRANCH_REF" >/dev/null 2>&1
+        git -C "$tmp_mirror" fetch --quiet origin "$BRANCH_REF:$BRANCH_REF" >/dev/null 2>&1
         mv -f "$tmp_mirror" "$SYNC_MIRROR"
         chmod 0700 "$SYNC_MIRROR"
         chown root:root "$SYNC_MIRROR"
