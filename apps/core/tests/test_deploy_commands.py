@@ -3,6 +3,7 @@
 import io
 from unittest.mock import patch
 
+from django.apps import apps
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
@@ -21,13 +22,11 @@ class DeployCheckTests(TestCase):
     )
     def test_deploy_check_clean(self):
         """Sin cambios de modelo y con configuracion valida, el comando pasa."""
-        # El arbol ya esta limpio (las migraciones estan versionadas) y
-        # los warnings de seguridad estan silenciados con settings de prod.
-        call_command('deploy_check')  # no lanza
+        call_command('deploy_check')
 
     def test_deploy_check_only_makemigrations(self):
-        """--check-dry-run ejecuta solo makemigrations --check."""
-        call_command('deploy_check', check_dry_run=True)  # no lanza
+        """--check-dry-run ejecuta solo el gate de migraciones."""
+        call_command('deploy_check', check_dry_run=True)
 
     @override_settings(
         DEBUG=False,
@@ -39,27 +38,44 @@ class DeployCheckTests(TestCase):
     )
     def test_deploy_check_only_deploy(self):
         """--check-deploy ejecuta solo check --deploy."""
-        call_command('deploy_check', check_deploy=True)  # no lanza
+        call_command('deploy_check', check_deploy=True)
 
-    @patch('django.core.management.commands.makemigrations.Command.handle')
-    def test_deploy_check_makemigrations_falla(self, mock_handle):
-        """Si makemigrations --check falla, el error nombra ese gate."""
+    @patch('apps.core.management.commands.deploy_check.call_command')
+    def test_deploy_check_migraciones_faltantes(self, mock_call):
+        """Si makemigrations --check sale 2, el error nombra el gate."""
 
-        def _side_effect(*args, **options):
-            raise SystemExit(2)
+        def _side_effect(cmd, *args, **kwargs):
+            if cmd == 'makemigrations':
+                raise SystemExit(2)
 
-        mock_handle.side_effect = _side_effect
-        with self.assertRaisesRegex(CommandError, 'makemigrations --check'):
+        mock_call.side_effect = _side_effect
+        with self.assertRaisesRegex(CommandError, 'migraciones faltantes'):
             call_command('deploy_check')
 
-    @patch('django.core.management.commands.check.Command.handle')
-    def test_deploy_check_check_deploy_falla(self, mock_handle):
+    @patch('apps.core.management.commands.deploy_check.call_command')
+    def test_deploy_check_modelos_de_test_no_gatean(self, mock_call):
+        """Los modelos de apps/*/tests/ no fallan el gate.
+
+        Registra SimpleFileModel y SoftDeleteFileModel (definidos en
+        test_file_handling, sin migracion) y verifica que deploy_check
+        siga pasando: el registry queda limpio al terminar.
+        """
+
+        # El registro de apps incluye el modelo de test mientras el modulo
+        # este importado; deploy_check debe desregistrarlo y restaurarlo.
+        self.assertIn('simplefilemodel', apps.all_models['core'])
+        call_command('deploy_check')  # no lanza
+        self.assertIn('simplefilemodel', apps.all_models['core'])
+
+    @patch('apps.core.management.commands.deploy_check.call_command')
+    def test_deploy_check_check_deploy_falla(self, mock_call):
         """Si check --deploy falla, el error nombra ese gate."""
 
-        def _side_effect(*args, **options):
-            raise CommandError('problema de configuracion')
+        def _side_effect(cmd, *args, **kwargs):
+            if cmd == 'check':
+                raise CommandError('problema de configuracion')
 
-        mock_handle.side_effect = _side_effect
+        mock_call.side_effect = _side_effect
         with self.assertRaisesRegex(CommandError, 'check --deploy'):
             call_command('deploy_check')
 
