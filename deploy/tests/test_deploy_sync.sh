@@ -62,6 +62,8 @@ assert_contains 'webcmp-deploy-sync.sh --help nombra --refresh' '--refresh' "$sy
 
 # --- log() con --quiet no aborta bajo set -e --------------------------------
 
+sync_src=$(cat "$SYNC_SCRIPT")
+
 # Regresion: log() era `[ "$QUIET" -eq 0 ] && printf ...`. Con --quiet el test
 # falla, la funcion devuelve 1 y `set -Eeuo pipefail` mata el script en el
 # PRIMER log: el sync salia en silencio sin instalar nada. Afectaba a las dos
@@ -83,6 +85,50 @@ log_noisy_rc=$?
 set -e
 assert_eq 'log() con QUIET=1 no aborta bajo set -e' 0 "$log_quiet_rc"
 assert_eq 'log() con QUIET=0 no aborta bajo set -e' 0 "$log_noisy_rc"
+
+# --- --refresh crea refs/heads/main en el espejo ------------------------------
+
+# Regresion: el fetch de --refresh era `git fetch origin refs/heads/main`, SIN
+# refspec de destino. En un bare eso solo actualiza FETCH_HEAD: no crea ni mueve
+# refs/heads/main. El timer 04:30 corre sin --refresh y sin --sha, asi que
+# resolvia para siempre el SHA que hubiera en el espejo y re-instalaba los
+# artefactos root de una version anterior.
+refresh_state="$TEST_TMP/refresh-state"
+mkdir -p "$refresh_state"
+refresh_mirror="$refresh_state/webcmp-sync.mirror"
+git init --bare "$refresh_mirror" >/dev/null 2>&1
+git -C "$refresh_mirror" remote add origin "$REPO_ROOT" >/dev/null 2>&1
+refresh_sha=$(git -C "$REPO_ROOT" rev-parse HEAD)
+git -C "$refresh_mirror" fetch --quiet "$REPO_ROOT" "$refresh_sha" >/dev/null 2>&1
+# A proposito SIN refs/heads/main: el setup del espejo real no lo trae (ver
+# 192.168.122.240, donde hubo que crearlo a mano).
+
+set +e
+SYNC_STATE_DIR="$refresh_state" bash "$SYNC_SCRIPT" --quiet --refresh --sha "$refresh_sha" \
+    >/dev/null 2>&1
+refresh_rc=$?
+set -e
+# Sin root el helper muere en install: no es el fallo que se pina aca. Lo que
+# importa es que el fetch de --refresh haya creado refs/heads/main en el espejo
+# (el origen trae SU main; que sea o no el HEAD del checkout no es la regresion).
+ref_after=$(git -C "$refresh_mirror" rev-parse refs/heads/main 2>/dev/null || true)
+[ -n "$ref_after" ] \
+    || fail '--refresh deja refs/heads/main en el espejo' \
+        'refs/heads/main resolvible tras --refresh' 'refs/heads/main no existe'
+ok '--refresh deja refs/heads/main en el espejo'
+
+# El timer diario (webcmp-sync.service) corre SIN --sha: si no actualiza el
+# espejo, resuelve el SHA viejo y re-instala artefactos root desactualizados.
+assert_contains 'el timer de sync pasa --refresh' \
+    'webcmp-deploy-sync.sh --quiet --refresh' \
+    "$(cat "$REPO_ROOT/deploy/systemd/webcmp-sync.service")"
+
+# El fetch de --refresh necesita refspec con destino: sin el ':destino' el fetch
+# no crea ni mueve refs/heads/main en un bare (lo de arriba, visto en red).
+assert_contains 'el fetch de --refresh usa refspec con destino' \
+    '$BRANCH_REF:$BRANCH_REF' "$sync_src"
+assert_contains 'install-deploy-sync.sh usa refspec con destino' \
+    '$BRANCH_REF:$BRANCH_REF' "$(cat "$INSTALL_SYNC")"
 
 # --- Sin espejo: falla cerrado ---------------------------------------------
 
@@ -115,7 +161,6 @@ ok "extraccion de todos los archivos del manifest: OK"
 
 # --- Render de units --------------------------------------------------------
 
-sync_src=$(cat "$SYNC_SCRIPT")
 assert_contains 'sync define render_content' 'render_content()' "$sync_src"
 assert_contains 'render sustituye /srv/webcmp' '/srv\/webcmp' "$sync_src"
 assert_contains 'render sustituye User=webcmp' 'User=webcmp/User=' "$sync_src"
@@ -148,6 +193,12 @@ while IFS= read -r line; do
 done < "$REPO_ROOT/deploy/root-bundle.manifest"
 [ "$manifest_entries" -gt 0 ] || fail 'manifest con entradas' '> 0' '0'
 ok "manifest: $manifest_entries entradas con 4 campos"
+
+# Regresion de bootstrap: sin esta entrada el sync no puede actualizarse a si
+# mismo, y un arreglo del helper nunca llegaria al server por el sync (solo a
+# mano o re-corriendo install-deploy-sync.sh).
+assert_contains 'el manifest instala al propio helper' \
+    'deploy/webcmp-deploy-sync.sh' "$(cat "$REPO_ROOT/deploy/root-bundle.manifest")"
 
 # --- Enganches ----------------------------------------------------------------
 
