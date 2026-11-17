@@ -153,6 +153,12 @@
     }
   }
 
+  function setDetail(text) {
+    detail.textContent = text || '';
+    // Un `div` vacio con `mt-2` deja un hueco: sin detalle, que no ocupe sitio.
+    detail.classList.toggle('d-none', !text);
+  }
+
   function paint(options) {
     // `badge` es la senal: un punto rojo en el navbar. El resto del texto vive
     // dentro del desplegable, que solo se ve si el admin lo abre.
@@ -173,7 +179,7 @@
     }
     title.textContent = options.title || 'Actualizaciones';
     text.textContent = options.message || '';
-    detail.textContent = options.detail || '';
+    setDetail(options.detail);
 
     // Chip de version, siempre con textContent. Sin texto no se deja un
     // hueco vacio: el nodo se esconde.
@@ -310,9 +316,9 @@
       icon: state.check_error ? 'ti ti-cloud-off' : 'ti ti-help-circle',
       title: state.check_error ? 'Sin conexión con el repositorio' : 'Sin datos del despliegue',
       message: state.check_error || state.reason || 'No se pudo comprobar si hay actualizaciones.',
-      detail: state.check_error
-        ? 'El aviso vuelve solo cuando el repositorio responda.'
-        : 'En desarrollo se simula con UPDATE_DEPLOYED_SHA_FILE; en el servidor lo escribe deploy.sh.',
+      // Sin detalle propio: la simulacion de desarrollo es configuracion
+      // interna y no tiene por que aparecer en el desplegable.
+      detail: state.check_error ? 'El aviso vuelve solo cuando el repositorio responda.' : '',
       versionText: chip,
     });
   }
@@ -340,14 +346,10 @@
   // tanto ESC real (U+001B) como el glifo ␛ (U+241B) que deja el copiado.
   var ANSI_COLOR = /\u001b\[[0-9;]*m|\u241b\[[0-9;]*m/g;
 
-  var LOG_LINE_CLASSES = {
-    section: 'text-info fw-semibold border-start border-info border-2 ps-2',
-    ok: 'text-lime',
-    error: 'text-red',
-    item: 'text-light',
-    journal: 'text-white-50',
-    plain: 'text-white',
-  };
+  // El color de cada linea lo decide el CSS del modal
+  // (`update-console-<tipo>`), con variantes para tema claro y oscuro. Aca no
+  // se eligen clases de color: `text-white` sobre el tema claro del sitio
+  // dejaba el log ilegible.
 
   function setLogNote(text) {
     if (!logNote) {
@@ -400,16 +402,17 @@
 
     lineas.forEach(function (raw, index) {
       var fila = document.createElement('div');
-      fila.className = LOG_LINE_CLASSES[logLineKind(raw)] || LOG_LINE_CLASSES.plain;
+      fila.className = 'update-console-line update-console-' + logLineKind(raw);
 
+      // Gutter del terminal: columna propia y separador vertical, no margenes
+      // dentro de un `<pre>`. `aria-hidden` porque el numero es decorativo.
       var numero = document.createElement('span');
-      numero.className =
-        'd-inline-block text-end text-white-50 pe-3 me-3 border-end border-secondary';
+      numero.className = 'update-console-line-no';
       numero.setAttribute('aria-hidden', 'true');
-      numero.style.width = '2.5rem';
       numero.textContent = String(index + 1);
 
       var texto = document.createElement('span');
+      texto.className = 'update-console-text';
       // El log NO se filtra: tiene rutas absolutas del servidor y lo escriben
       // personas con acceso push. Solo text nodes, nunca innerHTML.
       texto.textContent = raw;
@@ -514,18 +517,18 @@
       })
       .then(function (result) {
         if (!result.ok) {
-          detail.textContent = result.body.reason || 'No se pudo pedir la actualización.';
+          setDetail(result.body.reason || 'No se pudo pedir la actualización.');
           button.disabled = false;
           schedule(POLL_IDLE_MS);
           return;
         }
         // Aceptada: systemd tarda en arrancar la unidad, asi que se consulta en
         // el ritmo rapido hasta que el estado pase a `running`.
-        detail.textContent = 'Petición enviada. Esperando al servidor…';
+        setDetail('Petición enviada. Esperando al servidor…');
         schedule(POLL_BUSY_MS);
       })
       .catch(function () {
-        detail.textContent = 'No se pudo contactar al servidor.';
+        setDetail('No se pudo contactar al servidor.');
         button.disabled = false;
         schedule(POLL_IDLE_MS);
       });

@@ -869,6 +869,24 @@ class DashboardNavbarTest(UpdateTestCase):
         self.assertNotIn('update-log-refresh', modal)
         self.assertNotIn('>Cerrar</button>', modal)
 
+    def test_la_consola_respeta_el_tema_del_sitio(self):
+        # El `<pre>` no puede imponer `bg-dark`: el sitio define `data-bs-theme`
+        # y la consola tiene que seguirlo. Las variables `--tblr-*` cambian con
+        # el tema; una clase `bg-dark text-light` no.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+        modal = html.split('id="update-log-modal"', 1)[1].split('<!-- Tema Claro|Oscuro -->', 1)[0]
+
+        self.assertNotIn('bg-dark text-light', modal)
+        self.assertIn('update-console-body', modal)
+        self.assertIn('ti-terminal-2', modal)
+        # El bloque de estilos vive antes del modal; se busca en la pagina.
+        self.assertIn('var(--tblr-code-bg)', html)
+        self.assertIn('var(--tblr-heading-color)', html)
+
     def test_el_aviso_no_se_renderiza_para_no_superusuario(self):
         self.client.force_login(self.plain)
 
@@ -1119,3 +1137,36 @@ class DashboardUpdateScriptTest(TestCase):
         )
 
         self.assertIn('if (!commitsBox)', source)
+
+    def test_el_detalle_no_expone_la_simulacion_interna(self):
+        # `UPDATE_DEPLOYED_SHA_FILE` es una variable de configuracion: no
+        # pertenece en el desplegable de un panel que abre un administrador.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertNotIn('UPDATE_DEPLOYED_SHA_FILE', source)
+        self.assertIn("detail.classList.toggle('d-none', !text)", source)
+        self.assertIn('setDetail(', source)
+
+    def test_la_consola_tiene_un_gutter_de_terminal(self):
+        # La numeracion va en una columna propia con separador, no en margenes
+        # de un `span` dentro de un `<pre>`. Las clases de linea son las que
+        # eligen el color segun el tipo de linea y el tema.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("'update-console-line update-console-' + logLineKind(raw)", source)
+        self.assertIn("'update-console-line-no'", source)
+        self.assertIn("'update-console-text'", source)
+        self.assertNotIn('text-white-50 pe-3', source)
+
+    def test_el_script_del_panel_lleva_cache_buster(self):
+        # Sin la version, un despliegue que cambia el JS sirve al admin el
+        # codigo viejo desde la cache hasta que haga un hard refresh.
+        html = (Path(settings.BASE_DIR) / 'templates/layouts/dashboard.html').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("dist/js/dashboard-update.js' %}?v=1", html)
