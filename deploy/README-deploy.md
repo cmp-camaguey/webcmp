@@ -18,14 +18,15 @@ El orden importa:
 | 1 | `flock` | Dos pushes seguidos, o un deploy y el instalador, no pueden mutar el mismo checkout a la vez |
 | 2 | Aborta si hay cambios sin commitear | `git checkout --force` los perderia |
 | 3 | `git checkout` del SHA exacto | Desplegar un SHA, no una rama: la rama se movio entre el CI y el deploy |
-| 4 | `pip install -r requirements/prod.txt` | Antes de los gates, que importan las deps |
-| 5 | `makemigrations --check --dry-run` | Falla si un cambio de modelo no trae su migracion. Ver la nota de abajo |
-| 6 | Gate: `check --deploy` con la config real | Ver la nota de abajo |
-| 7 | `pg_dump` **si hay migraciones pendientes** | Es la unica vuelta atras de un esquema destructivo. Falla cerrado. Ver **Respaldo antes de migrar** y **Respaldo diario** |
-| 8 | `migrate`, `migrate --check` y `create_role_groups` | Antes de que el codigo nuevo atienda un request. El `--check` confirma que no queda nada sin aplicar; los grupos de rol necesitan los permisos que `migrate` acaba de crear |
-| 9 | `collectstatic` | Antes de que el codigo nuevo emita HTML que los referencia |
-| 10 | `systemctl restart` de ambos units | `reload` NO alcanza, ver la nota de abajo |
-| 11 | Health check contra Nginx local | Atraviesa Nginx, TLS y el socket: el camino completo |
+| 4 | `webcmp-deploy-sync.sh --refresh --sha` | Instala los scripts y unidades root de ese SHA desde el espejo. Fail-open: si falla, `missing_units` detecta el hueco. Ver **Sync de artefactos root** |
+| 5 | `pip install -r requirements/prod.txt` | Antes de los gates, que importan las deps |
+| 6 | `makemigrations --check --dry-run` | Falla si un cambio de modelo no trae su migracion. Ver la nota de abajo |
+| 7 | Gate: `check --deploy` con la config real | Ver la nota de abajo |
+| 8 | `pg_dump` **si hay migraciones pendientes** | Es la unica vuelta atras de un esquema destructivo. Falla cerrado. Ver **Respaldo antes de migrar** y **Respaldo diario** |
+| 9 | `migrate`, `migrate --check` y `create_role_groups` | Antes de que el codigo nuevo atienda un request. El `--check` confirma que no queda nada sin aplicar; los grupos de rol necesitan los permisos que `migrate` acaba de crear |
+| 10 | `collectstatic` | Antes de que el codigo nuevo emita HTML que los referencia |
+| 11 | `systemctl restart` de ambos units | `reload` NO alcanza, ver la nota de abajo |
+| 12 | Health check contra Nginx local | Atraviesa Nginx, TLS y el socket: el camino completo |
 
 ### Gate `makemigrations --check`
 
@@ -1092,22 +1093,36 @@ arregla con el boton **Actualizar** del panel, sin entrar por SSH. Lo que el
 deploy no puede hacer es *instalarlas*: eso es escribir un archivo root a partir
 del checkout, y el checkout lo escribe el usuario del sitio.
 
-### Cuando el cambio toca `deploy.sh`
+### Cuando el cambio toca `deploy.sh` (o agrega unidades)
 
 El boton **Actualizar** ejecuta `/usr/local/sbin/webcmp-deploy`, que es una copia
 root de `deploy/deploy.sh`, no el archivo del checkout. Esa copia no se actualiza
 sola, y no puede hacerlo: si el checkout —escribible por el usuario del sitio—
 pudiera reemplazar un script que corre como root, el boton seria ejecucion
-remota como root. Cambiar `deploy.sh` en el repo, entonces, necesita una sola
-linea de root despues de que el commit este desplegado:
+remota como root.
+
+Por eso el deploy llama a **`webcmp-deploy-sync.sh`** despues del checkout
+(paso 4): extrae los scripts y unidades listados en `deploy/root-bundle.manifest`
+de un **espejo bare root-owned** (`/var/lib/webcmp/webcmp-sync.mirror`) y los
+instala atomicamente. El espejo nunca lee el checkout: un commit que cambia
+`deploy.sh` o agrega una unidad queda reflejado en `/usr/local/sbin/` y
+`/etc/systemd/system/` en el mismo deploy, sin linea de root manual. El timer
+`webcmp-sync.timer` lo refresca diario a las 04:30 como respaldo.
+
+En un servidor sin el sync instalado (o con el timer caido), el paso manual
+sigue siendo la linea de root:
 
 ```bash
 sudo install -o root -g root -m 0755 /srv/webcmp/deploy/deploy.sh /usr/local/sbin/webcmp-deploy
 ```
 
-Desde ahi, cada **Actualizar** corre el `deploy.sh` nuevo. Es el mismo paso 2 del
-camino manual de mas arriba, y sigue siendo cierto: `install.sh` lo repite al
-reinstalar, pero no hace falta reinstalar nada para actualizar este archivo.
+Instalar el sync es un comando, idempotente y con `--dry-run`:
+
+```bash
+sudo bash deploy/install-deploy-sync.sh
+```
+
+`install.sh` lo corre al final de una instalacion nueva.
 
 Se niega a habilitar el `.path` si hay una peticion sin recoger en
 `/var/lib/webcmp/apply-request`: `PathExists=` dispara ese reinicio en el mismo
@@ -1139,6 +1154,48 @@ corresponden.
 systemctl status webcmp-apply.path
 journalctl -u webcmp-apply -n 50
 cat /var/lib/webcmp/apply-status.json
+```
+
+### Sync de artefactos root
+
+| Pieza | Donde vive | Rol |
+|---|---|---|
+| `deploy/root-bundle.manifest` | repo | Allowlist de lo que puede llegar a root: `<origen>\t<destino>\t<modo>\t<owner>:<group>` |
+| `deploy/webcmp-deploy-sync.sh` → `/usr/local/sbin/webcmp-deploy-sync.sh` | root 0755 | Extrae del espejo, renderiza, valida, instala atómico |
+| `deploy/systemd/webcmp-sync.{service,timer}` | root | Refresca el espejo diario a las 04:30 |
+| `/var/lib/webcmp/webcmp-sync.mirror` | root:root 0700 | Espejo bare del repo; única fuente de los archivos root |
+| `/var/lib/webcmp/deploy-sync.json` | root:root 0644 | Estado del último sync (SHA, fecha) para el panel y `--check` |
+
+Flujo en un deploy: tras el checkout, `deploy.sh` invoca
+`webcmp-deploy-sync.sh --quiet --refresh --sha <current_sha>`. El `--refresh`
+trae `refs/heads/main` al espejo (el commit desplegado puede ser más reciente
+que el último refresco del timer). El helper luego:
+
+1. Lee el manifest **del SHA** (`git show <sha>:deploy/root-bundle.manifest`),
+   nunca del disco.
+2. Extrae cada archivo del espejo con `git show <sha>:<origen>`: el working tree
+   del checkout jamás se lee ni se ejecuta.
+3. Renderiza las unidades (mismas sustituciones literales que `install.sh`:
+   `/srv/webcmp`, `User=webcmp`, `Group=webcmp`, `webcmp-huey`, …).
+4. Valida: `bash -n` en los scripts, `systemd-analyze verify` en los units si
+   está disponible.
+5. Instala atómico: `install` a `<destino>.tmp.$$` + `mv -T`. Un destino a
+   medias nunca queda.
+6. Escribe `deploy-sync.json` y `systemctl daemon-reload` si cambió alguna
+   unidad.
+
+**Fail-open a propósito**: si el sync falla (espejo sin el SHA, red caida,
+render roto), el deploy **no** aborta — el script instalado actual sigue siendo
+root-owned y conocido — y `missing_units` detecta cualquier unidad ausente como
+red de seguridad. `webcmp-deploy --check` muestra el SHA instalado contra el
+último del espejo, y el panel puede exponer la diferencia.
+
+### Diagnosticar el sync
+
+```bash
+cat /var/lib/webcmp/deploy-sync.json        # SHA y hora del último sync
+sudo journalctl -u webcmp-sync -n 50        # refresco diario
+/usr/local/sbin/webcmp-deploy-sync.sh --help
 ```
 
 

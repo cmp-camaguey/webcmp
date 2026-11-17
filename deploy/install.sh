@@ -72,6 +72,7 @@ AUTODEPLOY_SCRIPT=${AUTODEPLOY_SCRIPT:-/usr/local/sbin/webcmp-autodeploy}
 APPLY_SCRIPT=${APPLY_SCRIPT:-/usr/local/sbin/webcmp-apply-env}
 APPLY_STATE_DIR=${APPLY_STATE_DIR:-/var/lib/webcmp}
 AUTODEPLOY_STATE_DIR=${AUTODEPLOY_STATE_DIR:-/var/lib/webcmp}
+SYNC_STATE_DIR=${SYNC_STATE_DIR:-/var/lib/webcmp}
 CONFIG_DIR=${CONFIG_DIR:-/etc/webcmp}
 CONFIG_FILE=${CONFIG_FILE:-$CONFIG_DIR/deploy.env}
 ENCRYPTION_ENV=${ENCRYPTION_ENV:-$CONFIG_DIR/encryption.env}
@@ -3447,16 +3448,40 @@ setup_backup() {
     echo "  logs:    journalctl -u $BACKUP_TIMER"
 }
 
+# --- C.11d Sync de artefactos root (deploy-runner-y-sync) ------------------
+#
+# Instala el espejo root y el timer que mantiene actualizados los scripts y
+# unidades que el deploy ejecuta como root. Sin esto, un deploy a un commit que
+# cambia deploy.sh o agrega unidades deja al servidor con una copia vieja.
+
+setup_deploy_sync() {
+    log "Sync de artefactos root (espejo + timer)"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        printf '  [dry-run] bash deploy/install-deploy-sync.sh --dry-run\n'
+        return 0
+    fi
+
+    bash "$APP_DIR/deploy/install-deploy-sync.sh" \
+        || die "install-deploy-sync.sh fallo. El servidor no podra actualizar los scripts root automaticamente."
+
+    echo "  espejo:  $SYNC_STATE_DIR/webcmp-sync.mirror"
+    echo "  timer:   webcmp-sync.timer (diario, 04:30)"
+    echo "  helper:  /usr/local/sbin/webcmp-deploy-sync.sh"
+}
+
 if [ "$SKIP_DEPLOY_SCAFFOLD" -eq 1 ]; then
     log "Andamiaje del deploy por boton: omitido (--skip-deploy-scaffold)"
     log "Boton 'Actualizar' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
     log "Boton 'Aplicar cambios' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
     log "Respaldo diario de la base: omitido (depende de webcmp-deploy, del andamiaje)"
+    log "Sync de artefactos root: omitido (depende de webcmp-deploy)"
 else
     setup_deploy_scaffold
     setup_autodeploy
     setup_apply
     setup_backup
+    setup_deploy_sync
 fi
 
 # --- C.12 Arranque de los servicios --------------------------------------

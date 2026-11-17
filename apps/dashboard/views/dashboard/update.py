@@ -71,8 +71,7 @@ PROGRESS_STEPS = (
     ('deps', 'Instalando dependencias', 30),
     ('checks', 'Validando la configuración', 10),
     ('backup', 'Respaldando la base de datos', 10),
-    ('migrate', 'Aplicando migraciones', 20),
-    ('static', 'Recolectando estáticos', 5),
+    ('apply', 'Aplicando migraciones, grupos y estáticos', 25),
     ('restart', 'Reiniciando los servicios', 5),
     ('healthcheck', 'Comprobando el sitio', 5),
 )

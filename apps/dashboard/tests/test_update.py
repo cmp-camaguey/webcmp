@@ -304,7 +304,7 @@ class UpdateProgressTest(UpdateTestCase):
         return self.client.get(self.status_url).json()
 
     def test_paso_en_curso_con_su_porcentaje(self):
-        self.set_progress(step='migrate', updated_at='2026-11-11T10:00:00+00:00')
+        self.set_progress(step='apply', updated_at='2026-11-11T10:00:00+00:00')
 
         payload = self.running()
 
@@ -312,7 +312,11 @@ class UpdateProgressTest(UpdateTestCase):
         # ya se hizo, no lo que se esta haciendo.
         self.assertEqual(
             payload['progress'],
-            {'step': 'migrate', 'message': 'Aplicando migraciones', 'percent': 65},
+            {
+                'step': 'apply',
+                'message': 'Aplicando migraciones, grupos y estáticos',
+                'percent': 65,
+            },
         )
 
     def test_cada_paso_da_el_porcentaje_de_la_tabla(self):
@@ -323,8 +327,7 @@ class UpdateProgressTest(UpdateTestCase):
             'deps': 15,
             'checks': 45,
             'backup': 55,
-            'migrate': 65,
-            'static': 85,
+            'apply': 65,
             'restart': 90,
             'healthcheck': 95,
         }
@@ -361,14 +364,14 @@ class UpdateProgressTest(UpdateTestCase):
     def test_porcentaje_del_archivo_se_ignora(self):
         # El porcentaje lo calcula el panel: un archivo manipulado no puede
         # pintar la barra al 99% para siempre.
-        self.set_progress(step='migrate', percent=99)
+        self.set_progress(step='apply', percent=99)
         self.assertEqual(self.running()['progress']['percent'], 65)
 
     def test_la_clave_coincide_solo_exacta(self):
         # Una clave con espacios o en mayusculas no es "casi" el paso: si se
         # aceptara por parecido, un archivo mal escrito daria un porcentaje
         # creible y equivocado.
-        for step in (' migrate ', 'MIGRATE', 'migrate\n'):
+        for step in (' apply ', 'APPLY', 'apply\n'):
             with self.subTest(step=step):
                 self.set_progress(step=step)
                 self.assertEqual(
@@ -379,7 +382,7 @@ class UpdateProgressTest(UpdateTestCase):
     def test_la_ruta_del_archivo_no_llega_al_navegador(self):
         # El navegador no tiene por que saber donde vive el archivo de progreso:
         # es infraestructura del servidor, no un dato del panel.
-        self.set_progress(step='migrate')
+        self.set_progress(step='apply')
 
         body = json.dumps(self.running())
 
@@ -398,7 +401,7 @@ class UpdateProgressTest(UpdateTestCase):
     def test_fuera_de_running_no_se_envia_progreso(self):
         # Un archivo que quedo de un intento anterior no pinta nada en un panel
         # que ya dice "al dia".
-        self.set_progress(step='migrate')
+        self.set_progress(step='apply')
         self.set_deployed()
         self.set_remote(sha=SHA_DEPLOYED)
         self.client.force_login(self.admin)
@@ -411,7 +414,7 @@ class UpdateProgressTest(UpdateTestCase):
     def test_progreso_huerfano_no_acompana_el_reintento(self):
         # `running` viejo: el panel vuelve a ofrecer la actualizacion, asi que
         # tampoco hay despliegue en curso que ilustrar.
-        self.set_progress(step='migrate')
+        self.set_progress(step='apply')
         started = datetime.now(UTC) - timedelta(hours=2)
 
         payload = self.running(started_at=started.isoformat())

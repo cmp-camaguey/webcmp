@@ -1,0 +1,15 @@
+[Unit]
+Description=Timer de sincronizacion de artefactos root para webcmp-deploy
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Timer]
+# Diario a las 04:30, despues del respaldo (03:15) y del worker de Huey. Un sync
+# con el espejo actualizado no tarda nada; el margen evita que dos tareas de
+# madrugada compitan por el lock del deploy.
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=webcmp-sync.service
+
+[Install]
+WantedBy=timers.target
