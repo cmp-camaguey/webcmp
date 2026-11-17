@@ -19,5 +19,8 @@ ExecStart=/usr/local/sbin/webcmp-deploy --backup
 TimeoutStartSec=1800
 ProtectSystem=full
 ProtectHome=yes
-PrivateTmp=yes
+# Sin PrivateTmp a proposito. `db_dump` corre el dump con `systemd-run`, y una
+# unidad transitoria NO hereda este namespace: escribe su stderr en el /tmp real
+# mientras este proceso lo busca en el privado. El resultado seria perder el
+# motivo de un pg_dump fallido, que es justo el texto que hace falta a las 03:15.
 NoNewPrivileges=yes

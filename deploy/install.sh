@@ -3451,7 +3451,7 @@ if [ "$SKIP_DEPLOY_SCAFFOLD" -eq 1 ]; then
     log "Andamiaje del deploy por boton: omitido (--skip-deploy-scaffold)"
     log "Boton 'Actualizar' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
     log "Boton 'Aplicar cambios' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
-    log "Respaldo diario de la base: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
+    log "Respaldo diario de la base: omitido (depende de webcmp-deploy, del andamiaje)"
 else
     setup_deploy_scaffold
     setup_autodeploy
