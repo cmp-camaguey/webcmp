@@ -589,6 +589,42 @@ class UpdateLogViewTest(UpdateTestCase):
         self.assertIn('log', update_module.RUN_MESSAGES['failed'])
 
 
+class DevDemoLogFixtureTest(UpdateTestCase):
+    """El log de ejemplo que hace visible el modal en el perfil `dev`.
+
+    Es el mismo codigo de produccion leyendo otros datos: si el fixture deja
+    de ejercitar una rama del render, el modal en dev deja de ser una
+    previsualizacion fiel y este test lo detecta.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.fixture = Path(settings.BASE_DIR) / 'deploy' / 'examples' / 'deploy-demo.log.example'
+
+    def test_el_fixture_ejerce_todo_el_render_del_modal(self):
+        contenido = self.fixture.read_text(encoding='utf-8')
+        # ESC real y el glifo ␛ que deja el copiado; secciones, OK/ERROR y
+        # lineas de journal son las seis ramas de `logLineKind`.
+        for marca in ('\x1b[', '␛[', '==>', 'OK', 'ERROR', 'autodeploy:'):
+            with self.subTest(marca=marca):
+                self.assertIn(marca, contenido)
+
+    def test_deploy_log_sirve_el_fixture_como_log_real(self):
+        # El backend NO limpia ANSI: eso lo hace el JS con textContent. Aca se
+        # comprueba que el archivo de ejemplo entra por el mismo camino que el
+        # log del servidor, sin logica de simulacion en la vista.
+        with override_settings(UPDATE_LOG_FILE=str(self.fixture), UPDATE_LOG_MAX_BYTES=64 * 1024):
+            self.client.force_login(self.admin)
+            payload = self.client.get(self.log_url).json()
+
+        self.assertTrue(payload['available'])
+        self.assertFalse(payload['truncated'])
+        self.assertIn('==>', payload['log'])
+        self.assertIn('\x1b[', payload['log'])
+        self.assertIn('␛[', payload['log'])
+
+
 class LsRemoteTest(TestCase):
     """El parseo de ``git ls-remote``: es la unica salida de red del panel."""
 
@@ -816,6 +852,40 @@ class DashboardNavbarTest(UpdateTestCase):
         self.assertIn('spinner-border spinner-border-sm', html)
         # Arranca oculto: solo se muestra en `running`.
         self.assertIn('spinner-border spinner-border-sm text-blue d-none', html)
+
+    def test_el_modal_del_log_no_tiene_footer_con_botones(self):
+        # El modal se cierra con la X del header y el log se recarga solo
+        # mientras despliega (polling a 2 s mas una lectura final al salir de
+        # `running`). El footer con «Actualizar» y «Cerrar» solo estorbaba y
+        # tapaba las ultimas lineas, que es donde esta el resultado.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+        modal = html.split('id="update-log-modal"', 1)[1].split('<!-- Tema Claro|Oscuro -->', 1)[0]
+
+        self.assertNotIn('modal-footer', modal)
+        self.assertNotIn('update-log-refresh', modal)
+        self.assertNotIn('>Cerrar</button>', modal)
+
+    def test_la_consola_respeta_el_tema_del_sitio(self):
+        # El `<pre>` no puede imponer `bg-dark`: el sitio define `data-bs-theme`
+        # y la consola tiene que seguirlo. Las variables `--tblr-*` cambian con
+        # el tema; una clase `bg-dark text-light` no.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+        modal = html.split('id="update-log-modal"', 1)[1].split('<!-- Tema Claro|Oscuro -->', 1)[0]
+
+        self.assertNotIn('bg-dark text-light', modal)
+        self.assertIn('update-console-body', modal)
+        self.assertIn('ti-terminal-2', modal)
+        # El bloque de estilos vive antes del modal; se busca en la pagina.
+        self.assertIn('var(--tblr-code-bg)', html)
+        self.assertIn('var(--tblr-heading-color)', html)
 
     def test_el_aviso_no_se_renderiza_para_no_superusuario(self):
         self.client.force_login(self.plain)
@@ -1067,3 +1137,36 @@ class DashboardUpdateScriptTest(TestCase):
         )
 
         self.assertIn('if (!commitsBox)', source)
+
+    def test_el_detalle_no_expone_la_simulacion_interna(self):
+        # `UPDATE_DEPLOYED_SHA_FILE` es una variable de configuracion: no
+        # pertenece en el desplegable de un panel que abre un administrador.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertNotIn('UPDATE_DEPLOYED_SHA_FILE', source)
+        self.assertIn("detail.classList.toggle('d-none', !text)", source)
+        self.assertIn('setDetail(', source)
+
+    def test_la_consola_tiene_un_gutter_de_terminal(self):
+        # La numeracion va en una columna propia con separador, no en margenes
+        # de un `span` dentro de un `<pre>`. Las clases de linea son las que
+        # eligen el color segun el tipo de linea y el tema.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("'update-console-line update-console-' + logLineKind(raw)", source)
+        self.assertIn("'update-console-line-no'", source)
+        self.assertIn("'update-console-text'", source)
+        self.assertNotIn('text-white-50 pe-3', source)
+
+    def test_el_script_del_panel_lleva_cache_buster(self):
+        # Sin la version, un despliegue que cambia el JS sirve al admin el
+        # codigo viejo desde la cache hasta que haga un hard refresh.
+        html = (Path(settings.BASE_DIR) / 'templates/layouts/dashboard.html').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("dist/js/dashboard-update.js' %}?v=1", html)

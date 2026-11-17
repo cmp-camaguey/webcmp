@@ -46,3 +46,49 @@
     max-height: 18rem;
     overflow-y: auto;
   }
+
+  /* Volver arriba: boton flotante que solo aparece con scroll real. Lo muestra
+     el JS de go-to-top.js agregando `visible`; sin JS queda oculto y no estorba. */
+  .t-go-to-top {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 1030;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    color: var(--tblr-primary);
+    background-color: var(--tblr-bg-surface);
+    border: 1px solid var(--tblr-border-color);
+    border-radius: 50%;
+    box-shadow: var(--tblr-box-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(0.5rem);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s, bottom 0.2s ease;
+  }
+  .t-go-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  /* Al final del scroll, solo lo suficiente para no tapar el icono del footer. */
+  .t-go-to-top.at-bottom {
+    bottom: 4.5rem;
+  }
+  .t-go-to-top:hover {
+    color: var(--tblr-primary);
+    transform: translateY(-2px);
+  }
+  .t-go-to-top .tabler-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .t-go-to-top {
+      transition: none;
+    }
+  }

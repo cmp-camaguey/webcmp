@@ -44,7 +44,6 @@
   var logModal = document.getElementById('update-log-modal');
   var logNote = document.getElementById('update-log-note');
   var logPre = document.getElementById('update-log-pre');
-  var logRefresh = document.getElementById('update-log-refresh');
 
   var timer = null;
 
@@ -154,6 +153,12 @@
     }
   }
 
+  function setDetail(text) {
+    detail.textContent = text || '';
+    // Un `div` vacio con `mt-2` deja un hueco: sin detalle, que no ocupe sitio.
+    detail.classList.toggle('d-none', !text);
+  }
+
   function paint(options) {
     // `badge` es la senal: un punto rojo en el navbar. El resto del texto vive
     // dentro del desplegable, que solo se ve si el admin lo abre.
@@ -174,7 +179,7 @@
     }
     title.textContent = options.title || 'Actualizaciones';
     text.textContent = options.message || '';
-    detail.textContent = options.detail || '';
+    setDetail(options.detail);
 
     // Chip de version, siempre con textContent. Sin texto no se deja un
     // hueco vacio: el nodo se esconde.
@@ -311,9 +316,9 @@
       icon: state.check_error ? 'ti ti-cloud-off' : 'ti ti-help-circle',
       title: state.check_error ? 'Sin conexión con el repositorio' : 'Sin datos del despliegue',
       message: state.check_error || state.reason || 'No se pudo comprobar si hay actualizaciones.',
-      detail: state.check_error
-        ? 'El aviso vuelve solo cuando el repositorio responda.'
-        : 'En desarrollo se simula con UPDATE_DEPLOYED_SHA_FILE; en el servidor lo escribe deploy.sh.',
+      // Sin detalle propio: la simulacion de desarrollo es configuracion
+      // interna y no tiene por que aparecer en el desplegable.
+      detail: state.check_error ? 'El aviso vuelve solo cuando el repositorio responda.' : '',
       versionText: chip,
     });
   }
@@ -336,27 +341,92 @@
     return logPre.scrollHeight - logPre.scrollTop - logPre.clientHeight < 32;
   }
 
+  // El script de deploy escribe secuencias ANSI de color (␛[1;34m==>␛[0m)
+  // que en un <pre> se ven como basura. Se quitan antes de pintar; se acepta
+  // tanto ESC real (U+001B) como el glifo ␛ (U+241B) que deja el copiado.
+  var ANSI_COLOR = /\u001b\[[0-9;]*m|\u241b\[[0-9;]*m/g;
+
+  // El color de cada linea lo decide el CSS del modal
+  // (`update-console-<tipo>`), con variantes para tema claro y oscuro. Aca no
+  // se eligen clases de color: `text-white` sobre el tema claro del sitio
+  // dejaba el log ilegible.
+
+  function setLogNote(text) {
+    if (!logNote) {
+      return;
+    }
+    logNote.textContent = text || '';
+    logNote.classList.toggle('d-none', !text);
+  }
+
+  function logLineKind(text) {
+    if (/^==>/.test(text)) {
+      return 'section';
+    }
+    if (/\b(OK|Desplegado|responde 200)\b/i.test(text)) {
+      return 'ok';
+    }
+    if (/\b(ERROR|FATAL|Traceback|fallido|fallo|abortado)\b/i.test(text)) {
+      return 'error';
+    }
+    if (/^\s*[·•]/.test(text)) {
+      return 'item';
+    }
+    if (/\d{4}-\d{2}-\d{2}T.*autodeploy:/.test(text)) {
+      return 'journal';
+    }
+    return 'plain';
+  }
+
   function paintLog(payload) {
     if (!logPre) {
       return;
     }
     if (!payload.available) {
       logPre.textContent = '';
-      if (logNote) {
-        logNote.textContent =
-          'Todavía no hay log: lo genera el primer despliegue que corra con este commit.';
-      }
+      setLogNote(
+        'Todavía no hay log: lo genera el primer despliegue que corra con este commit.'
+      );
       return;
     }
-    if (logNote) {
-      logNote.textContent = payload.truncated
-        ? 'Cola del log: el inicio se recortó por tamaño.'
-        : 'Log completo del último intento.';
-    }
-    // Antes de reemplazar el texto se decide si hay que scrollear: si el
-    // lector no esta al final, se conserva su posicion.
+    // El header ya dice «Log del último despliegue»: el body solo avisa cuando
+    // hay algo que el header no cuenta, como que el inicio se recortó.
+    setLogNote(payload.truncated ? 'Cola del log: el inicio se recortó por tamaño.' : '');
+
+    // Antes de reemplazar se decide si hay que scrollear: si el lector no esta
+    // al final, se conserva su posicion.
     var keep = nearBottom();
-    logPre.textContent = payload.log || '(sin salida)';
+    var contenido = payload.log ? String(payload.log) : '(sin salida)';
+    var lineas = contenido.replace(ANSI_COLOR, '').split('\n');
+    var fragmento = document.createDocumentFragment();
+
+    lineas.forEach(function (raw, index) {
+      var fila = document.createElement('div');
+      fila.className = 'update-console-line update-console-' + logLineKind(raw);
+
+      // Gutter del terminal: columna propia y separador vertical, no margenes
+      // dentro de un `<pre>`. `aria-hidden` porque el numero es decorativo.
+      var numero = document.createElement('span');
+      numero.className = 'update-console-line-no';
+      numero.setAttribute('aria-hidden', 'true');
+      numero.textContent = String(index + 1);
+
+      var texto = document.createElement('span');
+      texto.className = 'update-console-text';
+      // El log NO se filtra: tiene rutas absolutas del servidor y lo escriben
+      // personas con acceso push. Solo text nodes, nunca innerHTML.
+      texto.textContent = raw;
+
+      fila.appendChild(numero);
+      fila.appendChild(texto);
+      fragmento.appendChild(fila);
+    });
+
+    while (logPre.firstChild) {
+      logPre.removeChild(logPre.firstChild);
+    }
+    logPre.appendChild(fragmento);
+
     // El resultado esta al final: un deploy que aborta imprime la causa en las
     // ultimas lineas, y abrir por arriba obligaria a scrollear hasta el fondo.
     if (keep) {
@@ -374,8 +444,8 @@
       return;
     }
     logInFlight = true;
-    if (logNote && !quiet) {
-      logNote.textContent = 'Cargando…';
+    if (!quiet) {
+      setLogNote('Cargando…');
     }
     window
       .fetch(logUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
@@ -387,9 +457,7 @@
       })
       .then(paintLog)
       .catch(function () {
-        if (logNote) {
-          logNote.textContent = 'No se pudo leer el log del servidor.';
-        }
+        setLogNote('No se pudo leer el log del servidor.');
       })
       .then(function () {
         logInFlight = false;
@@ -403,11 +471,6 @@
     });
     logModal.addEventListener('hidden.bs.modal', function () {
       logOpen = false;
-    });
-  }
-  if (logRefresh) {
-    logRefresh.addEventListener('click', function () {
-      loadLog();
     });
   }
 
@@ -454,18 +517,18 @@
       })
       .then(function (result) {
         if (!result.ok) {
-          detail.textContent = result.body.reason || 'No se pudo pedir la actualización.';
+          setDetail(result.body.reason || 'No se pudo pedir la actualización.');
           button.disabled = false;
           schedule(POLL_IDLE_MS);
           return;
         }
         // Aceptada: systemd tarda en arrancar la unidad, asi que se consulta en
         // el ritmo rapido hasta que el estado pase a `running`.
-        detail.textContent = 'Petición enviada. Esperando al servidor…';
+        setDetail('Petición enviada. Esperando al servidor…');
         schedule(POLL_BUSY_MS);
       })
       .catch(function () {
-        detail.textContent = 'No se pudo contactar al servidor.';
+        setDetail('No se pudo contactar al servidor.');
         button.disabled = false;
         schedule(POLL_IDLE_MS);
       });
