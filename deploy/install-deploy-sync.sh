@@ -36,13 +36,25 @@ if [ "$DRY_RUN" -eq 1 ]; then
     log "Dry-run: mostrando comandos sin ejecutar"
 fi
 
-# --- 1. Crear directorio de estado ---
+# --- 1. Directorio de estado (compartido, no se tocan permisos) ---
 
-if [ "$DRY_RUN" -eq 1 ]; then
-    printf "  mkdir -p %s (0700 root:root)\n" "$SYNC_STATE_DIR"
+# SYNC_STATE_DIR (default /var/lib/webcmp) NO es del sync: en el mismo directorio
+# viven deploy-request (que escribe el proceso web para pedir un deploy) y
+# deploy-status.json. install.sh lo deja en 2775 deploy:webcmp. Si aqui se
+# impusiera 0700 root:root, el boton "Actualizar" del panel moria con
+# "El servidor no acepta peticiones de despliegue" y nadie lo veria (ocurrio en
+# produccion tras el bootstrap de v0.7.7). Si falta, se crea como lo deja
+# install.sh; si existe, no se cambia nada.
+STATE_OWNER=${STATE_OWNER:-deploy}
+STATE_GROUP=${STATE_GROUP:-webcmp}
+if [ -d "$SYNC_STATE_DIR" ]; then
+    log "Directorio de estado ya existe: $SYNC_STATE_DIR (permisos intactos)"
+elif [ "$DRY_RUN" -eq 1 ]; then
+    printf "  install -d -m 2775 -o %s -g %s %s\n" "$STATE_OWNER" "$STATE_GROUP" "$SYNC_STATE_DIR"
 else
-    install -d -m 0700 -o root -g root "$SYNC_STATE_DIR"
-    log "Directorio creado: $SYNC_STATE_DIR"
+    install -d -m 2775 -o "$STATE_OWNER" -g "$STATE_GROUP" "$SYNC_STATE_DIR" \
+        || die "No se pudo crear $SYNC_STATE_DIR con dueno $STATE_OWNER:$STATE_GROUP. Corre install.sh primero."
+    log "Directorio creado: $SYNC_STATE_DIR ($STATE_OWNER:$STATE_GROUP 2775)"
 fi
 
 # --- 2. Crear espejo bare del repo ---
@@ -60,7 +72,7 @@ else
     if [ "$DRY_RUN" -eq 1 ]; then
         printf "  git init --bare %s\n" "$SYNC_MIRROR"
         printf "  git -C %s remote add origin %s\n" "$SYNC_MIRROR" "$REMOTE_URL"
-        printf "  git -C %s fetch origin %s\n" "$SYNC_MIRROR" "$BRANCH_REF"
+        printf "  git -C %s fetch origin %s:%s\n" "$SYNC_MIRROR" "$BRANCH_REF" "$BRANCH_REF"
     else
         tmp_mirror=$(mktemp -d)
         trap 'rm -rf "$tmp_mirror"' EXIT

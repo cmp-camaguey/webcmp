@@ -49,6 +49,22 @@ assert_contains 'install-deploy-sync.sh --dry-run nombra el helper' \
     'webcmp-deploy-sync.sh' "$install_dry"
 assert_contains 'install-deploy-sync.sh --dry-run nombra el timer' \
     'webcmp-sync.timer' "$install_dry"
+# Regresion (produccion): el script imponia 0700 root:root sobre SYNC_STATE_DIR,
+# que es el mismo directorio donde el proceso web escribe deploy-request para el
+# boton "Actualizar". Con el dir en 0700 root el panel moria con "El servidor no
+# acepta peticiones de despliegue" y nadie podia desplegar desde el panel.
+assert_not_contains 'install-deploy-sync.sh no impone 0700 root al dir compartido' \
+    'install -d -m 0700 -o root -g root "$SYNC_STATE_DIR"' "$(cat "$INSTALL_SYNC")"
+assert_not_contains 'el dry-run no promete 0700 root en el dir de estado' \
+    '0700 root:root' "$install_dry"
+# Si falta el dir, se crea como lo deja install.sh: 2775 deploy:webcmp. El
+# SYNC_STATE_DIR exportado por este test SI existe, asi que el camino de
+# creacion se prueba con uno que no existe; el existente debe salir intacto.
+assert_contains 'dir existente: no se tocan sus permisos' \
+    'permisos intactos' "$install_dry"
+dry_missing=$(SYNC_STATE_DIR="$TEST_TMP/no-existe-estado" bash "$INSTALL_SYNC" --dry-run 2>&1)
+assert_contains 'el dir de estado se crea como install.sh (2775 deploy:webcmp)' \
+    'install -d -m 2775 -o deploy -g webcmp' "$dry_missing"
 
 # --- webcmp-deploy-sync.sh --help ------------------------------------------
 
