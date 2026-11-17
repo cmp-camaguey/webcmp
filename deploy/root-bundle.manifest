@@ -1,7 +1,9 @@
 # Lista de archivos que el sync instala en /usr/local/sbin/ y /etc/systemd/system/
 
-# Cada entrada es la ruta en deploy/, el destino final, la clase (script/root-unit)
-# y los permisos. Un archivo nuevo no entra por existir solo.
+# Cada entrada son 4 campos separados por espacios: origen (ruta en deploy/),
+# destino final, modo octal y dueno (usuario:grupo). Una linea con mas de 4
+# campos se rechaza: casi siempre es un origen con un espacio. Un archivo nuevo
+# no entra por existir solo: hay que agregarlo aca.
 
 # Scripts de deploy
 deploy/deploy.sh                                                         /usr/local/sbin/webcmp-deploy                               0755    root:root
