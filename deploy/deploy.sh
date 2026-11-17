@@ -1235,35 +1235,20 @@ log "Instalando requirements/prod.txt"
 sudo -u "$DEPLOY_USER" env "PIP_CACHE_DIR=$PIP_CACHE_DIR" \
     "${PIP_CMD[@]}" install --quiet --disable-pip-version-check -r "$APP_DIR/requirements/prod.txt"
 
-# 3. Gate: las migraciones versionadas cubren los modelos
+# 3. Gates: migraciones versionadas y configuracion REAL de produccion
 #
-# Las migraciones SI se versionan. Un clone limpio trae los `0001_initial` de
-# cada app y el esquema no se deriva de los modelos en el servidor.
-#
-# `--check --dry-run` es el gate que esto habilita: si un cambio de modelo llega
-# sin su migracion, el deploy aborta ACA, antes de tocar la base. Antes ese
-# comando no servia porque el clone llegaba sin migraciones y `--check` leia
-# "no hay migraciones para el modelo" como "falta la migracion".
-#
-# La migracion se revisa en el PR. El rollback del codigo no revierte el
-# esquema, y sigue siendo cierto: una migracion destructiva ya aplicada deja la
-# base con el esquema nuevo.
-progress checks
-log "Gate: las migraciones versionadas cubren los modelos"
-manage makemigrations --check --dry-run
-
-# 4. Gate: la configuracion REAL de produccion
-#
-# El CI corre este mismo check con valores de mentira (db que no existe, sin
-# SMTP). Aca corre contra el .env de verdad: es la primera vez que se verifica
-# que la SECRET_KEY se descifra, que DB_* apunta al PostgreSQL real y que
-# EMAIL_BACKEND no es el de consola. Tarda segundos y evita un sitio caido.
+# Los dos gates se corren como un solo comando de negocio (`manage deploy_check`)
+# en lugar de dos llamadas sueltas. Si un cambio de modelo llega sin su migracion,
+# el deploy aborta ACA, antes de tocar la base. El `--check` de configuracion
+# verifica que la SECRET_KEY se descifra, que DB_* apunta al PostgreSQL real y
+# que EMAIL_BACKEND no es el de consola.
 #
 # `security.W008` (SECURE_SSL_REDIRECT) NO aparece: production.py lo silencia a
 # proposito, porque el TLS y el redirect los termina el proxy. Ese silencio esta
-# en SILENCED_SYSTEM_CHECKS, no en el --fail-level de esta linea.
-log "Gate: check --deploy (configuracion real)"
-manage check --deploy --fail-level WARNING
+# en SILENCED_SYSTEM_CHECKS, no en el --fail-level del comando.
+progress checks
+log "Gates: migraciones y configuracion"
+manage deploy_check
 
 # 5. Respaldo: solo si hay migraciones pendientes
 #
@@ -1293,29 +1278,19 @@ else
     log "Sin migraciones pendientes: no se respalda la base"
 fi
 
-# 6. Migraciones: antes de que el codigo nuevo atienda un solo request
-progress migrate
-log "Aplicando migraciones"
-manage migrate --noinput
+# 6. Aplicar: migraciones, grupos de rol y estaticos
+#
+# Antes de que el codigo nuevo atienda un solo request. El comando
+# `manage deploy_apply` ejecuta en orden: `migrate`, `migrate --check`,
+# `create_role_groups` (idempotente, los permisos de un modelo nuevo existen
+# recien despues de migrate) y `collectstatic`. Si un paso falla, aborta con el
+# paso nombrado en el mensaje, no un exit 1 anonimo.
+progress apply
+log "Aplicando migraciones, grupos y estaticos"
+manage deploy_apply
 migrated=1
 
-# `--check` sale con codigo 1 si queda algo sin aplicar. Es la unica forma de
-# confirmar que el esquema quedo donde tiene que estar y no "migrate no dijo
-# nada", que es lo mismo que no haber corrido nada.
-manage migrate --check
-
-# Grupos de rol: cada deploy los vuelve a dejar completos. Los permisos de un
-# modelo nuevo existen recien despues de migrate, y el comando es idempotente
-# (usa `add`, no `set`): no duplica grupos ni pisa permisos cargados a mano.
-log "Creando grupos de rol"
-manage create_role_groups
-
-# 7. Estaticos: antes de que el codigo nuevo emita HTML que los referencia
-progress static
-log "Recolectando estaticos"
-manage collectstatic --no-input
-
-# 8. Reinicio
+# 7. Reinicio
 #
 # `systemctl reload` (SIGHUP) NO alcanza para un despliegue: Gunicorn hace que el
 # master recargue su configuracion y los workers se re-forkean desde el master.
@@ -1329,7 +1304,7 @@ systemctl restart "$HUEY_UNIT"
 systemctl is-active --quiet "$GUNICORN_UNIT" || die "$GUNICORN_UNIT quedo inactivo."
 systemctl is-active --quiet "$HUEY_UNIT" || die "$HUEY_UNIT quedo inactivo."
 
-# 8b. Boton "Aplicar cambios"
+# 7b. Boton "Aplicar cambios"
 #
 # Antes del health check: si la unidad no arranca, el deploy aborta y revierte
 # igual que con cualquier otro servicio caido, y el health check no verifica un
@@ -1337,7 +1312,7 @@ systemctl is-active --quiet "$HUEY_UNIT" || die "$HUEY_UNIT quedo inactivo."
 ensure_apply_path
 
 # --------------------------------------------------------------------------
-# 9. Health check
+# 8. Health check
 # --------------------------------------------------------------------------
 #
 # Por defecto (HEALTHCHECK_URL vacio) sale al puerto 443 de 127.0.0.1 con el SNI

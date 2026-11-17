@@ -83,7 +83,7 @@ assert_eq 'respaldo: no toca archivos que no son .dump' \
 # `migrate`. Un dump posterior a la migracion destructiva guarda la base ya
 # rota.
 backup_line=$(grep -n '^if pending_migrations; then' "$DEPLOY_SH" | cut -d: -f1)
-migrate_line=$(grep -n '^log "Aplicando migraciones"' "$DEPLOY_SH" | cut -d: -f1)
+migrate_line=$(grep -n '^manage deploy_apply' "$DEPLOY_SH" | cut -d: -f1)
 if [ -n "$backup_line" ] && [ -n "$migrate_line" ] && [ "$backup_line" -lt "$migrate_line" ]; then
     ok 'respaldo: se toma antes de aplicar migraciones'
 else
@@ -95,17 +95,16 @@ fi
 deploy_src=$(cat "$DEPLOY_SH")
 
 # Los dos gates no tocan la base: corren antes del respaldo a proposito. Si el
-# respaldo se adelanta, un deploy que aborta en `check --deploy` deja un dump
+# respaldo se adelanta, un deploy que aborta en `deploy_check` deja un dump
 # inutil y llena el disco sin motivo.
-gate1_line=$(grep -n '^manage makemigrations --check --dry-run' "$DEPLOY_SH" | cut -d: -f1)
-gate2_line=$(grep -n '^manage check --deploy --fail-level WARNING' "$DEPLOY_SH" | cut -d: -f1)
-if [ -n "$gate1_line" ] && [ -n "$gate2_line" ] && [ -n "$backup_line" ] \
-    && [ "$gate1_line" -lt "$backup_line" ] && [ "$gate2_line" -lt "$backup_line" ]; then
-    ok 'respaldo: se toma despues de los dos gates'
+deploy_check_line=$(grep -n '^manage deploy_check' "$DEPLOY_SH" | cut -d: -f1)
+if [ -n "$deploy_check_line" ] && [ -n "$backup_line" ] \
+    && [ "$deploy_check_line" -lt "$backup_line" ]; then
+    ok 'respaldo: se toma despues de deploy_check'
 else
-    fail 'respaldo: se toma despues de los dos gates' \
-        'gate1 < gate2 < respaldo' \
-        "gate1=$gate1_line gate2=$gate2_line respaldo=$backup_line"
+    fail 'respaldo: se toma despues de deploy_check' \
+        'deploy_check < respaldo' \
+        "deploy_check=$deploy_check_line respaldo=$backup_line"
 fi
 
 assert_contains 'respaldo: si pg_dump falla, el deploy aborta sin migrar' \
