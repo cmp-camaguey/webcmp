@@ -30,7 +30,16 @@ ENCRYPTION_ENV=${ENCRYPTION_ENV:-/etc/webcmp/encryption.env}
 
 die() { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 warn() { printf '\033[1;33mAVISO:\033[0m %s\n' "$*" >&2; }
-log() { [ "$QUIET" -eq 0 ] && printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
+# `if` y no `[ ] && printf`: con --quiet el `[ ]` falla y la funcion devuelve 1,
+# que bajo `set -Eeuo pipefail` mata el script en el primer log.
+# Las dos llamadas reales usan --quiet (install-deploy-sync.sh y deploy.sh),
+# asi que el sync salia sin instalar nada.
+log() {
+    if [ "$QUIET" -eq 0 ]; then
+        printf '\n\033[1;34m==>\033[0m %s\n' "$*"
+    fi
+    return 0
+}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -94,10 +103,18 @@ git -C "$SYNC_MIRROR" show "$current_sha:deploy/root-bundle.manifest" > "$manife
 # --- Instalar archivos ---
 
 installed=0
-while IFS=$'\t' read -r src_path dest_path mode owner_group; do
+# Los campos van separados por espacios o tabuladores: el manifest se alinea
+# con espacios para que se lea. Se exigen EXACTAMENTE cuatro: una linea con un
+# campo de mas casi siempre es un path con un espacio, y partirlo a la
+# ambiguedad dejaria el destino en un lugar que nadie reviso.
+while read -r src_path dest_path mode owner_group extra; do
     # Saltar lineas vacias o comentarios
-    [ -n "$src_path" ] || continue
+    [ -n "${src_path:-}" ] || continue
     [[ "$src_path" == \#* ]] && continue
+
+    if [ -n "${extra:-}" ] || [ -z "${dest_path:-}" ] || [ -z "${mode:-}" ] || [ -z "${owner_group:-}" ]; then
+        die "Entrada mal formada en root-bundle.manifest (se esperaban 4 campos): ${src_path:-} ${dest_path:-} ${mode:-} ${owner_group:-} ${extra:-}"
+    fi
 
     tmp_file="$TMP_DIR/$(echo "$src_path" | tr '/' '_')"
 
@@ -105,8 +122,10 @@ while IFS=$'\t' read -r src_path dest_path mode owner_group; do
     git -C "$SYNC_MIRROR" show "$current_sha:$src_path" > "$tmp_file" 2>/dev/null \
         || { rm -f "$tmp_file"; die "No se pudo extraer $src_path del SHA $current_sha"; }
 
-    # Renderizar units systemd
-    if [[ "$src_path" == *systemd/*.service || "$src_path" == *systemd/*.path ]]; then
+    # Renderizar units systemd (.timer incluido: install.sh los renderiza, y un
+    # Documentation=/srv/webcmp/... apuntando al directorio equivocado en un
+    # server con otro APP_DIR queda instalado sin que nadie lo note)
+    if [[ "$src_path" == *systemd/*.service || "$src_path" == *systemd/*.path || "$src_path" == *systemd/*.timer ]]; then
         content=$(cat "$tmp_file")
         printf '%s' "$(render_content "$content")" > "$tmp_file"
     fi
