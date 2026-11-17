@@ -3,6 +3,7 @@
        id="update-navbar"
        data-status-url="{% url 'dashboard:update_status' %}"
        data-request-url="{% url 'dashboard:update_request' %}"
+       data-log-url="{% url 'dashboard:update_log' %}"
        data-csrf-token="{{ csrf_token }}">
     <a href="#"
        class="nav-link px-0"
@@ -73,7 +74,58 @@
         <button type="button"
                 class="btn btn-sm btn-primary w-100 d-none"
                 id="update-navbar-button">Actualizar ahora</button>
+        {% comment %}
+          El log del intento, en un modal. El boton esta siempre: sin un
+          despliegue fallido tambien sirve para confirmar que el ultimo salio
+          bien, y es lo que queda visible cuando nadie tiene SSH al servidor.
+        {% endcomment %}
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary w-100 mt-2"
+                id="update-navbar-log"
+                data-bs-toggle="modal"
+                data-bs-target="#update-log-modal">Ver log del despliegue</button>
         <div class="text-secondary small mt-2" id="update-navbar-detail"></div>
+      </div>
+    </div>
+  </div>
+  {% comment %}
+    El contenido lo trae el JS al abrir: el log cambia en cada intento y
+    renderizarlo en cada visita al dashboard seria leer un archivo de sistema
+    en cada pagina del panel. El `pre` scrollea solo hasta el final, que es
+    donde esta el resultado.
+  {% endcomment %}
+  <div class="modal fade"
+       id="update-log-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       aria-labelledby="update-log-title">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="update-log-title">Log del último despliegue</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary small mb-2" id="update-log-note">Cargando…</p>
+          <pre id="update-log-pre"
+               class="mb-0"
+               style="max-height: 60vh;
+                      overflow: auto;
+                      white-space: pre-wrap;
+                      word-break: break-word;
+                      font-size: 0.75rem"></pre>
+        </div>
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  id="update-log-refresh">Actualizar</button>
+          <button type="button"
+                  class="btn btn-sm btn-secondary"
+                  data-bs-dismiss="modal">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>

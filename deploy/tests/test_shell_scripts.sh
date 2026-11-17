@@ -22,6 +22,8 @@ SCRIPTS=(
     deploy/tests/test_deploy_sh_units.sh
     deploy/tests/test_deploy_sh_progress.sh
     deploy/tests/test_deploy_sh_backup_mode.sh
+    deploy/tests/test_autodeploy_log.sh
+    deploy/tests/test_deploy_sh_health.sh
     deploy/tests/test_shell_scripts.sh
     run_huey.sh
     .githooks/pre-commit
