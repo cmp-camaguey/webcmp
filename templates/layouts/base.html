@@ -25,9 +25,11 @@
       {% block page %}{% endblock %}
     </div>
     {% block modal %}{% endblock %}
+    {% include 'includes/base/go_to_top.html' %}
     <!-- Tabler Core -->
     {% include 'includes/base/scripts.html' %}
     {% include 'includes/base/utils.html' %}
+    <script src="{% static 'dist/js/go-to-top.js' %}?v=1"></script>
     <!-- Tabler JS -->
     {% block extrajs %}{% endblock %}
   </body>
