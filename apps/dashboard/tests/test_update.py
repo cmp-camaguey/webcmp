@@ -1540,6 +1540,33 @@ class DashboardUpdateScriptTest(TestCase):
             source,
         )
 
+    def test_ningun_script_accede_a_window_bootstrap_a_secas(self):
+        # Tabler 1.5.1 expone el bootstrap como `window.tabler.bootstrap`: un
+        # acceso a `window.bootstrap.Modal` a secas es `undefined` y tira
+        # TypeError, que mata el script ahi (fue el boton Actualizar roto en
+        # produccion). El test del archivo del panel cubre solo ese archivo;
+        # este mira todos los scripts y templates propios, porque el mismo bug
+        # en otro script nuevo romperia el panel de la misma forma. Los
+        # comentarios que nombran `window.bootstrap` no cuentan: solo el
+        # acceso a una propiedad o el constructor rompen.
+        base = Path(settings.BASE_DIR)
+        offenders = []
+        for path in sorted((base / 'static/dist/js').glob('*.js')):
+            source = path.read_text(encoding='utf-8')
+            if 'window.bootstrap.' in source or 'new window.bootstrap' in source:
+                offenders.append(path.name)
+        for path in sorted((base / 'templates').rglob('*.html')):
+            source = path.read_text(encoding='utf-8')
+            if 'window.bootstrap.' in source or 'new window.bootstrap' in source:
+                offenders.append(str(path.relative_to(base)))
+
+        self.assertEqual(
+            offenders,
+            [],
+            'window.bootstrap a secas (usar el patron de window.tabler.bootstrap) en: '
+            + ', '.join(offenders),
+        )
+
     def test_el_script_del_panel_lleva_cache_buster(self):
         # Sin la version, un despliegue que cambia el JS sirve al admin el
         # codigo viejo desde la cache hasta que haga un hard refresh.
