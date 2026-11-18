@@ -57,10 +57,20 @@
   // que no puede leerlo de un DOM que ya cambio.
   var current = null;
   var confirmModal = null;
+  var updateInFlight = false;
 
   function schedule(delay) {
     window.clearTimeout(timer);
     timer = window.setTimeout(load, delay);
+  }
+
+  // Un timer en segundo plano se congela o se estrangula: una pestaña dormida
+  // horas se despierta con el estado viejo. Al recuperar el foco se pide el
+  // estado ya y se cancela el timer pendiente, para no dejar dos fetches en
+  // vuelo (el que viene se programa al responder).
+  function refresh() {
+    window.clearTimeout(timer);
+    load();
   }
 
   function clearCommits() {
@@ -688,6 +698,10 @@
   }
 
   function load() {
+    if (updateInFlight) {
+      return;
+    }
+    updateInFlight = true;
     window
       .fetch(statusUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
       .then(function (response) {
@@ -712,6 +726,11 @@
       .catch(function () {
         // Un fallo de red no rompe el dashboard: se reintenta en el proximo ciclo.
         schedule(POLL_IDLE_MS);
+      })
+      .then(function () {
+        // Siempre corre, venga del exito o del fallo: sin esto un `focus`
+        // repetido encontraria la guarda encendida para siempre.
+        updateInFlight = false;
       });
   }
 
@@ -760,6 +779,16 @@
       requestUpdate();
     });
   }
+
+  // `visibilitychange` cubre pestañas dormidas; `focus` cubre ventanas que
+  // vuelven del frente sin cambiar de visibilidad. Los dos llegan a `refresh`,
+  // que cancela el timer y respeta la guarda de in-flight.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      refresh();
+    }
+  });
+  window.addEventListener('focus', refresh);
 
   load();
 })();

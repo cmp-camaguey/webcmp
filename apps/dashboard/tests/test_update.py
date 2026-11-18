@@ -1567,6 +1567,28 @@ class DashboardUpdateScriptTest(TestCase):
             + ', '.join(offenders),
         )
 
+    def test_el_estado_se_pide_al_recuperar_la_pestana_el_foco(self):
+        # Un timer en segundo plano se congela o se estrangula: una pestaña
+        # dormida horas se despierta con el estado viejo y recien se corrige
+        # cuando vence el `setTimeout` (o nunca, si el navegador lo perdio).
+        # Al volver a visible hay que pedir el estado ya, cancelando el timer
+        # pendiente para no disparar dos fetches, y con una guarda de
+        # in-flight para que un evento repetido no gane la carrera del render.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("document.addEventListener('visibilitychange'", source)
+        self.assertIn("document.visibilityState === 'visible'", source)
+        self.assertIn("window.addEventListener('focus', refresh)", source)
+        self.assertIn(
+            'function refresh() {\n    window.clearTimeout(timer);\n    load();\n  }',
+            source,
+        )
+        self.assertIn('if (updateInFlight) {\n      return;\n    }', source)
+        self.assertIn('updateInFlight = true;', source)
+        self.assertIn('updateInFlight = false;', source)
+
     def test_el_script_del_panel_lleva_cache_buster(self):
         # Sin la version, un despliegue que cambia el JS sirve al admin el
         # codigo viejo desde la cache hasta que haga un hard refresh.
@@ -1574,4 +1596,4 @@ class DashboardUpdateScriptTest(TestCase):
             encoding='utf-8'
         )
 
-        self.assertIn("dist/js/dashboard-update.js' %}?v=5", html)
+        self.assertIn("dist/js/dashboard-update.js' %}?v=6", html)
