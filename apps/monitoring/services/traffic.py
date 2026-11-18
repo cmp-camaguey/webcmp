@@ -15,7 +15,7 @@ from django.utils.formats import date_format
 from apps.core.timezone_utils import get_request_clock_pattern
 from apps.monitoring.models import JavaScriptError, PageView, WebVital
 
-# Umbrales oficiales de Core Web Vitals: (bueno, necesita mejorar). Por encima
+# Umbrales oficiales de las métricas web esenciales: (bueno, necesita mejorar). Por encima
 # del segundo valor, pobre. CLS es adimensional; el resto va en milisegundos.
 VITAL_META = {
     WebVital.LCP: {'label': 'LCP', 'unit': 'ms', 'good': 2500, 'ok': 4000, 'decimals': 0},
@@ -28,6 +28,7 @@ VITAL_SAMPLE = 2000
 
 _REFERRER_LABELS = dict(PageView.REFERRER_CHOICES)
 _DEVICE_LABELS = dict(PageView.DEVICE_CHOICES)
+_RATING_LABELS = dict(WebVital.RATING_CHOICES)
 
 
 def _percentile(values, fraction):
@@ -216,6 +217,7 @@ def web_vitals(hours=24, now=None):
         distribution = {'good': 0, 'needs_improvement': 0, 'poor': 0}
         for row in queryset.filter(metric=metric).values('rating').annotate(count=Count('id')):
             distribution[rating_keys.get(row['rating'], 'poor')] += row['count']
+        rating = rating_for(metric, p75)
         metrics[metric] = {
             'label': meta['label'],
             'unit': meta['unit'],
@@ -223,7 +225,8 @@ def web_vitals(hours=24, now=None):
             'good': meta['good'],
             'ok': meta['ok'],
             'p75': round(p75, meta['decimals']) if p75 is not None else None,
-            'rating': rating_for(metric, p75),
+            'rating': rating,
+            'rating_label': _RATING_LABELS.get(rating) if rating else None,
             'samples': len(values),
             'distribution': distribution,
         }
