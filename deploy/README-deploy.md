@@ -789,7 +789,8 @@ en `/var/lib/webcmp/deploy-status.json` y en el journal.
 ## El boton "Actualizar" del panel
 
 Un superusuario ve en el **navbar del dashboard** un icono de refresco; cuando el
-servidor no esta en el ultimo commit de `main`, le aparece un punto rojo. Al
+servidor no esta en el ultimo commit de `main`, le aparece un punto **azul**: es una
+accion pendiente, no una alarma. El rojo queda para el despliegue fallido. Al
 abrirlo, el desplegable muestra el rango `deployed → latest` y el boton. Vive en el
 layout, asi que aparece en todas las paginas del dashboard, no solo en el index. El
 commit desplegado sale de `/etc/webcmp/deployed` (lo escriben `deploy.sh` en cada
@@ -804,10 +805,10 @@ contra el commit desplegado. Si hay varios tags sobre el mismo commit, el
 orden es determinista: `v*` antes que cualquier otro nombre, y dentro de `v*`
 el estable antes que el prerelease. Sin tag exacto **no hay version**: el chip
 muestra el SHA corto y el boton conserva el texto "Actualizar ahora". Con
-version, el boton dice **"Actualizar a vX.Y.Z"** y el detalle **"Instala
-vX.Y.Z (sha)…"**. Un tag aproximado mentiria —en un hotfix sin tag diria que
-una version vieja sigue pendiente, y tras un revert diria una que ya no se
-sirve—, por eso no se muestra nunca uno.
+version, el boton dice **"Actualizar a vX.Y.Z"**. La version no se repite en el
+detalle: el chip y el boton ya la nombran. Un tag aproximado mentiria —en un
+hotfix sin tag diria que una version vieja sigue pendiente, y tras un revert
+diria una que ya no se sirve—, por eso no se muestra nunca uno.
 
 Cuando hay actualizacion pendiente, el desplegable muestra ademas **que cambio**:
 la API publica de GitHub resuelve el rango `deployed...latest` y se listan hasta
@@ -839,6 +840,13 @@ root. El unico sudoers es el de `deploy`, acotado a `webcmp-deploy`.
 El ejecutor **no confia en el SHA del archivo**: lo resuelve el mismo con `git
 ls-remote` sobre `refs/heads/main`. Aunque el proceso web este comprometido y escriba
 lo que quiera, lo maximo que consigue es desplegar lo que ya esta en `main`.
+
+### Confirmacion antes de desplegar
+
+El boton del desplegable no pide el deploy: abre un modal con la version —o el SHA,
+si no hay tag— que se va a instalar y el aviso de que el sitio se reinicia durante
+el despliegue. El pedido sale del boton **"Desplegar"** de ese modal. Un clic de mas
+en el navbar, o un toque accidental en el telefono, no puede llegar a produccion.
 
 ### Progreso del despliegue
 
@@ -905,6 +913,10 @@ linea nueva. Abrir el modal sigue scrolleando al final una vez, porque el
 resultado esta al final. Todo el contenido llega por `textContent`, nunca
 `innerHTML`. No hay SSE ni WebSocket: el polling que ya existe alcanza.
 
+La barra del modal identifica **que intento** se esta leyendo (`v0.7.6 · 97c43ec ·
+hace 2 h`): el archivo es del ultimo intento, no necesariamente del commit
+pendiente, y sin ese dato el log viejo pasa por el despliegue que falta.
+
 El journal sigue siendo el registro completo (incluye lo de antes del primer
 intento con log y lo que escribe systemd):
 
@@ -919,6 +931,17 @@ El archivo lo rota el propio ejecutor antes de cada corrida: si pasa de 512 KB
 `UPDATE_LOG_MAX_BYTES`), porque la causa del fallo esta al final y una linea de
 `pip install` puede pesar mas que la pantalla entera. Un log que no se puede
 escribir no tumba un deploy que salio bien: es una ayuda, no una dependencia.
+
+### Estado del sync de artefactos root
+
+Debajo del boton, el desplegable muestra la ultima corrida **buena** del sync
+(`deploy-sync.json`): el SHA instalado y cuanto hace. El sync es fail-open y no
+escribe estado cuando falla, asi que no hay un "fallo" que leer: lo que el panel
+avisa es que **no completa una corrida** desde hace mas de 36 horas
+(`UPDATE_SYNC_MAX_AGE`), que es el sintoma real de un timer roto. Ahi la linea pasa
+a rojo.
+
+Sin el archivo, el sync no esta instalado en el servidor y la linea no aparece.
 
 ### Archivos y permisos
 
@@ -1187,7 +1210,8 @@ que el último refresco del timer). El helper luego:
 render roto), el deploy **no** aborta — el script instalado actual sigue siendo
 root-owned y conocido — y `missing_units` detecta cualquier unidad ausente como
 red de seguridad. `webcmp-deploy --check` muestra el SHA instalado contra el
-último del espejo, y el panel puede exponer la diferencia.
+último del espejo, y el panel muestra la ultima corrida buena (ver «Estado del
+sync de artefactos root»).
 
 ### Diagnosticar el sync
 
