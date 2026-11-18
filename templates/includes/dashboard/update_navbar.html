@@ -31,7 +31,7 @@
               id="update-navbar-spinner"
               role="status"
               aria-label="Desplegando"></span>
-        <span class="badge bg-red-lt badge-pill position-absolute top-0 start-100 translate-middle d-none"
+        <span class="update-dot update-dot-red position-absolute top-0 start-100 translate-middle d-none"
               id="update-navbar-badge"
               aria-hidden="true"></span>
       </span>
@@ -187,6 +187,26 @@
 
     .update-console-journal {
       color: light-dark(#4b5563, #9ca3af);
+    }
+
+    /* Punto de aviso sobre el icono del navbar. Es un indicador, no un badge de
+       texto: por eso va en color pleno y no en el light variant `-lt`, que
+       mezcla solo un 10% del color y dejaba un punto de 8px casi blanco sobre
+       el navbar claro. El anillo usa la superficie del tema, asi que el punto
+       se despega del icono tanto en tema claro como oscuro. */
+    .update-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px var(--tblr-bg-surface);
+    }
+
+    .update-dot-red {
+      background-color: var(--tblr-red);
+    }
+
+    .update-dot-blue {
+      background-color: var(--tblr-blue);
     }
   </style>
   <div class="modal fade"
