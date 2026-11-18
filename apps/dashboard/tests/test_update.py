@@ -1737,3 +1737,15 @@ class DashboardUpdateScriptTest(TestCase):
             ),
         }
         self.assertEqual(con_cancelar, esperados)
+
+    def test_el_modal_de_suscripciones_no_tiene_footer(self):
+        # El modal solo muestra la tabla de suscripciones: la X del header
+        # es la unica salida, sin un boton gris repetido al pie.
+        html = (
+            Path(settings.BASE_DIR) / 'templates/includes/dashboard/resumen_comercial.html'
+        ).read_text(encoding='utf-8')
+        modal = html.split('id="subscriptionsModal"', 1)[1]
+
+        self.assertNotIn('<div class="modal-footer">', modal)
+        self.assertNotIn('data-bs-dismiss="modal">Cerrar</button>', modal)
+        self.assertIn('aria-label="Cerrar"', modal)
