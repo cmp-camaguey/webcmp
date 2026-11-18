@@ -45,6 +45,7 @@
   var logModal = document.getElementById('update-log-modal');
   var logNote = document.getElementById('update-log-note');
   var logPre = document.getElementById('update-log-pre');
+  var attemptLabel = document.getElementById('update-log-attempt');
 
   var timer = null;
 
@@ -260,26 +261,55 @@
   // El ultimo intento es contexto, nunca el titulo del desplegable: el archivo
   // de estado conserva el ultimo `ok` o `failed` hasta el intento siguiente, y
   // usarlo de titulo anunciaria como presente algo que ya paso.
-  function ultimoIntento(run, chip) {
+  //
+  // Sin version a proposito: el chip ya la muestra, y repetirla aca es el mismo
+  // ruido que "Ahora se esta sirviendo vX" que se saco del estado completado.
+  function ultimoIntento(run) {
     if (!run || !run.status) {
       return '';
     }
     if (run.status === 'failed') {
-      // El intento fallo pero el servidor no esta en ese commit: se actualizo
-      // por otra via. Decir "el commit anterior sigue sirviendo" seria falso.
-      return 'El último intento falló; el servidor ya sirve ' + (chip || 'otro commit') + '.';
+      // El servidor no esta en el commit que fallo: se actualizo por otra via.
+      // Decir "el commit anterior sigue sirviendo" seria falso.
+      return 'El último intento falló; el detalle está en «Ver log del despliegue».';
     }
     if (run.status === 'ok') {
       var cuando = hace(run.finished_at || run.started_at);
-      return 'Último despliegue: ' + (chip || '—') + (cuando ? ' · ' + cuando : '') + '.';
+      return 'Último despliegue' + (cuando ? ': ' + cuando : '') + '.';
     }
     return '';
+  }
+
+  // Que intento es el log que muestra el modal. El archivo del log es del
+  // ultimo intento, no necesariamente del commit pendiente: sin esto el lector
+  // cree que esta viendo el despliegue que todavia no corrio.
+  function paintAttempt(state) {
+    if (!attemptLabel) {
+      return;
+    }
+    var run = state.last_run || {};
+    var partes = [];
+    // La version solo cuando el intento es del commit que se esta sirviendo:
+    // para otro commit la version no se puede deducir del tag actual.
+    if (run.sha && run.sha === state.deployed && state.deployed_version) {
+      partes.push(state.deployed_version);
+    }
+    if (run.sha) {
+      partes.push(run.sha.slice(0, 7));
+    }
+    var cuando = hace(run.finished_at || run.started_at);
+    if (cuando) {
+      partes.push(cuando);
+    }
+    attemptLabel.textContent = partes.length ? partes.join(' · ') : 'sin intento registrado';
   }
 
   function render(state) {
     // Antes de cualquier pintado: si el estado dejo de ser `available`, la
     // lista vieja tiene que desaparecer, no quedarse pegada al desplegable.
     paintCommits(state);
+    // La barra del modal dice de que intento es el log que se va a leer.
+    paintAttempt(state);
 
     var run = state.last_run || {};
     var chip = chipVersion(state);
@@ -301,19 +331,19 @@
     }
 
     if (state.state === 'available') {
-      // Con tag exacto el boton y el detalle nombran la version; sin el, el
-      // rango de SHA de siempre. El detalle lleva el SHA corto del commit que
-      // se instala, para que el operador pueda contrastarlo con el tag.
+      // `available` no es una alarma: es una accion pendiente. El punto azul lo
+      // separa del rojo de `failed`, que si es un problema.
       var target = state.version;
       paint({
-        badge: 'red',
+        badge: 'blue',
         icon: 'ti ti-download',
         title: 'Actualización disponible',
-        message:
-          state.deployed_short + ' → ' + state.latest_short + (target ? ' · ' + target : ''),
-        detail: target
-          ? 'Instala ' + target + ' (' + state.latest_short + ')…'
-          : 'Instala el último commit de main en este servidor.',
+        // Solo el rango de SHA: la version vive en el chip y en el boton, y
+        // repetirla aca era el mismo ruido que el detalle de "Instala vX (sha)".
+        message: state.deployed_short + ' → ' + state.latest_short,
+        // Sin tag exacto el chip muestra el SHA y el boton dice "Actualizar
+        // ahora": ahi si hace falta decir que instala, porque nada mas lo dice.
+        detail: target ? '' : 'Instala el último commit de main en este servidor.',
         action: true,
         buttonLabel: target ? 'Actualizar a ' + target : null,
         // El log del intento anterior es de otro commit: no se ofrece.
@@ -335,8 +365,9 @@
         icon: 'ti ti-alert-triangle',
         title: 'El despliegue falló',
         message: run.message || 'El despliegue falló.',
-        detail:
-          'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo; puedes reintentar.',
+        // El mensaje del backend ya manda al log; repetirlo aca era decirlo dos
+        // veces en dos renglones seguidos.
+        detail: 'El commit anterior sigue sirviendo; puedes reintentar.',
         action: true,
         // El reintento vuelve a desplegar el mismo commit pendiente: con tag
         // exacto el boton nombra la version, igual que en `available`.
@@ -353,10 +384,12 @@
     if (state.state === 'up_to_date') {
       paint({
         icon: 'ti ti-check',
-        message: 'El servidor está al día (' + (chip || '—') + ').',
+        // La version va en el chip, que esta al lado: entre parentesis aca era
+        // la misma version dos veces en el mismo renglon.
+        message: 'El servidor está al día.',
         // El estado manda; el ultimo intento va aca, como contexto, y no como
         // titulo. Sin intento previo no hay nada que contar.
-        detail: ultimoIntento(run, chip),
+        detail: ultimoIntento(run),
         versionText: chip,
       });
       return;

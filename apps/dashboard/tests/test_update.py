@@ -913,6 +913,18 @@ class DashboardNavbarTest(UpdateTestCase):
         self.assertIn('var(--tblr-code-bg)', html)
         self.assertIn('var(--tblr-heading-color)', html)
 
+    def test_el_modal_identifica_el_intento_del_log(self):
+        # La barra del terminal dice de que intento es el log que se va a leer;
+        # el JS lo pinta con textContent, nunca con innerHTML.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-log-attempt"', html)
+        self.assertIn('update-console-attempt', html)
+
     def test_el_aviso_no_se_renderiza_para_no_superusuario(self):
         self.client.force_login(self.plain)
 
@@ -1175,7 +1187,7 @@ class DashboardUpdateScriptTest(TestCase):
         self.assertNotIn('if (run.status', render_body)
         self.assertIn("if (state.state === 'failed')", render_body)
         # El intento pasa a ser detalle del estado, que es lo que se ve.
-        self.assertIn('detail: ultimoIntento(run, chip)', render_body)
+        self.assertIn('detail: ultimoIntento(run)', render_body)
         self.assertNotIn('Despliegue completado', source)
         self.assertNotIn('Ahora se está sirviendo', source)
         # Y solo se usa para armar ese texto de contexto.
@@ -1193,6 +1205,44 @@ class DashboardUpdateScriptTest(TestCase):
         self.assertIn('function hace(iso)', source)
         self.assertIn('isNaN(fecha.getTime())', source)
         self.assertIn("'hace ' + minutos + ' min'", source)
+
+    def test_solo_el_fallo_se_anuncia_en_rojo(self):
+        # `available` es una accion pendiente, no una alarma: el punto azul lo
+        # separa del rojo de `failed`. Antes los dos eran rojos y el navbar
+        # gritaba error cuando solo habia algo por actualizar.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+        render_body = source.split('function render(')[1]
+
+        self.assertEqual(render_body.count("badge: 'red'"), 1)
+        self.assertIn("badge: 'blue'", render_body)
+
+    def test_la_version_del_desplegable_se_muestra_una_sola_vez(self):
+        # La version estaba en el chip, en el rango, en el detalle y en el
+        # boton. Queda el chip (y el boton, que es la accion); el rango pasa a
+        # ser solo de SHA.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertNotIn("' · ' + target", source)
+        self.assertNotIn("'El servidor está al día ('", source)
+        self.assertNotIn("'Instala ' + target", source)
+
+    def test_el_modal_dice_de_que_intento_es_el_log(self):
+        # El archivo del log es del ultimo intento, no necesariamente del
+        # commit pendiente. Sin identificarlo, el lector cree que esta viendo el
+        # despliegue que todavia no corrio.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn('function paintAttempt(state)', source)
+        self.assertIn('attemptLabel.textContent', source)
+        self.assertIn("'sin intento registrado'", source)
+        # La version solo se deduce cuando el intento es del commit servido.
+        self.assertIn('run.sha === state.deployed', source)
         self.assertIn('createElement', source)
 
     def test_el_script_no_revienta_si_falta_la_lista(self):
@@ -1238,4 +1288,4 @@ class DashboardUpdateScriptTest(TestCase):
             encoding='utf-8'
         )
 
-        self.assertIn("dist/js/dashboard-update.js' %}?v=2", html)
+        self.assertIn("dist/js/dashboard-update.js' %}?v=3", html)
