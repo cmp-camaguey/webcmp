@@ -31,6 +31,7 @@
   var text = document.getElementById('update-navbar-text');
   var detail = document.getElementById('update-navbar-detail');
   var button = document.getElementById('update-navbar-button');
+  var logButton = document.getElementById('update-navbar-log');
   var commitsBox = document.getElementById('update-navbar-commits');
   var progressBox = document.getElementById('update-navbar-progress');
   var progressBar = document.getElementById('update-navbar-progress-bar');
@@ -160,11 +161,15 @@
   }
 
   function paint(options) {
-    // `badge` es la senal: un punto rojo en el navbar. El resto del texto vive
-    // dentro del desplegable, que solo se ve si el admin lo abre.
+    // `badge` es la senal: un punto sobre el icono del navbar. El resto del
+    // texto vive dentro del desplegable, que solo se ve si el admin lo abre.
+    //
+    // El punto lleva color pleno (`update-dot-<color>`), no el light variant
+    // `-lt`: ese mezcla un 10% del color y sobre el navbar claro dejaba un
+    // rosa palido de 8px que no se distinguia.
     badge.className =
-      'badge badge-pill position-absolute top-0 start-100 translate-middle ' +
-      (options.badge ? 'bg-' + options.badge + '-lt' : 'd-none');
+      'update-dot position-absolute top-0 start-100 translate-middle' +
+      (options.badge ? ' update-dot-' + options.badge : '');
     badge.classList.toggle('d-none', !options.badge);
 
     icon.className = 'icon ' + (options.icon || 'ti ti-refresh');
@@ -205,6 +210,14 @@
     // El label por defecto, o el que arma `render` con la version exacta del
     // tag. El tag ya trae su `v`: aca no se compone ningun formato.
     button.textContent = options.buttonLabel || 'Actualizar ahora';
+
+    // El log solo cuando el archivo corresponde a lo que se ve. Con una
+    // actualizacion pendiente el log es del intento anterior —otro commit— y
+    // mostrarlo hace creer que el despliegue que falta ya corrio. En exito,
+    // fallo y despliegue en curso si sirve.
+    if (logButton) {
+      logButton.classList.toggle('d-none', Boolean(options.hideLog));
+    }
   }
 
   // Version que muestra el chip: la que se esta instalando (tag exacto del
@@ -258,6 +271,8 @@
           : 'Instala el último commit de main en este servidor.',
         action: true,
         buttonLabel: target ? 'Actualizar a ' + target : null,
+        // El log del intento anterior es de otro commit: no se ofrece.
+        hideLog: true,
         versionText: chip,
       });
       return;
@@ -289,11 +304,12 @@
     }
 
     if (run.status === 'ok') {
+      // Sin detalle: el chip de arriba ya dice que version se sirve, y repetir
+      // "ahora se esta sirviendo vX.Y.Z" debajo del boton del log sobra.
       paint({
         icon: 'ti ti-check',
         title: 'Despliegue completado',
         message: run.message || 'Despliegue completado.',
-        detail: 'Ahora se está sirviendo ' + (chip || 'el nuevo commit') + '.',
         versionText: chip,
       });
       return;

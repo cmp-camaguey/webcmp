@@ -803,6 +803,29 @@ class DashboardNavbarTest(UpdateTestCase):
 
         self.assertNotIn('{#', html)
 
+    def test_el_punto_de_aviso_usa_color_pleno(self):
+        # El light variant `-lt` mezcla solo un 10% del color. El badge de
+        # notificaciones lo lleva a proposito porque tiene el conteo encima; el
+        # punto de actualizaciones va vacio, y ahi el `-lt` dejaba un punto de
+        # 8px casi blanco sobre el navbar claro.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        # Se mira la clase del elemento exacto: el resto de la pagina tiene
+        # otros badge `-lt` que no son parte de este cambio.
+        antes, _, _ = html.partition('id="update-navbar-badge"')
+        clase = antes.rsplit('class="', 1)[-1].split('"', 1)[0]
+
+        self.assertIn('update-dot-red', clase)
+        self.assertNotIn('-lt', clase)
+
+        # Y el color tiene que estar definido en el bloque de estilos.
+        self.assertIn('background-color: var(--tblr-red)', html)
+        self.assertIn('box-shadow: 0 0 0 2px var(--tblr-bg-surface)', html)
+
     def test_el_desplegable_tiene_el_contenedor_de_mensajes(self):
         # El JS busca `#update-navbar-commits`; si el contenedor desaparece del
         # template, la lista se queda sin donde pintarse y falla en silencio.
@@ -1127,6 +1150,16 @@ class DashboardUpdateScriptTest(TestCase):
 
         self.assertNotRegex(source, r'\.innerHTML\s*=')
         self.assertNotIn('insertAdjacentHTML', source)
+
+    def test_el_punto_del_navbar_no_usa_el_light_variant(self):
+        # Regresion: con `bg-<color>-lt` el punto se mezclaba al 10% y no se
+        # veia sobre el navbar claro. El color pleno lo resuelve desde el JS.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("' update-dot-' + options.badge", source)
+        self.assertNotIn("'bg-' + options.badge + '-lt'", source)
         self.assertIn('createElement', source)
 
     def test_el_script_no_revienta_si_falta_la_lista(self):
@@ -1172,4 +1205,4 @@ class DashboardUpdateScriptTest(TestCase):
             encoding='utf-8'
         )
 
-        self.assertIn("dist/js/dashboard-update.js' %}?v=1", html)
+        self.assertIn("dist/js/dashboard-update.js' %}?v=2", html)
