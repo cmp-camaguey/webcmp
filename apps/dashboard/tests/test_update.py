@@ -12,6 +12,7 @@ el proceso web (`webcmp`) comparten a traves de archivos:
 
 import json
 import os
+import re
 import tempfile
 import urllib.error
 from datetime import UTC, datetime, timedelta
@@ -1597,3 +1598,49 @@ class DashboardUpdateScriptTest(TestCase):
         )
 
         self.assertIn("dist/js/dashboard-update.js' %}?v=6", html)
+
+    def test_todos_los_modales_ignoran_escape_y_clic_fuera(self):
+        # Un Escape o un clic en el backdrop cierra un modal de confirmacion
+        # sin que nadie confirme nada. La X sigue siendo la salida explicita:
+        # todos los modales del sitio llevan la data API de cierre.
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        apertura = re.compile(r'<div\s+class="modal[^"]*fade"[^>]*>', re.DOTALL)
+        ofensores = []
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                for match in apertura.finditer(path.read_text(encoding='utf-8')):
+                    tag = match.group(0)
+                    if (
+                        'data-bs-backdrop="static"' not in tag
+                        or 'data-bs-keyboard="false"' not in tag
+                    ):
+                        ofensores.append(str(path.relative_to(base)))
+
+        self.assertEqual(
+            sorted(set(ofensores)),
+            [],
+            'modales sin backdrop static / keyboard false en: ' + ', '.join(sorted(set(ofensores))),
+        )
+
+    def test_el_modal_de_confirmacion_sigue_el_estilo_del_dashboard(self):
+        # Mismo lenguaje visual que los modales de confirmacion del panel:
+        # blur, roles ARIA y header con color. El aviso de despliegue no es
+        # destructivo (el ejecutor revierte), asi que usa warning, no danger.
+        # Ademas solo se cierra con la X: sin Cancelar y sin Escape/backdrop.
+        html = (
+            Path(settings.BASE_DIR) / 'templates/includes/dashboard/update_navbar.html'
+        ).read_text(encoding='utf-8')
+        modal = html.split('id="update-confirm-modal"', 1)[1]
+        apertura = re.compile(r'<div\s+class="modal[^"]*fade"[^>]*>', re.DOTALL)
+        tag = next(t for t in apertura.findall(html) if 'id="update-confirm-modal"' in t)
+
+        self.assertIn('class="modal modal-blur fade"', tag)
+        self.assertIn('role="dialog"', tag)
+        self.assertIn('data-bs-backdrop="static"', tag)
+        self.assertIn('data-bs-keyboard="false"', tag)
+        self.assertIn('role="document"', modal)
+        self.assertIn('class="modal-header bg-warning text-dark"', modal)
+        self.assertIn('aria-label="Cerrar"', modal)
+        self.assertNotIn('>Cancelar</button>', modal)
+        self.assertIn('id="update-confirm-deploy"', modal)
