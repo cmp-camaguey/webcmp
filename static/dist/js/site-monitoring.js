@@ -218,9 +218,6 @@
       badge.textContent = status.level || EMPTY
     }
 
-    var dot = document.querySelector('[data-status-dot]')
-    if (dot) replaceColorClasses(dot, 'status-', color)
-
     var reasons = status.reasons || []
     var level = status.level || ''
     var alert = document.querySelector('[data-status-alert]')
@@ -401,13 +398,22 @@
     })
   }
 
-  function initChart(key, elementId, seriesId, name, noun) {
+  // `requests_per_minute` ya calcula avg_ms por minuto: los minutos sin
+  // peticiones no tienen latencia y se dejan como hueco, no como cero.
+  function chartLatency(series) {
+    return series.map(function (point) {
+      if (point.avg_ms === null || point.avg_ms === undefined) return null
+      return Number(point.avg_ms) || 0
+    })
+  }
+
+  function initChart(key, elementId, seriesId, name, noun, withLatency) {
     if (!window.ApexCharts) return
     var element = document.getElementById(elementId)
     var series = chartSeries(seriesId)
     if (!element || !series) return
     var theme = document.documentElement.getAttribute('data-bs-theme') || 'light'
-    var chart = new window.ApexCharts(element, {
+    var options = {
       chart: {
         type: 'area',
         height: 150,
@@ -442,7 +448,7 @@
         min: 0,
         forceNiceScale: true,
         labels: {
-          style: { colors: 'var(--tblr-secondary)', fontSize: '11px', fontFamily: 'inherit' },
+          style: { colors: 'var(--tblr-body-color)', fontSize: '11px', fontFamily: 'inherit' },
           formatter: function (value) {
             return Math.round(value)
           }
@@ -450,7 +456,7 @@
       },
       tooltip: {
         theme: theme,
-        shared: false,
+        shared: Boolean(withLatency),
         intersect: false,
         fillSeriesColor: false,
         title: {
@@ -468,12 +474,45 @@
               return ''
             }
           },
-          formatter: function (value) {
+          formatter: function (value, opts) {
+            if (withLatency && opts && opts.seriesIndex === 1) {
+              return value === null || value === undefined ? EMPTY : Math.round(value) + ' ms'
+            }
             return value + ' ' + (value === 1 ? noun : noun + 's')
           }
         }
       }
-    })
+    }
+    if (withLatency) {
+      options.series.push({ name: 'Latencia media', data: chartLatency(series) })
+      options.colors.push('var(--tblr-warning)')
+      options.stroke = { curve: 'smooth', width: [2, 2], dashArray: [0, 4], lineCap: 'round' }
+      options.legend = {
+        show: true,
+        position: 'top',
+        horizontalAlign: 'right',
+        fontSize: '11px',
+        // Sin esto ApexCharts cae en chart.foreColor (gris oscuro), ilegible
+        // con el tema oscuro de Tabler. La variable sigue el cambio de tema.
+        labels: { colors: 'var(--tblr-body-color)' },
+        markers: { width: 8, height: 8 }
+      }
+      options.yaxis = [
+        options.yaxis,
+        {
+          min: 0,
+          opposite: true,
+          forceNiceScale: true,
+          labels: {
+            style: { colors: 'var(--tblr-body-color)', fontSize: '11px', fontFamily: 'inherit' },
+            formatter: function (value) {
+              return Math.round(value) + ' ms'
+            }
+          }
+        }
+      ]
+    }
+    var chart = new window.ApexCharts(element, options)
     chart.render()
     charts[key] = chart
   }
@@ -484,7 +523,8 @@
       'monitoringHttpChart',
       'monitoring-http-series',
       'Peticiones',
-      'petición'
+      'petición',
+      true
     )
     initChart(
       'traffic',
@@ -495,11 +535,18 @@
     )
   }
 
-  function updateChart(key, series) {
+  function updateChart(key, series, withLatency) {
     var chart = charts[key]
     if (!chart || !Array.isArray(series)) return
     chart.updateOptions({ xaxis: { categories: chartLabels(series) } }, false, false)
-    chart.updateSeries([{ data: chartValues(series) }], false)
+    var current = chart.w && chart.w.config && chart.w.config.series
+    var updated = [
+      { name: current && current[0] ? current[0].name : null, data: chartValues(series) }
+    ]
+    if (withLatency) {
+      updated.push({ name: 'Latencia media', data: chartLatency(series) })
+    }
+    chart.updateSeries(updated, false)
   }
 
   function renderRows(tbody, rows) {
@@ -526,6 +573,48 @@
         row.appendChild(cell)
       })
       tbody.appendChild(row)
+    })
+  }
+
+  // Dispositivos y navegadores llevan una barra de distribución. `renderRows`
+  // reconstruye el tbody con textContent y se llevaría la barra del template
+  // por delante en el primer refresco, así que estos dos tienen renderer propio.
+  function renderShareRows(tbody, rows, total) {
+    if (!tbody) return
+    tbody.innerHTML = ''
+    if (rows.length === 0) {
+      var emptyRow = document.createElement('tr')
+      var emptyCell = document.createElement('td')
+      emptyCell.colSpan = 2
+      emptyCell.className = 'text-secondary'
+      emptyCell.textContent = 'Sin datos todav\u00eda.'
+      emptyRow.setAttribute('data-empty-row', '')
+      emptyRow.appendChild(emptyCell)
+      tbody.appendChild(emptyRow)
+      return
+    }
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr')
+      var labelCell = document.createElement('td')
+      var label = document.createElement('div')
+      label.textContent = row.label
+      var bar = document.createElement('div')
+      bar.className = 'progress progress-sm monitoring-share-bar mt-1'
+      bar.setAttribute('aria-hidden', 'true')
+      var fill = document.createElement('div')
+      fill.className = 'progress-bar'
+      fill.style.width = (total > 0 ? (100 * (Number(row.count) || 0)) / total : 0) + '%'
+      bar.appendChild(fill)
+      labelCell.appendChild(label)
+      labelCell.appendChild(bar)
+
+      var countCell = document.createElement('td')
+      countCell.className = 'text-end align-top'
+      countCell.textContent = row.count === null || row.count === undefined ? EMPTY : String(row.count)
+
+      tr.appendChild(labelCell)
+      tr.appendChild(countCell)
+      tbody.appendChild(tr)
     })
   }
 
@@ -629,12 +718,6 @@
       referrers: ((traffic.referrers || {}).hosts || []).map(function (row) {
         return [row.label, row.count]
       }),
-      devices: (traffic.devices || []).map(function (row) {
-        return [row.label, row.count]
-      }),
-      browsers: (traffic.browsers || []).map(function (row) {
-        return [row.browser, row.count]
-      }),
       errors: ((snapshot.errors || {}).items || []).map(function (row) {
         return [row.at, row.message, row.path]
       })
@@ -645,6 +728,20 @@
       renderRows(tbody, tables[name])
       applyPage(tbody)
     })
+
+    var pageviews = Number(traffic.pageviews_30m) || 0
+    renderShareRows(
+      document.querySelector('[data-table="devices"]'),
+      traffic.devices || [],
+      pageviews
+    )
+    renderShareRows(
+      document.querySelector('[data-table="browsers"]'),
+      (traffic.browsers || []).map(function (row) {
+        return { label: row.browser, count: row.count }
+      }),
+      pageviews
+    )
 
     var empty = document.querySelector('[data-traffic-empty]')
     if (empty) empty.classList.toggle('d-none', Boolean(traffic.has_data))
@@ -661,7 +758,7 @@
       var badge = block.querySelector('[data-vital-badge]')
       if (badge) {
         setBadge(badge, STATE_COLORS[metric.rating] || 'secondary')
-        badge.textContent = metric.rating || 'sin datos'
+        badge.textContent = metric.rating_label || 'sin datos'
       }
 
       var distribution = metric.distribution || {}
@@ -689,7 +786,7 @@
     applyVitals(snapshot)
     applyTables(snapshot)
     if (snapshot.http && snapshot.http.series) {
-      updateChart('http', snapshot.http.series)
+      updateChart('http', snapshot.http.series, true)
     }
     if (snapshot.traffic && snapshot.traffic.series) {
       updateChart('traffic', snapshot.traffic.series)
@@ -739,7 +836,7 @@
     if (!toggleButton) return
     toggleButton.querySelector('i').className = paused
       ? 'icon ti ti-player-play me-1'
-      : 'icon ti ti-pause me-1'
+      : 'icon ti ti-player-pause me-1'
     var label = toggleButton.querySelector('[data-toggle-label]')
     if (label) label.textContent = paused ? 'Reanudar' : 'Pausar'
     if (paused) {
