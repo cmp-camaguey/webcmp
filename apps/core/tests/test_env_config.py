@@ -582,13 +582,13 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
 
         self.assertEqual(self._column_of(html, 'INVOICE_PENDING_REMINDER_DAYS'), 'col-12')
 
-    def test_save_button_is_labelled_guardar(self):
-        """Solo hay dos verbos en la página: "Guardar" escribe y "Aplicar cambios" reinicia."""
+    def test_primary_button_is_labelled_aceptar(self):
+        """Solo hay dos verbos en la página: "Aceptar" escribe y "Aplicar cambios" reinicia."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        self.assertIn('</i> Guardar', html)
-        self.assertNotIn('Aceptar', html)
+        self.assertIn('</i> Aceptar', html)
+        self.assertNotIn('</i> Guardar', html)
 
     def test_ftp_section_stays_in_a_single_column(self):
         """El bloque FTP va en una sola columna: host, puerto, usuario y clave."""
@@ -845,13 +845,12 @@ class EnvApplyPendingRequestTests(SimpleTestCase):
 
 
 class EnvironmentApplyViewTests(EnvironmentViewTestBase):
-    """El botón "Aplicar cambios": guarda y pide el reinicio en un solo paso."""
+    """El botón "Aplicar": guarda y pide el reinicio en un solo paso."""
 
     def setUp(self):
         super().setUp()
-        # El reinicio baja el sitio unos segundos, así que solo se permite en la
-        # ventana de mantenimiento. Los casos de esta clase parten de ahí.
-        self._set_maintenance(True)
+        # Aplicar enciende el mantenimiento por su cuenta: los casos parten del
+        # sitio en marcha, que es como el operador llega al panel.
         self.request_path = Path(self.tempdir) / 'apply-request'
         self.status_path = Path(self.tempdir) / 'apply-status.json'
         override = override_settings(
@@ -939,9 +938,6 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
     def test_staff_without_superuser_cannot_request_the_restart(self):
         self.client.force_login(self.superuser)
         payload = self._payload()
-        # Sin mantenimiento el middleware no tapa la respuesta: el 403 lo da el
-        # control de acceso de la vista, no la página de mantenimiento.
-        self._set_maintenance(False)
         self.client.force_login(self.staff)
 
         response = self.client.post(self.apply_url, payload)
@@ -955,7 +951,7 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         response = self.client.get(self.url)
 
         self.assertTrue(response.context['can_apply'])
-        self.assertContains(response, 'Aplicar cambios')
+        self.assertContains(response, '</i> Aplicar')
         self.assertContains(response, f'formaction="{self.apply_url}"')
 
     def test_page_disables_the_button_without_the_watcher(self):
@@ -980,14 +976,14 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
 
         self.assertContains(self.client.get(self.url), 'Último reinicio completado')
 
-    def test_page_disables_the_button_outside_the_maintenance_window(self):
-        self._set_maintenance(False)
+    def test_page_offers_the_apply_button_without_maintenance(self):
+        """El operador ya no tiene que activar el mantenimiento a mano."""
         self.client.force_login(self.superuser)
 
         response = self.client.get(self.url)
 
-        self.assertFalse(response.context['can_apply'])
-        self.assertContains(response, 'solo se habilita con el sitio en mantenimiento')
+        self.assertTrue(response.context['can_apply'])
+        self.assertContains(response, '</i> Aplicar')
 
     def test_page_warns_when_the_request_was_never_picked_up(self):
         """El síntoma del servidor sin la unidad: se pidió y no muestra nada."""
@@ -1007,26 +1003,68 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         response = self.client.post(self.apply_url, self._payload(), follow=True)
 
         self.assertNotContains(response, 'quedó sin recoger')
-        self.assertContains(response, f'href="{reverse("core:site_configuration")}"')
+        self.assertContains(response, reverse('core:environment_maintenance_disable'))
 
-    def test_apply_is_refused_outside_the_maintenance_window(self):
-        self._set_maintenance(False)
+    def test_apply_enables_maintenance_before_the_restart(self):
         self.client.force_login(self.superuser)
-        before = self.env_path.read_text(encoding='utf-8')
 
         response = self.client.post(self.apply_url, self._payload(NOTIFICATIONS_MAX_VISIBLE='25'))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.env_path.read_text(encoding='utf-8'), before)
-        self.assertFalse(self.request_path.exists())
-        self.assertContains(response, 'Active el modo mantenimiento')
-        self.assertNotIn(
-            'Parámetros actualizados',
-            ActivityLog.objects.values_list('message', flat=True),
-        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+        self.assertTrue(self.request_path.exists())
+        self.assertIn('NOTIFICATIONS_MAX_VISIBLE=25', self.env_path.read_text(encoding='utf-8'))
 
-    def test_save_still_works_outside_the_maintenance_window(self):
-        self._set_maintenance(False)
+    def test_apply_keeps_an_existing_maintenance_window(self):
+        self._set_maintenance(True)
+        self.client.force_login(self.superuser)
+
+        self.client.post(self.apply_url, self._payload())
+
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_apply_restores_maintenance_when_the_restart_request_fails(self):
+        """Si no se pudo pedir el reinicio, no se deja el sitio apagado."""
+        self.client.force_login(self.superuser)
+        override = override_settings(
+            ENV_APPLY_REQUEST_FILE=Path(self.tempdir) / 'no-existe' / 'apply-request'
+        )
+        override.enable()
+        self.addCleanup(override.disable)
+
+        response = self.client.post(self.apply_url, self._payload(), follow=True)
+
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+        self.assertContains(response, 'el servidor no aceptó la petición de reinicio')
+
+    def test_apply_with_an_invalid_form_does_not_enable_maintenance(self):
+        self.client.force_login(self.superuser)
+
+        self.client.post(self.apply_url, self._payload(SITE_URL='ftp://cmp.cu/'))
+
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_page_offers_two_actions_and_no_cancel_link(self):
+        self.client.force_login(self.superuser)
+
+        html = self.client.get(self.url).content.decode()
+
+        self.assertIn('</i> Aceptar', html)
+        self.assertIn('</i> Aplicar', html)
+        self.assertRegex(html, r'class="btn btn-secondary"\s+data-bs-toggle="modal"')
+        # El modal del navbar compartido tiene su propio "Cancelar"; lo que no
+        # debe quedar es el botón de acción de esta página.
+        self.assertNotIn(f'href="{self.url}" class="btn btn-secondary"', html)
+        self.assertNotIn('ti-x"></i> Cancelar', html)
+        self.assertIn('data-bs-target="#apply-changes-modal"', html)
+        self.assertNotIn('confirm(', html)
+
+    def test_page_shows_the_environment_status_console(self):
+        self.client.force_login(self.superuser)
+
+        self.assertContains(self.client.get(self.url), 'Estado del entorno')
+
+    def test_save_still_works_without_touching_maintenance(self):
         self.client.force_login(self.superuser)
 
         response = self.client.post(self.url, self._payload(NOTIFICATIONS_MAX_VISIBLE='25'))
@@ -1034,3 +1072,67 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('NOTIFICATIONS_MAX_VISIBLE=25', self.env_path.read_text(encoding='utf-8'))
         self.assertFalse(self.request_path.exists())
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+
+class EnvironmentMaintenanceDisableViewTests(EnvironmentViewTestBase):
+    """Salida directa del mantenimiento que enciende el propio panel."""
+
+    def setUp(self):
+        super().setUp()
+        self._set_maintenance(True)
+        self.disable_url = reverse('core:environment_maintenance_disable')
+
+    def _set_maintenance(self, enabled: bool):
+        site = SiteConfiguration.get_instance()
+        site.maintenance_mode = enabled
+        site.save()
+
+    def test_superuser_can_disable_maintenance(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(self.disable_url)
+
+        self.assertRedirects(response, self.url)
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+        self.assertTrue(
+            ActivityLog.objects.filter(
+                message='Modo mantenimiento desactivado desde el panel de entorno'
+            ).exists()
+        )
+
+    def test_staff_cannot_disable_maintenance(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(self.disable_url)
+
+        # Con mantenimiento activo el middleware responde 503 antes de llegar a
+        # la vista; sin la bandera, la vista responde 403 por no ser superusuario.
+        self.assertEqual(response.status_code, 503)
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+        self._set_maintenance(False)
+        self.assertEqual(self.client.post(self.disable_url).status_code, 403)
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_get_is_not_allowed(self):
+        self.client.force_login(self.superuser)
+
+        self.assertEqual(self.client.get(self.disable_url).status_code, 405)
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_page_offers_the_way_out_while_in_maintenance(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, self.disable_url)
+        self.assertContains(response, 'Desactivar mantenimiento')
+
+    def test_page_does_not_offer_the_way_out_without_maintenance(self):
+        self._set_maintenance(False)
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, self.disable_url)

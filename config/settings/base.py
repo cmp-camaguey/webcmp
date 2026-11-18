@@ -619,7 +619,7 @@ UPDATE_SYNC_FILE = os.getenv('UPDATE_SYNC_FILE', '/var/lib/webcmp/deploy-sync.js
 # corrida. El timer corre diario a las 04:30 con `Persistent=true`, asi que 36 h
 # es una corrida perdida con margen: menos que eso avisaria de algo normal.
 UPDATE_SYNC_MAX_AGE = int(os.getenv('UPDATE_SYNC_MAX_AGE', str(36 * 3600)))
-# Boton "Aplicar cambios" del panel de entorno (change 033-entorno-servidor).
+# Boton "Aplicar" del panel de entorno (change 033-entorno-servidor).
 # Mismo mecanismo y mismo directorio: el proceso web escribe la peticion, la
 # unidad `webcmp-apply.path` la recoge y reinicia los servicios. El panel nunca
 # ejecuta `systemctl`; no tiene privilegios y no los pide.
