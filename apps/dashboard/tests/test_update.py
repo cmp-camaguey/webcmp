@@ -100,10 +100,23 @@ class UpdateTestCase(TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def set_sync(self, sha=SHA_DEPLOYED, installed_at=None, installed=3):
+    def set_sync(
+        self,
+        sha=SHA_DEPLOYED,
+        installed_at=None,
+        installed=3,
+        status='ok',
+        failed_at=None,
+    ):
         payload = {'sha': sha, 'installed': installed, 'from': 'refs/heads/main'}
         if installed_at is not None:
             payload['installed_at'] = installed_at
+        if status == 'failed':
+            payload['status'] = 'failed'
+            if failed_at is not None:
+                payload['failed_at'] = failed_at
+        else:
+            payload['status'] = 'ok'
         self.write(self.sync_file, json.dumps(payload))
 
 
@@ -157,9 +170,9 @@ class UpdateStatusViewTest(UpdateTestCase):
         self.assertTrue(sync['matches_deployed'])
 
     def test_un_sync_que_no_completa_una_corrida_se_avisa(self):
-        # Un sync que falla no escribe estado de fallo: se queda el anterior.
-        # La senal honesta es la antiguedad, y a las 36 h ya es una corrida
-        # diaria perdida.
+        # Sin fallo registrado pero con la fecha vieja: el timer no esta
+        # completando sus corridas. La antiguedad es lo unico que queda cuando
+        # no hay fallo escrito, y a las 36 h ya es una corrida diaria perdida.
         self.set_deployed()
         self.set_remote(sha=SHA_DEPLOYED)
         self.set_sync(installed_at=(datetime.now(UTC) - timedelta(days=3)).isoformat())
@@ -169,6 +182,66 @@ class UpdateStatusViewTest(UpdateTestCase):
 
         self.assertTrue(sync['stale'])
         self.assertGreater(sync['age_seconds'], 36 * 3600)
+
+    def test_un_sync_fallido_se_anuncia_como_fallo(self):
+        # El helper escribe su fallo. Sin esto el panel solo podia decir que el
+        # sync no completa corridas, que es cierto pero lejos de la causa.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(
+            status='failed',
+            failed_at=datetime.now(UTC).isoformat(),
+            installed_at=(datetime.now(UTC) - timedelta(days=1)).isoformat(),
+        )
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertTrue(sync['failed'])
+        self.assertEqual(sync['status'], 'failed')
+        self.assertFalse(sync['stale'])
+        self.assertLess(sync['failed_age_seconds'], 3600)
+
+    def test_un_sync_fallido_conserva_el_sha_que_quedo_instalado(self):
+        # El fallo no borra el estado anterior: el panel puede decir que
+        # artefactos siguen sirviendo mientras tanto. Un primer intento que
+        # nunca termino no tiene con que decirlo.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(
+            sha=SHA_DEPLOYED,
+            status='failed',
+            failed_at=datetime.now(UTC).isoformat(),
+            installed_at=(datetime.now(UTC) - timedelta(hours=2)).isoformat(),
+        )
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertEqual(sync['sha'], SHA_DEPLOYED)
+        self.assertTrue(sync['matches_deployed'])
+
+    def test_el_error_del_sync_no_sale_al_navegador(self):
+        # El detalle vive en el journal. El estado no lo reenvia tal cual, igual
+        # que el stderr de git en el fallo de deploy: el archivo lo escribe
+        # root y su texto no es una entrada confiable.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.write(
+            self.sync_file,
+            json.dumps(
+                {
+                    'status': 'failed',
+                    'failed_at': datetime.now(UTC).isoformat(),
+                    'error': 'No se pudo extraer /etc/shadow',
+                }
+            ),
+        )
+        self.client.force_login(self.admin)
+
+        payload = self.client.get(self.status_url).json()
+
+        self.assertNotIn('shadow', json.dumps(payload))
 
     def test_sin_archivo_de_sync_no_se_inventa_un_estado(self):
         # En un servidor sin el sync instalado no hay nada que decir. `None` se
@@ -1371,11 +1444,36 @@ class DashboardUpdateScriptTest(TestCase):
 
         self.assertIn('paintSync(state.sync)', render_body)
         self.assertIn('El sync de artefactos no completa una corrida', source)
-        self.assertIn("syncLine.classList.toggle('text-red', estancado)", source)
+        self.assertIn("syncLine.classList.toggle('text-red', atencion)", source)
         self.assertIn('syncText.textContent', source)
         self.assertNotIn('syncText.innerHTML', source)
         # Sin archivo de sync no se muestra nada: no hay estado que contar.
         self.assertIn("syncLine.classList.add('d-none')", source)
+
+    def test_el_panel_anuncia_un_sync_fallido(self):
+        # El helper escribe su fallo: el panel puede decir que el intento fallo
+        # y no solo que no completa corridas. Tiene prioridad sobre el aviso de
+        # antiguedad, que describe el mismo sintoma de lejos.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn('if (sync.failed)', source)
+        self.assertIn('El último intento del sync falló', source)
+
+    def test_el_aviso_del_navbar_se_anuncia(self):
+        # El punto del navbar es `aria-hidden`: sin esto el lector de pantalla
+        # escucha "actualizaciones del servidor" y nada mas, aunque el estado
+        # sea "el despliegue fallo". El tooltip dice lo mismo.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("root.setAttribute('aria-label', etiqueta)", source)
+        self.assertIn("root.setAttribute('title', etiqueta)", source)
+        # Con la barra de progreso el mensaje esta oculto (la barra ocupa su
+        # lugar): duplicarlo en la etiqueta seria decirlo dos veces.
+        self.assertIn('if (options.message && !options.progress)', source)
         self.assertIn('createElement', source)
 
     def test_el_script_no_revienta_si_falta_la_lista(self):

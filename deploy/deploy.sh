@@ -864,9 +864,19 @@ check_sync_state() {
         check_skip '  Instalar: sudo bash deploy/install-deploy-sync.sh'
         return
     fi
-    local sha installed_at
+    local sha installed_at status failed_at
     sha=$(grep -o '"sha":"[^"]*"' "$sync_state" | cut -d'"' -f4 || true)
     installed_at=$(grep -o '"installed_at":"[^"]*"' "$sync_state" | cut -d'"' -f4 || true)
+    status=$(grep -o '"status":"[^"]*"' "$sync_state" | cut -d'"' -f4 || true)
+    failed_at=$(grep -o '"failed_at":"[^"]*"' "$sync_state" | cut -d'"' -f4 || true)
+    # `status: failed` lo escribe el helper cuando murio (espejo sin el SHA,
+    # red caida, render roto). El deploy no aborto por eso (fail-open), pero el
+    # timer ya no esta dejando el servidor al dia: avisar, no esconder.
+    if [ "$status" = "failed" ]; then
+        check_fail "Sync: el ultimo intento fallo el ${failed_at:-desconocido}"
+        check_fail "  Instalado sigue en ${sha:-desconocido} (${installed_at:-desconocido})"
+        return
+    fi
     if [ -n "$sha" ]; then
         check_ok "Sync: SHA $(printf '%.7s' "$sha") instalado el ${installed_at:-desconocido}"
     else
