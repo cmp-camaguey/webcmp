@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -81,6 +83,59 @@ class SiteMonitoringAccessTests(TestCase):
         self.client.force_login(superuser())
         response = self.client.get(reverse('dashboard:monitoring'))
         self.assertContains(response, 'MONITORING_ENABLED=False')
+
+
+class MonitoringPanelLayoutTests(TestCase):
+    """El rediseño conserva el contrato vivo del panel y es usable en móvil."""
+
+    def setUp(self):
+        SiteConfiguration.objects.get_or_create(defaults={'maintenance_mode': False})
+        self.client.force_login(superuser())
+        self.html = self.client.get(reverse('dashboard:monitoring')).content.decode()
+
+    def test_la_consola_de_estado_expone_los_hooks_del_refresco(self):
+        # El JS busca estos nodos para pausar, refrescar y teñir el estado.
+        # Si el rediseño los pierde, el panel deja de actualizarse en vivo.
+        for marker in (
+            'id="monitoringRoot"',
+            'data-status-label',
+            'data-status-badge',
+            'data-status-dot',
+            'id="monitoringToggle"',
+            'id="monitoringRefresh"',
+            'data-uptime-slots',
+            'data-cores',
+            'data-vital-metric=',
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.html)
+
+    def test_todas_las_tablas_tienen_desbordamiento_horizontal(self):
+        # En una pantalla estrecha las columnas de errores y rutas deben
+        # desplazarse dentro de la tarjeta, no romper el ancho de la página.
+        for name in ('top_pages', 'referrers', 'devices', 'browsers', 'errors'):
+            with self.subTest(table=name):
+                self.assertRegex(
+                    self.html,
+                    rf'class="table-responsive">\s*<table[^>]*>\s*'
+                    rf'(?:<thead>[\s\S]*?</thead>\s*)?<tbody data-table="{name}"',
+                )
+
+    def test_los_iconos_decorativos_son_invisibles_para_lectores_de_pantalla(self):
+        # Un icono al lado de una etiqueta no aporta información: anunciarlo
+        # duplica el contenido para quien navega con lector de pantalla.
+        panel = self.html.split('id="monitoringRoot"', 1)[1]
+        iconos = re.findall(r'<i\s+class="icon[^>]*>', panel)
+        self.assertTrue(iconos)
+        for icono in iconos:
+            with self.subTest(icono=icono):
+                self.assertIn('aria-hidden="true"', icono)
+
+    def test_los_encabezados_de_tabla_llevan_scope(self):
+        panel = self.html.split('id="monitoringRoot"', 1)[1]
+        for th in re.findall(r'<th\b[^>]*>', panel):
+            with self.subTest(th=th):
+                self.assertIn('scope="col"', th)
 
 
 class MonitoringClockTests(TestCase):
