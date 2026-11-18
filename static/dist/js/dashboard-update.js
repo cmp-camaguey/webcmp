@@ -587,6 +587,16 @@
     // al final, se conserva su posicion.
     var keep = nearBottom();
     var contenido = payload.log ? String(payload.log) : '(sin salida)';
+    // Cada intento de despliegue empieza con una linea "autodeploy: Desplegando …".
+    // Mostramos solo desde el ultimo inicio para que el modal muestre el log
+    // de la corrida actual y no el historico acumulado.
+    var deployRunStart = contenido.lastIndexOf('autodeploy: Desplegando ');
+    if (deployRunStart !== -1) {
+      // `lastIndexOf` apunta a 'a' de 'autodeploy'. Buscamos el salto de linea
+      // anterior para no partir una linea a la mitad.
+      var nl = contenido.lastIndexOf('\n', deployRunStart - 1);
+      contenido = (nl === -1 ? '' : contenido.substring(nl + 1)) + contenido.substring(deployRunStart);
+    }
     var lineas = contenido.replace(ANSI_COLOR, '').split('\n');
     var fragmento = document.createDocumentFragment();
 

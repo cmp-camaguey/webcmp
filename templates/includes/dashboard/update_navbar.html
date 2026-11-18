@@ -116,6 +116,16 @@
     se cierra con la X del header; el log se recarga solo durante el deploy.
   {% endcomment %}
   <style>
+    /* Tabler 1.5.1 deja `scrollbar-gutter: stable` en html, lo que siempre
+       reserva una franja a la derecha aunque no haya scrollbar. Tabler 1.7.5
+       lo saco porque causaba ese hueco. Anulamos esa regla para que el panel
+       ocupe todo el ancho cuando no hay scroll. Bootstrap ya compensa el salto
+       al abrir el modal con padding-right inline, solo cuando hay scrollbar
+       real. */
+    html {
+      scrollbar-gutter: auto !important;
+    }
+
     /* Consola del log. Tabler no trae un componente terminal: se arma con sus
        variables de tema, que cambian con `data-bs-theme`, en vez de fijar
        `bg-dark`, que ignoraba el tema configurado en el sitio. */
