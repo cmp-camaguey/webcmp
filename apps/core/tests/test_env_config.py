@@ -24,7 +24,9 @@ from apps.core.env_apply import (
 )
 from apps.core.env_config import (
     EDITABLE_FIELDS,
+    SECRET_MASK,
     as_bool,
+    build_env_preview,
     build_environment,
     effective_value,
     same_value,
@@ -155,10 +157,32 @@ class EnvFileTests(TestCase):
 class EnvConfigTests(SimpleTestCase):
     def test_readonly_groups_are_only_the_boot_critical_ones(self):
         environment = build_environment(environ={}, file_values={})
+        # La info de "Aplicación" viaja dentro de la tarjeta editable "Sitio".
         self.assertEqual(
             [group['key'] for group in environment['groups']],
-            ['app', 'domain', 'database', 'cache'],
+            ['domain', 'database', 'cache'],
         )
+
+    def test_editable_sections_have_no_lone_half_width_field(self):
+        """Los campos a media columna van de a pares; un `full` cierra la fila."""
+        grouped: dict[str, list[str]] = {}
+        for spec in EDITABLE_FIELDS:
+            grouped.setdefault(spec.group, []).append(spec.width)
+
+        for group, widths in grouped.items():
+            runs = []
+            current = 0
+            for width in widths:
+                if width == 'full':
+                    if current:
+                        runs.append(current)
+                    current = 0
+                else:
+                    current += 1
+            if current:
+                runs.append(current)
+            for run in runs:
+                self.assertEqual(run % 2, 0, msg=f'{group}: {run} campo(s) suelto(s)')
 
     def test_editable_groups_cover_email_ldap_updates_and_ftp(self):
         groups = []
@@ -292,6 +316,37 @@ class EnvConfigTests(SimpleTestCase):
             self.assertTrue(as_bool(value))
         for value in ('0', 'false', '', None):
             self.assertFalse(as_bool(value))
+
+    def test_env_preview_masks_secrets_and_skips_unknown_keys(self):
+        lines = build_env_preview(
+            {'DEBUG': 'False', 'PRODUCTION': '1', 'EXTERNAL_TOKEN': 'no-debe-aparecer'},
+            {
+                'EMAIL_HOST_PASSWORD': 'claveSmtpSecreta',  # pragma: allowlist secret
+                'OTHER_API_TOKEN': 'otroSecreto',  # pragma: allowlist secret
+            },
+            {},
+            'produccion',
+        )
+        text = '\n'.join(line['text'] for line in lines)
+
+        self.assertIn(f'EMAIL_HOST_PASSWORD={SECRET_MASK}', text)
+        self.assertNotIn('claveSmtpSecreta', text)
+        self.assertNotIn('OTHER_API_TOKEN', text)
+        self.assertNotIn('EXTERNAL_TOKEN', text)
+        self.assertNotIn('otroSecreto', text)
+
+    def test_env_preview_reports_profile_and_unconfigured_secrets(self):
+        lines = build_env_preview({'DEBUG': 'True'}, {}, {}, 'desarrollo')
+        text = '\n'.join(line['text'] for line in lines)
+
+        self.assertIn('# Entorno: desarrollo', text)
+        self.assertIn('DEBUG=True', text)
+        self.assertNotIn('PRODUCTION=', text)
+        self.assertIn('EMAIL_HOST_PASSWORD=(sin configurar)', text)
+
+    def test_env_preview_uses_effective_value_when_key_is_absent(self):
+        lines = build_env_preview({}, {}, {'SITE_URL': 'https://cmp.camaguey.cu/'}, 'pruebas')
+        self.assertIn('SITE_URL=https://cmp.camaguey.cu/', [line['text'] for line in lines])
 
 
 class EnvironmentViewTestBase(TestCase):
@@ -557,26 +612,74 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
             values = {item['label']: item['value'] for item in groups[key]['items']}
             self.assertNotIn('.', values['Motor'])
 
+    def test_sitio_card_carries_the_application_readonly_info(self):
+        """Los datos de arranque viven en la tabla de referencia, sin títulos de tarjeta."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertIn('Referencia', html)
+        self.assertIn('Perfil de configuración', html)
+        self.assertIn('Zona horaria', html)
+        self.assertNotIn('>Aplicación<', html)
+        self.assertNotIn('Sitio y correo', html)
+        self.assertNotIn('En ejecución y secretos fuera del panel', html)
+
     def test_field_width_follows_the_catalog(self):
         """Los valores largos ocupan la fila; los cortos comparten columna."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
         self.assertEqual(self._column_of(html, 'SITE_URL'), 'col-12')
-        self.assertEqual(self._column_of(html, 'LDAP_SERVER_URI'), 'col-12')
+        self.assertEqual(self._column_of(html, 'DEFAULT_FROM_EMAIL'), 'col-12')
         self.assertEqual(self._column_of(html, 'EMAIL_USE_TLS'), 'col-md-6')
         self.assertEqual(self._column_of(html, 'UPDATE_CHECK_TTL'), 'col-md-6')
+        self.assertEqual(self._column_of(html, 'LDAP_SERVER_URI'), 'col-md-6')
 
-    def test_email_port_and_user_take_the_full_column_row(self):
-        """Puerto y usuario SMTP van cada uno en su propia fila."""
+    def test_email_fields_are_grouped_in_pairs(self):
+        """Correo: servidor/puerto, usuario/clave, STARTTLS/TLS y remitente al final."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        for key in ('EMAIL_PORT', 'EMAIL_HOST_USER'):
-            self.assertEqual(self._column_of(html, key), 'col-12', msg=key)
+        for first, second in (
+            ('EMAIL_HOST', 'EMAIL_PORT'),
+            ('EMAIL_HOST_USER', 'EMAIL_HOST_PASSWORD'),
+            ('EMAIL_USE_TLS', 'EMAIL_USE_SSL'),
+        ):
+            self.assertEqual(self._column_of(html, first), 'col-md-6', msg=first)
+            self.assertEqual(self._column_of(html, second), 'col-md-6', msg=second)
+            start = html.index(f'id="id_{first}"')
+            end = html.index(f'id="id_{second}"')
+            self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
 
-    def test_pending_invoice_reminder_takes_the_full_column_row(self):
-        """El recordatorio de factura pendiente va en su propia fila."""
+        self.assertEqual(self._column_of(html, 'DEFAULT_FROM_EMAIL'), 'col-12')
+        self.assertLess(
+            html.index('id="id_EMAIL_USE_SSL"'),
+            html.index('id="id_DEFAULT_FROM_EMAIL"'),
+        )
+
+    def test_ldap_switches_share_the_grid_and_superuser_closes_it(self):
+        """Autenticación LDAP y STARTTLS van juntos; el grupo de superusuarios cierra la fila."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for first, second in (('LDAP_ENABLED', 'LDAP_START_TLS'),):
+            self.assertEqual(self._column_of(html, first), 'col-md-6', msg=first)
+            self.assertEqual(self._column_of(html, second), 'col-md-6', msg=second)
+            start = html.index(f'id="id_{first}"')
+            end = html.index(f'id="id_{second}"')
+            self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
+        self.assertEqual(self._column_of(html, 'LDAP_SUPERUSER_GROUP'), 'col-12')
+
+    def test_notification_switches_are_stacked(self):
+        """La franja de emergencia y los avisos operativos ocupan cada uno su fila."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertEqual(self._column_of(html, 'EMERGENCY_BANNER_ENABLED'), 'col-12')
+        self.assertEqual(self._column_of(html, 'NOTIFICATIONS_ENABLED'), 'col-12')
+
+    def test_pending_invoice_reminder_closes_the_row(self):
+        """El recordatorio de factura pendiente cierra la tarjeta de avisos."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
@@ -590,13 +693,80 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         self.assertIn('</i> Aceptar', html)
         self.assertNotIn('</i> Guardar', html)
 
-    def test_ftp_section_stays_in_a_single_column(self):
-        """El bloque FTP va en una sola columna: host, puerto, usuario y clave."""
+    def test_page_identifies_the_environment_without_offering_a_switcher(self):
+        """Cada servidor muestra su perfil; el panel nunca administra otro host."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        html = response.content.decode()
+
+        self.assertContains(response, 'Entorno actual:')
+        self.assertIn(settings.IS_PRODUCTION and 'Producción' or 'Desarrollo', html)
+        self.assertNotIn('data-variant=', html)
+
+    def test_env_preview_uses_the_deploy_logs_console_style(self):
+        self.env_path.write_text('EMAIL_HOST_PASSWORD=claveSmtpSecreta\n', encoding='utf-8')
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        html = response.content.decode()
+
+        self.assertContains(response, 'Ver como .env')
+        self.assertIn('bg-dark text-white', html)
+        self.assertIn('ti-terminal-2', html)
+        self.assertIn('modal-dialog-scrollable', html)
+        self.assertIn('env-console-body', html)
+        self.assertIn(f'EMAIL_HOST_PASSWORD={SECRET_MASK}', html)
+        self.assertNotIn('claveSmtpSecreta', html)
+
+    def test_ftp_fields_share_the_grid(self):
+        """El switch va solo y host/puerto y usuario/clave FTP comparten fila."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        for key in ('FTP_OBS_HOST', 'FTP_OBS_PORT', 'FTP_OBS_USER', 'FTP_OBS_PASS'):
-            self.assertEqual(self._column_of(html, key), 'col-12', msg=key)
+        self.assertEqual(self._column_of(html, 'OBS_AUTOMATIC'), 'col-12')
+        for first, second in (
+            ('FTP_OBS_HOST', 'FTP_OBS_PORT'),
+            ('FTP_OBS_USER', 'FTP_OBS_PASS'),
+        ):
+            self.assertEqual(self._column_of(html, first), 'col-md-6', msg=first)
+            self.assertEqual(self._column_of(html, second), 'col-md-6', msg=second)
+            start = html.index(f'id="id_{first}"')
+            end = html.index(f'id="id_{second}"')
+            self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
+
+    def test_template_comments_do_not_leak_into_the_page(self):
+        """Los comentarios de plantilla nunca llegan al HTML que ve el operador.
+
+        Django 5.2 solo reconoce `{# ... #}` de una sola linea: uno partido en
+        dos se renderiza como texto visible. Los comentarios largos usan el
+        bloque `{% comment %}` para que no ocurra.
+        """
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for fragment in (
+            'Zona 1:',
+            'Zona 2:',
+            'Zona 3:',
+            'Zona 4:',
+            'No es un selector',
+            'spaceless` evita',
+            'Los switches van solos',
+            'Campos editables de una seccion',
+            'el modal comparte el form',
+            'Preview del .env',
+        ):
+            self.assertNotIn(fragment, html, msg=fragment)
+        self.assertNotIn('{#', html)
+
+    def test_status_badges_use_colored_light_variants(self):
+        """La consola usa bg-*-lt con color; nunca el gris de bg-secondary-lt."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for variant in ('bg-green-lt', 'bg-blue-lt', 'bg-orange-lt'):
+            self.assertIn(variant, html)
+        for variant in ('bg-secondary-lt', 'bg-success-lt', 'bg-warning-lt'):
+            self.assertNotIn(variant, html)
 
     def test_help_text_comes_before_the_running_value(self):
         """El orden es etiqueta, campo, ayuda y por último el valor en ejecución.

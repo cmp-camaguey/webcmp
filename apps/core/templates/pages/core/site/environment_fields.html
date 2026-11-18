@@ -1,0 +1,50 @@
+{% comment %}
+  Campos editables de una seccion. Contexto: `section` de `sections_by_key`.
+  Se incluye desde environment.html para acomodar las secciones por zonas sin
+  repetir el render de cada tipo de campo.
+{% endcomment %}
+<div class="row g-3">
+  {% for row in section.rows %}
+    <div class="{{ row.width_class }}">
+      {% if row.is_secret %}
+        <label class="form-label" for="{{ row.field.id_for_label }}">{{ row.field.label }}</label>
+        <div class="input-group">
+          {{ row.field }}
+          <span class="input-group-text">
+            {% if row.configured %}
+              <span class="badge bg-green-lt">Configurada</span>
+            {% else %}
+              <span class="badge bg-orange-lt">Sin configurar</span>
+            {% endif %}
+          </span>
+        </div>
+        <small class="text-muted d-block mt-1">
+          Dejar en blanco para no cambiarla. El valor guardado nunca se muestra.
+        </small>
+      {% elif row.spec.kind == 'bool' %}
+        {# Los switches van solos: sin ayuda ni valor en ejecución debajo. #}
+        <div class="form-check form-switch">
+          {{ row.field }}
+          <label class="form-check-label" for="{{ row.field.id_for_label }}">{{ row.field.label }}</label>
+        </div>
+      {% else %}
+        <label class="form-label{% if row.field.field.required %}
+                        required{% endif %}"
+               for="{{ row.field.id_for_label }}">{{ row.field.label }}</label>
+        {{ row.field }}
+        {% if row.field.help_text %}
+          <small class="text-muted d-block mt-1">{{ row.field.help_text }}</small>
+        {% endif %}
+        <small class="text-muted d-block mt-1">
+          En ejecución: <code>{{ row.display }}</code>
+          {% if row.pending %}
+            <span class="badge bg-orange-lt ms-1">Pendiente de reinicio</span>
+          {% endif %}
+        </small>
+      {% endif %}
+      {% if row.field.errors %}
+        <div class="invalid-feedback d-block">{{ row.field.errors.0 }}</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>

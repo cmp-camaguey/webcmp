@@ -35,6 +35,7 @@ from apps.core.env_config import (
     EDITABLE_FIELDS,
     EDITABLE_GROUP_TITLES,
     as_bool,
+    build_env_preview,
     build_environment,
     display_value,
 )
@@ -73,6 +74,8 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         )
         watcher_available = can_request(settings.ENV_APPLY_REQUEST_FILE)
         maintenance_mode = self._maintenance_mode()
+        sections = self._sections(form, environment)
+        profile, profile_name = self._profile()
 
         context.update(
             {
@@ -81,7 +84,18 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
                 'segment': 'core:environment_config',
                 'groups': environment['groups'],
                 'secrets': environment['secrets'],
-                'editable_sections': self._sections(form, environment),
+                'editable_sections': sections,
+                # La plantilla acomoda las secciones por clave, no en el orden
+                # plano del formulario: Sitio y Correo comparten tarjeta ancha,
+                # Avisos y Actualizaciones la estrecha, LDAP y FTP van plegados.
+                'sections_by_key': {section['key']: section for section in sections},
+                'environment_profile': profile,
+                'environment_name': profile_name,
+                'env_file_path': str(env_path),
+                'env_preview': build_env_preview(
+                    os.environ, file_values, environment['effective'], profile
+                ),
+                'pending_count': sum(environment['pending'].values()),
                 'form': form,
                 'can_write': can_write,
                 # Sin la unidad systemd instalada, la petición no tiene quién la
@@ -102,6 +116,20 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
             }
         )
         return context
+
+    @staticmethod
+    def _profile() -> tuple[str, str]:
+        """Identidad del servidor que está mirando el operador.
+
+        Cada deployment lee su propio `.env`, asi que este dato es solo
+        identificacion: nunca es un selector ni cruza archivos de otros hosts.
+        La misma precedencia que `config/settings/__init__.py` elige el perfil.
+        """
+        if getattr(settings, 'IS_PRODUCTION', False):
+            return 'produccion', 'Producción'
+        if getattr(settings, 'DEBUG', False):
+            return 'desarrollo', 'Desarrollo'
+        return 'pruebas', 'Pruebas'
 
     def _maintenance_mode(self) -> bool:
         """Bandera del modo mantenimiento.

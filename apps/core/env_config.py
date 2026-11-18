@@ -46,9 +46,10 @@ class EnvField:
     # Texto de ejemplo del input. Vacío en los checkboxes, donde no aplica.
     placeholder: str = ''
     # Ancho en la grilla del panel: 'half' (media columna) o 'full' (fila
-    # completa). Los valores largos —URLs, DN, remitentes— van a lo ancho para
-    # que se lean sin desplazarse; los números y los interruptores comparten
-    # fila. Se declara acá para que la plantilla no tenga una lista paralela.
+    # completa). Solo van a lo ancho las URLs, el remitente y las claves —estas
+    # llevan un badge junto al input—; el resto comparte fila para que el
+    # formulario no se vuelva interminable. Se declara acá para que la
+    # plantilla no tenga una lista paralela.
     width: str = 'half'
     # De dónde sale el valor en ejecución. Casi todo son atributos de
     # `settings`; LDAP se lee del entorno en cada autenticación.
@@ -74,6 +75,7 @@ EDITABLE_FIELDS = (
         label='Franja de aviso de emergencia',
         kind='bool',
         group='notifications',
+        width='full',
         help_text=('Muestra el aviso vigente en el portal público, sin sesión y sin JavaScript.'),
     ),
     EnvField(
@@ -81,6 +83,7 @@ EDITABLE_FIELDS = (
         label='Avisos operativos',
         kind='bool',
         group='notifications',
+        width='full',
         help_text='Apagado no crea avisos nuevos. La poda de los viejos sigue corriendo.',
     ),
     EnvField(
@@ -139,7 +142,6 @@ EDITABLE_FIELDS = (
         label='Servidor SMTP',
         kind='text',
         group='email',
-        width='full',
         placeholder='Ej.: smtp.cmp.cu',
         required=False,
         help_text='Nombre o IP del servidor de correo saliente.',
@@ -149,7 +151,6 @@ EDITABLE_FIELDS = (
         label='Puerto SMTP',
         kind='int',
         group='email',
-        width='full',
         placeholder='Ej.: 587',
         min_value=1,
         max_value=65535,
@@ -161,9 +162,17 @@ EDITABLE_FIELDS = (
         label='Usuario SMTP',
         kind='text',
         group='email',
-        width='full',
         placeholder='Ej.: avisos@cmp.cu',
         required=False,
+    ),
+    EnvField(
+        key='EMAIL_HOST_PASSWORD',
+        label='Contraseña SMTP',
+        kind='password',
+        group='email',
+        placeholder='Ej.: contraseña nueva',
+        required=False,
+        secret=True,
     ),
     EnvField(
         key='EMAIL_USE_TLS',
@@ -178,16 +187,6 @@ EDITABLE_FIELDS = (
         kind='bool',
         group='email',
         help_text='Cifra desde el primer byte. Es el modo del puerto 465.',
-    ),
-    EnvField(
-        key='EMAIL_HOST_PASSWORD',
-        label='Contraseña SMTP',
-        kind='password',
-        group='email',
-        width='full',
-        placeholder='Ej.: contraseña nueva',
-        required=False,
-        secret=True,
     ),
     EnvField(
         key='DEFAULT_FROM_EMAIL',
@@ -224,7 +223,6 @@ EDITABLE_FIELDS = (
         label='Servidor LDAP',
         kind='text',
         group='ldap',
-        width='full',
         placeholder='Ej.: ldap://dc.cmp.cu:389',
         required=False,
         source='environ',
@@ -235,7 +233,6 @@ EDITABLE_FIELDS = (
         label='DN de bind',
         kind='text',
         group='ldap',
-        width='full',
         placeholder='Ej.: cn=admin,dc=cmp,dc=cu',
         required=False,
         source='environ',
@@ -246,7 +243,6 @@ EDITABLE_FIELDS = (
         label='Contraseña de bind',
         kind='password',
         group='ldap',
-        width='full',
         placeholder='Ej.: contraseña nueva',
         required=False,
         source='environ',
@@ -257,7 +253,6 @@ EDITABLE_FIELDS = (
         label='Base de búsqueda de usuarios',
         kind='text',
         group='ldap',
-        width='full',
         placeholder='Ej.: ou=users,dc=cmp,dc=cu',
         required=False,
         source='environ',
@@ -267,7 +262,6 @@ EDITABLE_FIELDS = (
         label='Base de búsqueda de grupos',
         kind='text',
         group='ldap',
-        width='full',
         placeholder='Ej.: ou=groups,dc=cmp,dc=cu',
         required=False,
         source='environ',
@@ -277,7 +271,6 @@ EDITABLE_FIELDS = (
         label='Grupo de staff',
         kind='text',
         group='ldap',
-        width='full',
         placeholder='Ej.: cn=staff,ou=groups,dc=cmp,dc=cu',
         required=False,
         source='environ',
@@ -311,15 +304,6 @@ EDITABLE_FIELDS = (
         help_text='Endpoint que lista los commits pendientes de desplegar.',
     ),
     EnvField(
-        key='UPDATE_BRANCH_REF',
-        label='Rama desplegada',
-        kind='text',
-        group='updates',
-        width='full',
-        placeholder='Ej.: refs/heads/main',
-        help_text='Qué rama se considera la versión publicada.',
-    ),
-    EnvField(
         key='UPDATE_CHECK_TTL',
         label='Caché del chequeo (segundos)',
         kind='int',
@@ -340,6 +324,15 @@ EDITABLE_FIELDS = (
         default='15',
     ),
     EnvField(
+        key='UPDATE_BRANCH_REF',
+        label='Rama desplegada',
+        kind='text',
+        group='updates',
+        width='full',
+        placeholder='Ej.: refs/heads/main',
+        help_text='Qué rama se considera la versión publicada.',
+    ),
+    EnvField(
         key='OBS_AUTOMATIC',
         label='Observaciones automáticas por FTP',
         kind='bool',
@@ -356,7 +349,6 @@ EDITABLE_FIELDS = (
         label='Host FTP de observaciones',
         kind='text',
         group='ftp',
-        width='full',
         placeholder='Ej.: ftp.cmp.cu',
         required=False,
     ),
@@ -365,7 +357,6 @@ EDITABLE_FIELDS = (
         label='Puerto FTP de observaciones',
         kind='int',
         group='ftp',
-        width='full',
         placeholder='Ej.: 990',
         min_value=1,
         max_value=65535,
@@ -376,7 +367,6 @@ EDITABLE_FIELDS = (
         label='Usuario FTP de observaciones',
         kind='text',
         group='ftp',
-        width='full',
         placeholder='Ej.: observaciones',
         required=False,
     ),
@@ -385,7 +375,6 @@ EDITABLE_FIELDS = (
         label='Contraseña FTP de observaciones',
         kind='password',
         group='ftp',
-        width='full',
         placeholder='Ej.: contraseña nueva',
         required=False,
         secret=True,
@@ -396,7 +385,7 @@ _SPEC_BY_KEY = {spec.key: spec for spec in EDITABLE_FIELDS}
 
 # Títulos de las tarjetas que son solo lectura de punta a punta.
 GROUP_TITLES = {
-    'app': 'Aplicación',
+    # 'app' no tiene tarjeta propia: sus filas van dentro de la tarjeta "Sitio".
     'domain': 'Dominio y orígenes',
     'database': 'Base de datos',
     'cache': 'Caché',
@@ -438,19 +427,21 @@ def build_environment(settings_obj=settings, environ=None, file_values=None) -> 
         for spec in EDITABLE_FIELDS
     }
 
+    readonly = _readonly_groups(settings_obj, environ)
     groups = []
-    for key, items in _readonly_groups(settings_obj, environ).items():
-        if not items:
+    for key, items in readonly.items():
+        if not items or key == 'app':
+            # "Aplicación" acompaña al campo SITE_URL dentro de la tarjeta
+            # editable "Sitio": sola, esa tarjeta tiene un campo y mucho vacío.
             continue
-        title = GROUP_TITLES[key]
-        groups.append({'key': key, 'title': title, 'items': items})
+        groups.append({'key': key, 'title': GROUP_TITLES[key], 'items': items})
 
     return {
         'groups': groups,
         'secrets': secret_status(settings_obj, environ),
         'effective': effective,
         'pending': pending,
-        'section_notes': _section_notes(settings_obj, environ),
+        'section_notes': _section_notes(settings_obj, environ, readonly),
     }
 
 
@@ -534,6 +525,38 @@ def secret_status(settings_obj=settings, environ=None) -> list[dict]:
     ]
 
 
+# Mascara del preview del .env. El valor real de una contraseña nunca viaja al
+# navegador: solo se informa si la clave existe.
+SECRET_MASK = '********'
+
+
+def build_env_preview(environ, file_values, effective, profile: str) -> list[dict]:
+    """Lineas del .env que administra este panel, para el modal de consulta.
+
+    Incluye solo las claves de `EDITABLE_FIELDS` y las banderas de perfil. Un
+    archivo de entorno puede tener otras claves (tokens de terceros, por
+    ejemplo); copiarlas al navegador seria filtrar secretos que el panel no
+    administra. Los secretos propios se enmascaran: su presencia es util, su
+    valor no.
+    """
+    lines = [{'kind': 'comment', 'text': f'# Entorno: {profile}'}]
+    flags = [('DEBUG', environ.get('DEBUG', 'False'))]
+    if 'PRODUCTION' in environ:
+        flags.append(('PRODUCTION', environ.get('PRODUCTION') or '1'))
+    lines.extend({'kind': 'flag', 'text': f'{key}={value}'} for key, value in flags)
+
+    for spec in EDITABLE_FIELDS:
+        if spec.secret:
+            value = SECRET_MASK if file_values.get(spec.key) else '(sin configurar)'
+            lines.append({'kind': 'secret', 'text': f'{spec.key}={value}'})
+            continue
+        value = file_values.get(spec.key)
+        if value is None:
+            value = effective.get(spec.key, '')
+        lines.append({'kind': 'item', 'text': f'{spec.key}={value}'})
+    return lines
+
+
 def _readonly_groups(settings_obj, environ) -> dict[str, list[dict]]:
     db = (getattr(settings_obj, 'DATABASES', None) or {}).get('default', {})
     options = db.get('OPTIONS') or {}
@@ -581,17 +604,21 @@ def _readonly_groups(settings_obj, environ) -> dict[str, list[dict]]:
     }
 
 
-def _section_notes(settings_obj, environ) -> dict[str, list[dict]]:
+def _section_notes(settings_obj, environ, readonly=None) -> dict[str, list[dict]]:
     """Filas de solo lectura que acompañan a una sección editable.
 
     No alcanza con decir "Correo es editable": dentro de la misma tarjeta hay
     valores que no lo son y que explican cómo está configurada de verdad.
+    "Sitio" recibe los datos de arranque de la aplicación, que antes ocupaban
+    una tarjeta propia con un solo campo editable al lado.
 
     No se muestran rutas absolutas del servidor (archivo de correos, archivos de
     estado del despliegue): el panel no necesita publicar el layout del sistema
     de archivos para que el operador sepa cómo está configurado.
     """
+    readonly = _readonly_groups(settings_obj, environ) if readonly is None else readonly
     return {
+        'app': readonly['app'],
         'email': [
             _item('Motor de envío', _friendly_backend(getattr(settings_obj, 'EMAIL_BACKEND', ''))),
         ],
