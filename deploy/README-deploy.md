@@ -856,8 +856,7 @@ hacia el navegador del administrador.
 | `deps` | Instalando dependencias | 15% |
 | `checks` | Validando la configuración | 45% |
 | `backup` | Respaldando la base de datos | 55% |
-| `migrate` | Aplicando migraciones | 65% |
-| `static` | Recolectando estáticos | 85% |
+| `apply` | Aplicando migraciones, grupos y estáticos | 65% |
 | `restart` | Reiniciando los servicios | 90% |
 | `healthcheck` | Comprobando el sitio | 95% |
 
