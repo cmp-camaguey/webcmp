@@ -610,6 +610,15 @@ UPDATE_LOG_FILE = os.getenv('UPDATE_LOG_FILE', '/var/lib/webcmp/deploy.log')
 # el panel devuelve menos porque una sola linea de `pip install` puede pesar
 # mas que la pantalla entera.
 UPDATE_LOG_MAX_BYTES = int(os.getenv('UPDATE_LOG_MAX_BYTES', str(32 * 1024)))
+# `webcmp-sync.timer` instala los artefactos root (unidades de systemd, script
+# de sync) y escribe aca el resultado de la ultima corrida **buena** (JSON,
+# root:root 0644). Un sync que falla no toca este archivo: no hay estado de
+# fallo que leer, solo la ausencia de una corrida nueva.
+UPDATE_SYNC_FILE = os.getenv('UPDATE_SYNC_FILE', '/var/lib/webcmp/deploy-sync.json')
+# Antiguedad a partir de la cual el panel avisa que el sync no completa una
+# corrida. El timer corre diario a las 04:30 con `Persistent=true`, asi que 36 h
+# es una corrida perdida con margen: menos que eso avisaria de algo normal.
+UPDATE_SYNC_MAX_AGE = int(os.getenv('UPDATE_SYNC_MAX_AGE', str(36 * 3600)))
 # Boton "Aplicar cambios" del panel de entorno (change 033-entorno-servidor).
 # Mismo mecanismo y mismo directorio: el proceso web escribe la peticion, la
 # unidad `webcmp-apply.path` la recoge y reinicia los servicios. El panel nunca

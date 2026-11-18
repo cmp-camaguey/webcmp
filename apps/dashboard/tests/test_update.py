@@ -46,6 +46,7 @@ class UpdateTestCase(TestCase):
         self.request_file = os.path.join(self.tmpdir, 'deploy-request')
         self.progress_file = os.path.join(self.tmpdir, 'deploy-progress.json')
         self.log_file = os.path.join(self.tmpdir, 'deploy.log')
+        self.sync_file = os.path.join(self.tmpdir, 'deploy-sync.json')
 
         override = override_settings(
             UPDATE_DEPLOYED_SHA_FILE=self.deployed_file,
@@ -54,6 +55,7 @@ class UpdateTestCase(TestCase):
             UPDATE_PROGRESS_FILE=self.progress_file,
             UPDATE_LOG_FILE=self.log_file,
             UPDATE_LOG_MAX_BYTES=1024,
+            UPDATE_SYNC_FILE=self.sync_file,
         )
         override.enable()
         self.addCleanup(override.disable)
@@ -98,6 +100,12 @@ class UpdateTestCase(TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+    def set_sync(self, sha=SHA_DEPLOYED, installed_at=None, installed=3):
+        payload = {'sha': sha, 'installed': installed, 'from': 'refs/heads/main'}
+        if installed_at is not None:
+            payload['installed_at'] = installed_at
+        self.write(self.sync_file, json.dumps(payload))
+
 
 class UpdateStatusViewTest(UpdateTestCase):
     def test_anonimo_recibe_403_y_no_un_redirect(self):
@@ -131,6 +139,73 @@ class UpdateStatusViewTest(UpdateTestCase):
         self.assertEqual(payload['state'], 'available')
         self.assertEqual(payload['latest'], SHA_LATEST)
         self.assertEqual(payload['deployed'], SHA_DEPLOYED)
+
+    def test_el_sync_de_artefactos_va_en_el_estado(self):
+        # El sync de artefactos root escribe su ultima corrida buena aparte del
+        # deploy. Sin exponerlo, un timer roto dejaba el panel diciendo "al dia".
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(installed_at=datetime.now(UTC).isoformat())
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertEqual(sync['sha'], SHA_DEPLOYED)
+        self.assertEqual(sync['sha_short'], SHA_DEPLOYED[:7])
+        self.assertEqual(sync['installed'], 3)
+        self.assertFalse(sync['stale'])
+        self.assertTrue(sync['matches_deployed'])
+
+    def test_un_sync_que_no_completa_una_corrida_se_avisa(self):
+        # Un sync que falla no escribe estado de fallo: se queda el anterior.
+        # La senal honesta es la antiguedad, y a las 36 h ya es una corrida
+        # diaria perdida.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(installed_at=(datetime.now(UTC) - timedelta(days=3)).isoformat())
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertTrue(sync['stale'])
+        self.assertGreater(sync['age_seconds'], 36 * 3600)
+
+    def test_sin_archivo_de_sync_no_se_inventa_un_estado(self):
+        # En un servidor sin el sync instalado no hay nada que decir. `None` se
+        # distingue de "sync sano": el panel esconde la linea.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.client.force_login(self.admin)
+
+        self.assertIsNone(self.client.get(self.status_url).json()['sync'])
+
+    def test_un_sync_con_fecha_ilegible_no_se_anuncia_atrasado(self):
+        # Una fecha que no se entiende no prueba nada: avisar "atrasado" con
+        # ella seria inventar el motivo.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(installed_at='ayer por la tarde')
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertIsNone(sync['installed_at'])
+        self.assertIsNone(sync['age_seconds'])
+        self.assertFalse(sync['stale'])
+
+    def test_el_sync_no_reenvia_un_sha_que_no_lo_es(self):
+        # El archivo lo escribe otro proceso: su contenido no se reenvia tal cual
+        # al navegador, igual que el SHA del intento de deploy.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(sha='no-es-un-sha', installed_at=datetime.now(UTC).isoformat())
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertIsNone(sync['sha'])
+        self.assertIsNone(sync['sha_short'])
+        self.assertFalse(sync['matches_deployed'])
 
     def test_sin_commit_desplegado_no_afirma_actualizacion(self):
         self.set_remote()
@@ -889,7 +964,9 @@ class DashboardNavbarTest(UpdateTestCase):
         self.client.force_login(self.admin)
 
         html = self.client.get(reverse('dashboard:index')).content.decode()
-        modal = html.split('id="update-log-modal"', 1)[1].split('<!-- Tema Claro|Oscuro -->', 1)[0]
+        # Hasta el modal siguiente: el de confirmacion si lleva footer, y es
+        # otro modal, no el del log.
+        modal = html.split('id="update-log-modal"', 1)[1].split('id="update-confirm-modal"', 1)[0]
 
         self.assertNotIn('modal-footer', modal)
         self.assertNotIn('update-log-refresh', modal)
@@ -924,6 +1001,32 @@ class DashboardNavbarTest(UpdateTestCase):
 
         self.assertIn('id="update-log-attempt"', html)
         self.assertIn('update-console-attempt', html)
+
+    def test_el_desplegable_tiene_la_linea_del_sync(self):
+        # Lo que el panel muestra del sync: una linea propia, oculta hasta que
+        # el JS la pinta con el estado real.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-navbar-sync"', html)
+        self.assertIn('id="update-navbar-sync-text"', html)
+
+    def test_desplegar_pide_confirmacion(self):
+        # Un clic en el navbar no puede mandar a produccion: el boton abre un
+        # modal con lo que se va a instalar y el ejecutor revierte si falla.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-confirm-modal"', html)
+        self.assertIn('id="update-confirm-deploy"', html)
+        self.assertIn('id="update-confirm-target"', html)
+        self.assertIn('Desplegar en producción', html)
 
     def test_el_aviso_no_se_renderiza_para_no_superusuario(self):
         self.client.force_login(self.plain)
@@ -1243,6 +1346,36 @@ class DashboardUpdateScriptTest(TestCase):
         self.assertIn("'sin intento registrado'", source)
         # La version solo se deduce cuando el intento es del commit servido.
         self.assertIn('run.sha === state.deployed', source)
+
+    def test_el_boton_no_despliega_sin_confirmacion(self):
+        # S8: un clic en el navbar no puede disparar un deploy a produccion. El
+        # listener abre el modal; el POST sale del boton del modal.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("button.addEventListener('click', openConfirm)", source)
+        self.assertNotIn("button.addEventListener('click', requestUpdate)", source)
+        self.assertIn("confirmDeploy.addEventListener('click'", source)
+        # Sin el nodo del modal (template viejo en cache) el guardia sigue: un
+        # confirm nativo, nunca el POST directo.
+        self.assertIn('window.confirm(', source)
+
+    def test_el_panel_pinta_el_sync_estancado(self):
+        # El sync no tiene estado de fallo: se avisa cuando no completa una
+        # corrida. El color lo decide el estado, no una clase fija en el HTML.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+        render_body = source.split('function render(')[1]
+
+        self.assertIn('paintSync(state.sync)', render_body)
+        self.assertIn('El sync de artefactos no completa una corrida', source)
+        self.assertIn("syncLine.classList.toggle('text-red', estancado)", source)
+        self.assertIn('syncText.textContent', source)
+        self.assertNotIn('syncText.innerHTML', source)
+        # Sin archivo de sync no se muestra nada: no hay estado que contar.
+        self.assertIn("syncLine.classList.add('d-none')", source)
         self.assertIn('createElement', source)
 
     def test_el_script_no_revienta_si_falta_la_lista(self):
@@ -1288,4 +1421,4 @@ class DashboardUpdateScriptTest(TestCase):
             encoding='utf-8'
         )
 
-        self.assertIn("dist/js/dashboard-update.js' %}?v=3", html)
+        self.assertIn("dist/js/dashboard-update.js' %}?v=4", html)

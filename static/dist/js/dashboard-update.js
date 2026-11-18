@@ -46,8 +46,17 @@
   var logNote = document.getElementById('update-log-note');
   var logPre = document.getElementById('update-log-pre');
   var attemptLabel = document.getElementById('update-log-attempt');
+  var syncLine = document.getElementById('update-navbar-sync');
+  var syncText = document.getElementById('update-navbar-sync-text');
+  var confirmModalEl = document.getElementById('update-confirm-modal');
+  var confirmTarget = document.getElementById('update-confirm-target');
+  var confirmDeploy = document.getElementById('update-confirm-deploy');
 
   var timer = null;
+  // Ultimo estado pintado. El modal de confirmacion arma su texto con el, asi
+  // que no puede leerlo de un DOM que ya cambio.
+  var current = null;
+  var confirmModal = null;
 
   function schedule(delay) {
     window.clearTimeout(timer);
@@ -304,12 +313,74 @@
     attemptLabel.textContent = partes.length ? partes.join(' · ') : 'sin intento registrado';
   }
 
+  // El sync de artefactos root escribe su ultima corrida BUENA en otro archivo:
+  // cuando falla no deja estado de fallo, se queda el anterior. La unica senal
+  // honesta es que no completa una corrida desde hace demasiado, y eso es lo
+  // que se muestra. Sin archivo, el sync no esta instalado y no se dice nada.
+  function paintSync(sync) {
+    if (!syncLine || !syncText) {
+      return;
+    }
+    if (!sync || !sync.installed_at) {
+      syncLine.classList.add('d-none');
+      return;
+    }
+    var cuando = hace(sync.installed_at);
+    var estancado = Boolean(sync.stale);
+    syncText.textContent = estancado
+      ? 'El sync de artefactos no completa una corrida' + (cuando ? ' desde ' + cuando : '') + '.'
+      : 'Artefactos root: ' +
+        (sync.sha_short || 'sin SHA') +
+        (cuando ? ' · ' + cuando : '');
+    // Rojo solo cuando hay algo que mirar: un sync al dia no es una alarma.
+    syncLine.classList.toggle('text-red', estancado);
+    syncLine.classList.toggle('text-secondary', !estancado);
+    syncLine.classList.remove('d-none');
+  }
+
+  // Texto del objetivo para la confirmacion. La version del tag si la hay; sin
+  // tag exacto, el SHA, que es lo unico cierto.
+  function targetLabel(state) {
+    if (!state) {
+      return 'el último commit de main';
+    }
+    if (state.version) {
+      return state.version + (state.latest_short ? ' (' + state.latest_short + ')' : '');
+    }
+    return state.latest_short || 'el último commit de main';
+  }
+
+  // Ningun clic del navbar despliega: abre la confirmacion. Sin el nodo del
+  // modal (template viejo en cache) se usa un confirm nativo, que tambien
+  // impide el disparo accidental; lo que no se hace nunca es pedir el deploy
+  // sin preguntar.
+  function openConfirm() {
+    if (!confirmModalEl) {
+      if (window.confirm('¿Desplegar ' + targetLabel(current) + ' en producción?')) {
+        requestUpdate();
+      }
+      return;
+    }
+    if (confirmTarget) {
+      confirmTarget.textContent = targetLabel(current);
+    }
+    if (!confirmModal) {
+      confirmModal = new window.bootstrap.Modal(confirmModalEl);
+    }
+    confirmModal.show();
+  }
+
   function render(state) {
     // Antes de cualquier pintado: si el estado dejo de ser `available`, la
     // lista vieja tiene que desaparecer, no quedarse pegada al desplegable.
     paintCommits(state);
     // La barra del modal dice de que intento es el log que se va a leer.
     paintAttempt(state);
+    // El sync de artefactos root vive fuera de `state.state`: puede estar
+    // parado mientras el servidor esta al dia.
+    paintSync(state.sync);
+
+    current = state;
 
     var run = state.last_run || {};
     var chip = chipVersion(state);
@@ -618,7 +689,17 @@
   }
 
   if (button) {
-    button.addEventListener('click', requestUpdate);
+    // El boton, incluido el de reintento de `failed`, abre la confirmacion.
+    button.addEventListener('click', openConfirm);
+  }
+
+  if (confirmDeploy) {
+    confirmDeploy.addEventListener('click', function () {
+      if (confirmModal) {
+        confirmModal.hide();
+      }
+      requestUpdate();
+    });
   }
 
   load();

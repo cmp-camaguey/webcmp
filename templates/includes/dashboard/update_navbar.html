@@ -94,6 +94,16 @@
                 data-bs-toggle="modal"
                 data-bs-target="#update-log-modal">Ver log del despliegue</button>
         <div class="text-secondary small mt-2" id="update-navbar-detail"></div>
+        {% comment %}
+          El sync de artefactos root (`webcmp-sync.timer`) escribe su ultima
+          corrida buena en un archivo aparte. Sin esta linea, un timer roto
+          dejaba el panel diciendo "al dia" mientras las unidades de systemd se
+          quedaban viejas. Se oculta cuando el sync no esta instalado.
+        {% endcomment %}
+        <div class="small mt-1 d-none" id="update-navbar-sync">
+          <i class="icon ti ti-package" aria-hidden="true"></i>
+          <span id="update-navbar-sync-text"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -246,6 +256,41 @@
             </div>
             <pre id="update-log-pre" class="update-console-body"></pre>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% comment %}
+    Confirmacion del despliegue. El boton del desplegable ya no pide el deploy:
+    abre este modal. Un clic en el navbar no puede mandar a produccion.
+  {% endcomment %}
+  <div class="modal modal-blur fade"
+       id="update-confirm-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       aria-labelledby="update-confirm-title">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="update-confirm-title">Desplegar en producción</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">
+            Se va a instalar <strong id="update-confirm-target">el último commit de main</strong> en este servidor.
+          </p>
+          <p class="text-secondary small mb-0">
+            El sitio se reinicia durante el despliegue y vuelve solo. Si algo falla, el ejecutor revierte el código y el servidor sigue sirviendo lo que tiene ahora.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-link link-secondary"
+                  data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="update-confirm-deploy">Desplegar</button>
         </div>
       </div>
     </div>
