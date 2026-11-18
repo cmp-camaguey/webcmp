@@ -401,7 +401,20 @@
       confirmTarget.textContent = targetLabel(current);
     }
     if (!confirmModal) {
-      confirmModal = new window.bootstrap.Modal(confirmModalEl);
+      // El global de Tabler 1.5.1 es `window.tabler.bootstrap`; `window.bootstrap`
+      // no existe. Mismo patron que tasks-monitor/document-modal/utils: el
+      // proyecto entero abre modales asi. Sin bootstrap, el confirm nativo
+      // tambien impide el disparo accidental.
+      var Bootstrap = (window.tabler && window.tabler.bootstrap) || window.bootstrap;
+      if (!Bootstrap || !Bootstrap.Modal) {
+        if (window.confirm('¿Desplegar ' + targetLabel(current) + ' en producción?')) {
+          requestUpdate();
+        }
+        return;
+      }
+      // `getOrCreateInstance`: un `new Modal` por clic apilar instancias y
+      // reclamar el mismo nodo dos veces.
+      confirmModal = Bootstrap.Modal.getOrCreateInstance(confirmModalEl);
     }
     confirmModal.show();
   }
