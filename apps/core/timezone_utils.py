@@ -24,5 +24,17 @@ def get_request_time_format():
     return value or DEFAULT_TIME_FORMAT
 
 
+def get_request_clock_pattern(with_seconds=False):
+    """Patrón de hora (con o sin segundos) según el formato configurado.
+
+    Los servicios que arman horas para el panel usan esto en vez de escribir
+    `%H:%M` a mano: si el sitio está en 12 horas, la hora sale con AM/PM.
+    """
+    pattern = get_request_time_format()
+    if with_seconds:
+        return 'h:i:s A' if 'A' in pattern else 'H:i:s'
+    return pattern
+
+
 def reset_request_time_format():
     _thread_locals.time_format = None

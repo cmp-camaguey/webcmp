@@ -2,7 +2,9 @@
 
 from django.conf import settings
 from django.utils import timezone
+from django.utils.formats import date_format
 
+from apps.core.timezone_utils import get_request_clock_pattern
 from apps.monitoring.services import health, http, system, traffic
 from apps.monitoring.services.formatting import format_duration
 
@@ -87,7 +89,9 @@ def build_snapshot(now=None):
 
     return {
         'generated_at': timezone.localtime(now).isoformat(),
-        'generated_at_display': timezone.localtime(now).strftime('%H:%M:%S'),
+        'generated_at_display': date_format(
+            timezone.localtime(now), get_request_clock_pattern(with_seconds=True)
+        ),
         'enabled': enabled,
         'status': _overall(system_data, health_data, http_data, incident),
         'system': system_data,

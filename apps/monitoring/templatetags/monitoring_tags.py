@@ -71,7 +71,7 @@ def duration(seconds):
 
 
 # Estado de un bloque de disponibilidad y calificación de un Web Vital
-# comparten escala de color: verde bueno, ámbar aviso, rojo malo, azul sin datos.
+# comparten escala de color: verde bueno, ámbar aviso, rojo malo, gris sin datos.
 _STATE_CLASSES = {
     'ok': 'success',
     'good': 'success',
@@ -79,13 +79,21 @@ _STATE_CLASSES = {
     'needs-improvement': 'warning',
     'down': 'danger',
     'poor': 'danger',
-    'nodata': 'azure',
+    'nodata': 'secondary',
 }
 
 
 @register.filter
 def state_class(value):
     return _STATE_CLASSES.get(value, 'secondary')
+
+
+@register.filter
+def reverse(value):
+    """Copia de la lista al revés: para leer el tracking de 24 h desde ahora hacia atrás."""
+    if value is None:
+        return []
+    return list(reversed(value))
 
 
 @register.filter
