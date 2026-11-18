@@ -137,6 +137,23 @@ class MonitoringPanelLayoutTests(TestCase):
             with self.subTest(th=th):
                 self.assertIn('scope="col"', th)
 
+    def test_errores_y_peso_son_tarjetas_compactas(self):
+        # Estas dos tarjetas tienen poco contenido: si heredan la altura
+        # mínima de las de media columna (28rem) quedan con un hueco grande.
+        panel = self.html.split('id="monitoringRoot"', 1)[1]
+        for titulo in ('Errores JavaScript', 'Peso de página y recursos lentos'):
+            with self.subTest(titulo=titulo):
+                pos = panel.index(titulo)
+                apertura = panel.rfind('<div class="card ', 0, pos)
+                clase = panel[apertura : panel.index('>', apertura)]
+                self.assertIn('monitoring-compact-card', clase)
+                self.assertNotIn('monitoring-half-card', clase)
+
+        altura = r'\{\s*min-height:\s*(\d+)rem'
+        compacta = int(re.search(r'\.monitoring-compact-card\s*' + altura, self.html).group(1))
+        media = int(re.search(r'\.monitoring-half-card\s*' + altura, self.html).group(1))
+        self.assertLess(compacta, media)
+
 
 class MonitoringClockTests(TestCase):
     """La configuración horaria del sitio llega hasta el panel."""
