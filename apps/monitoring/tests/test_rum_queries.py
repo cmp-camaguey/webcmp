@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.core.timezone_utils import reset_request_time_format, set_request_time_format
 from apps.monitoring.models import JavaScriptError, PageView, WebVital
 from apps.monitoring.services import traffic
 
@@ -149,6 +150,17 @@ class ErrorAndWeightTests(TestCase):
         data = traffic.javascript_errors(now=self.now)
         self.assertEqual(data['count'], 2)
         self.assertEqual(data['items'][0]['message'], 'nuevo')
+
+    def test_hora_del_error_sigue_el_formato_del_sitio(self):
+        JavaScriptError.objects.create(
+            session_hash='s1', path='/', message='x', created_at=self.now
+        )
+        try:
+            set_request_time_format('h:i A')
+            data = traffic.javascript_errors(now=self.now)
+            self.assertRegex(data['items'][0]['at'], r'^\d{2}:\d{2}:\d{2} (AM|PM)$')
+        finally:
+            reset_request_time_format()
 
     def test_peso_de_pagina_promedio(self):
         pageview(self.now, session='s1', page_weight_kb=400, slow_resources=2)

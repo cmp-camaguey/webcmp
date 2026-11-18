@@ -38,6 +38,12 @@
   var timer = null
   var paused = false
   var inFlight = false
+  // Aviso de estado degradado: se cierra con la X o solo a los 20 s, y una vez
+  // cerrado no revive en cada refresco (solo si el estado empeora a "down").
+  var ALERT_AUTO_HIDE_MS = 20000
+  var alertAutoHideTimer = null
+  var alertDismissed = false
+  var alertLevel = ''
 
   function get(obj, path) {
     return path.split('.').reduce(function (acc, key) {
@@ -163,6 +169,42 @@
     })
   }
 
+  function hideStatusAlert(alert) {
+    alert.classList.add('d-none')
+    if (alertAutoHideTimer !== null) {
+      window.clearTimeout(alertAutoHideTimer)
+      alertAutoHideTimer = null
+    }
+  }
+
+  function dismissStatusAlert(alert) {
+    alertDismissed = true
+    hideStatusAlert(alert)
+  }
+
+  function showStatusAlert(alert) {
+    alert.classList.remove('d-none')
+    if (alertAutoHideTimer !== null) window.clearTimeout(alertAutoHideTimer)
+    alertAutoHideTimer = window.setTimeout(function () {
+      alertAutoHideTimer = null
+      dismissStatusAlert(alert)
+    }, ALERT_AUTO_HIDE_MS)
+  }
+
+  function initStatusAlert() {
+    var alert = document.querySelector('[data-status-alert]')
+    if (!alert) return
+    var close = alert.querySelector('[data-status-alert-close]')
+    if (close) {
+      close.addEventListener('click', function () {
+        dismissStatusAlert(alert)
+      })
+    }
+    // El HTML del servidor puede traer el aviso visible: se arma el cierre
+    // automatico sin esperar al primer refresco.
+    if (!alert.classList.contains('d-none')) showStatusAlert(alert)
+  }
+
   function applyStatus(snapshot) {
     var status = snapshot.status || {}
     var color = STATE_COLORS[status.level] || 'secondary'
@@ -180,13 +222,14 @@
     if (dot) replaceColorClasses(dot, 'status-', color)
 
     var reasons = status.reasons || []
+    var level = status.level || ''
     var alert = document.querySelector('[data-status-alert]')
     if (alert) {
       var alertTitle = alert.querySelector('[data-status-alert-title]')
       var list = alert.querySelector('[data-status-reasons]')
       if (alertTitle) alertTitle.textContent = 'Estado ' + (status.label || EMPTY)
       if (list) {
-        list.innerHTML = ''
+        list.textContent = ''
         reasons.forEach(function (reason) {
           var item = document.createElement('li')
           item.textContent = reason
@@ -194,8 +237,23 @@
         })
       }
       alert.classList.remove('alert-danger', 'alert-warning')
-      alert.classList.add(status.level === 'down' ? 'alert-danger' : 'alert-warning')
-      alert.classList.toggle('d-none', reasons.length === 0)
+      alert.classList.add(level === 'down' ? 'alert-danger' : 'alert-warning')
+
+      // Un aviso cerrado no vuelve en cada refresco: se muestra de nuevo solo
+      // cuando se recupera y hay un incidente nuevo, o cuando empeora a "down".
+      var escalated = alertLevel !== 'down' && level === 'down'
+      alertLevel = level
+      if (reasons.length === 0) {
+        alertDismissed = false
+        hideStatusAlert(alert)
+      } else if (escalated) {
+        alertDismissed = false
+        showStatusAlert(alert)
+      } else if (alertDismissed) {
+        hideStatusAlert(alert)
+      } else if (alert.classList.contains('d-none')) {
+        showStatusAlert(alert)
+      }
     }
 
     var incident = document.querySelector('[data-incident-line]')
@@ -229,71 +287,217 @@
     })
   }
 
+  function slotTitle(slot) {
+    return slot.label + ' \u00b7 ' + slot.total + ' peticiones \u00b7 ' + slot.errors + ' errores'
+  }
+
+  function slotsMarkup(slots) {
+    return slots
+      .map(function (slot) {
+        return (
+          '<div class="tracking-block bg-' +
+          (STATE_COLORS[slot.state] || 'secondary') +
+          '" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="' +
+          escapeAttribute(slotTitle(slot)) +
+          '"></div>'
+        )
+      })
+      .join('')
+  }
+
   function applyUptimeSlots(snapshot) {
     var container = document.querySelector('[data-uptime-slots]')
     var slots = snapshot.uptime && snapshot.uptime.slots
     if (!container || !Array.isArray(slots)) return
-    var html = ''
-    slots.forEach(function (slot) {
-      var title =
-        slot.label + ' \u00b7 ' + slot.total + ' peticiones \u00b7 ' + slot.errors + ' errores'
-      html +=
-        '<div class="tracking-block bg-' +
-        (STATE_COLORS[slot.state] || 'secondary') +
-        '" title="' +
-        escapeAttribute(title) +
-        '"></div>'
+    // El template invierte la lista (ahora primero); el refresco debe
+    // mantener el mismo orden o los bloques se vuelven a poner al revés.
+    var ordered = slots.slice().reverse()
+    // Los tooltips los crea tabler.min.js al cargar sobre cada
+    // [data-bs-toggle="tooltip"], y `window.bootstrap` no queda expuesto: una
+    // reconstruccion con `innerHTML` dejaria los bloques sin tooltip. Si la
+    // cantidad no cambio se actualizan en su lugar y las instancias de Tabler
+    // siguen sirviendo, porque Bootstrap lee el title al abrir el tooltip.
+    var blocks = container.querySelectorAll('.tracking-block')
+    if (blocks.length !== ordered.length) {
+      container.innerHTML = slotsMarkup(ordered)
+      return
+    }
+    ordered.forEach(function (slot, index) {
+      var block = blocks[index]
+      replaceColorClasses(block, 'bg-', STATE_COLORS[slot.state] || 'secondary')
+      block.setAttribute('data-bs-original-title', slotTitle(slot))
     })
-    container.innerHTML = html
+  }
+
+  function coreTitle(value, index) {
+    return 'N\u00facleo ' + (index + 1) + ': ' + value + '%'
+  }
+
+  function coresMarkup(cores) {
+    return cores
+      .map(function (value, index) {
+        return (
+          '<span class="monitoring-core" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="' +
+          escapeAttribute(coreTitle(value, index)) +
+          '"><span class="monitoring-core-bar bg-' +
+          coreColor(value) +
+          '" style="height: ' +
+          Math.max(0, Math.min(100, Number(value) || 0)) +
+          '%"></span></span>'
+        )
+      })
+      .join('')
   }
 
   function applyCores(snapshot) {
     var container = document.querySelector('[data-cores]')
     var cpu = snapshot.system && snapshot.system.cpu
     if (!container || !cpu || !Array.isArray(cpu.cores)) return
-    var html = ''
-    cpu.cores.forEach(function (core, index) {
-      html +=
-        '<span class="monitoring-core" title="N\u00facleo ' +
-        (index + 1) +
-        ': ' +
-        core +
-        '%"><span class="monitoring-core-bar bg-' +
-        coreColor(core) +
-        '" style="height: ' +
-        Math.max(0, Math.min(100, Number(core) || 0)) +
-        '%"></span></span>'
+    var cores = container.querySelectorAll('.monitoring-core')
+    if (cores.length !== cpu.cores.length) {
+      container.innerHTML = coresMarkup(cpu.cores)
+      return
+    }
+    // Mismo motivo que en los bloques de uptime: actualizar en su lugar
+    // conserva los tooltips que creo Tabler al cargar la pagina.
+    cpu.cores.forEach(function (value, index) {
+      var core = cores[index]
+      var bar = core.querySelector('.monitoring-core-bar')
+      if (bar) {
+        replaceColorClasses(bar, 'bg-', coreColor(value))
+        bar.style.height = Math.max(0, Math.min(100, Number(value) || 0)) + '%'
+      }
+      core.setAttribute('data-bs-original-title', coreTitle(value, index))
     })
-    container.innerHTML = html
   }
 
-  function renderSparkline(name, series, key) {
-    var svg = document.querySelector('[data-spark="' + name + '"]')
-    if (!svg || !Array.isArray(series) || series.length === 0) return
-    var values = series.map(function (point) {
-      return Number(point[key]) || 0
+  // Graficos interactivos (ApexCharts, el que usa Tabler en su demo). Se crean
+  // una vez con la serie que publica el servidor como JSON y despues solo se
+  // actualizan con `updateSeries`, para no destruir el chart en cada refresco.
+  var charts = {}
+
+  function chartSeries(id) {
+    var node = document.getElementById(id)
+    if (!node) return null
+    try {
+      var data = JSON.parse(node.textContent)
+      return Array.isArray(data) ? data : null
+    } catch (error) {
+      return null
+    }
+  }
+
+  function chartLabels(series) {
+    return series.map(function (point) {
+      return point.time
     })
-    var max = Math.max.apply(null, values.concat([1]))
-    var width = 100
-    var height = 40
-    var step = values.length > 1 ? width / (values.length - 1) : width
-    var points = values.map(function (value, index) {
-      var x = (index * step).toFixed(2)
-      var y = (height - (value / max) * height).toFixed(2)
-      return x + ',' + y
+  }
+
+  function chartValues(series) {
+    return series.map(function (point) {
+      return Number(point.count) || 0
     })
-    var line = points.join(' ')
-    var area = '0,' + height + ' ' + line + ' ' + width + ',' + height
-    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height)
-    svg.setAttribute('preserveAspectRatio', 'none')
-    svg.innerHTML =
-      '<polygon points="' +
-      area +
-      '" fill="rgba(6,111,209,0.12)"></polygon>' +
-      '<polyline points="' +
-      line +
-      '" fill="none" stroke="var(--tblr-primary)" stroke-width="1.5" ' +
-      'vector-effect="non-scaling-stroke"></polyline>'
+  }
+
+  function initChart(key, elementId, seriesId, name, noun) {
+    if (!window.ApexCharts) return
+    var element = document.getElementById(elementId)
+    var series = chartSeries(seriesId)
+    if (!element || !series) return
+    var theme = document.documentElement.getAttribute('data-bs-theme') || 'light'
+    var chart = new window.ApexCharts(element, {
+      chart: {
+        type: 'area',
+        height: 150,
+        fontFamily: 'inherit',
+        parentHeightOffset: 0,
+        toolbar: { show: false },
+        zoom: { enabled: false },
+        animations: { enabled: false }
+      },
+      series: [{ name: name, data: chartValues(series) }],
+      stroke: { curve: 'smooth', width: 2, lineCap: 'round' },
+      fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 100] }
+      },
+      colors: ['var(--tblr-primary)'],
+      dataLabels: { enabled: false },
+      markers: { size: 0, strokeWidth: 0, hover: { size: 4 } },
+      grid: {
+        strokeDashArray: 4,
+        borderColor: 'var(--tblr-border-color)',
+        padding: { top: -8, right: 8, left: 4, bottom: 0 }
+      },
+      xaxis: {
+        categories: chartLabels(series),
+        labels: { show: false },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+        tooltip: { enabled: false }
+      },
+      yaxis: {
+        min: 0,
+        forceNiceScale: true,
+        labels: {
+          style: { colors: 'var(--tblr-secondary)', fontSize: '11px', fontFamily: 'inherit' },
+          formatter: function (value) {
+            return Math.round(value)
+          }
+        }
+      },
+      tooltip: {
+        theme: theme,
+        shared: false,
+        intersect: false,
+        fillSeriesColor: false,
+        title: {
+          show: true,
+          formatter: function (value, opts) {
+            // ApexCharts v5 guarda las categorías en `w.globals.labels`.
+            var time = opts.w.globals.labels[opts.dataPointIndex]
+            return time || ''
+          }
+        },
+        y: {
+          title: {
+            formatter: function (opts) {
+              // Ocultamos "Serie 1:" que ApexCharts v5 pone por defecto.
+              return ''
+            }
+          },
+          formatter: function (value) {
+            return value + ' ' + (value === 1 ? noun : noun + 's')
+          }
+        }
+      }
+    })
+    chart.render()
+    charts[key] = chart
+  }
+
+  function initCharts() {
+    initChart(
+      'http',
+      'monitoringHttpChart',
+      'monitoring-http-series',
+      'Peticiones',
+      'petición'
+    )
+    initChart(
+      'traffic',
+      'monitoringTrafficChart',
+      'monitoring-traffic-series',
+      'Páginas vistas',
+      'página vista'
+    )
+  }
+
+  function updateChart(key, series) {
+    var chart = charts[key]
+    if (!chart || !Array.isArray(series)) return
+    chart.updateOptions({ xaxis: { categories: chartLabels(series) } }, false, false)
+    chart.updateSeries([{ data: chartValues(series) }], false)
   }
 
   function renderRows(tbody, rows) {
@@ -306,6 +510,7 @@
       emptyCell.colSpan = columns || 1
       emptyCell.className = 'text-secondary'
       emptyCell.textContent = 'Sin datos todav\u00eda.'
+      emptyRow.setAttribute('data-empty-row', '')
       emptyRow.appendChild(emptyCell)
       tbody.appendChild(emptyRow)
       return
@@ -319,6 +524,97 @@
         row.appendChild(cell)
       })
       tbody.appendChild(row)
+    })
+  }
+
+  // Paginación en cliente de las tablas con `data-paginate="N"`. Las filas se
+  // renderizan todas y se muestra una página; la página elegida se guarda en
+  // el propio `tbody` para que el refresco no devuelva al usuario a la primera.
+  function pageSize(tbody) {
+    return parseInt(tbody.getAttribute('data-paginate'), 10) || 0
+  }
+
+  function tableRows(tbody) {
+    return tbody.querySelectorAll('tr:not([data-empty-row]):not([data-filler-row])')
+  }
+
+  function pageCount(tbody) {
+    var size = pageSize(tbody)
+    if (!size) return 1
+    return Math.max(1, Math.ceil(tableRows(tbody).length / size))
+  }
+
+  function currentPage(tbody) {
+    var page = parseInt(tbody.getAttribute('data-page'), 10) || 1
+    return Math.min(Math.max(1, page), pageCount(tbody))
+  }
+
+  function applyPage(tbody) {
+    var size = pageSize(tbody)
+    if (!size) return
+    var page = currentPage(tbody)
+    var total = pageCount(tbody)
+    tbody.setAttribute('data-page', String(page))
+    // Las filas de relleno se recalculan en cada página: la última puede traer
+    // menos de `size` filas y el card no debe encogerse al cambiar de página.
+    tbody.querySelectorAll('[data-filler-row]').forEach(function (row) {
+      row.remove()
+    })
+    var visible = 0
+    tableRows(tbody).forEach(function (row, index) {
+      var onPage = Math.floor(index / size) + 1 === page
+      row.classList.toggle('d-none', !onPage)
+      if (onPage) visible += 1
+    })
+    if (tbody.querySelector('[data-empty-row]')) visible += 1
+    var table = tbody.closest('table')
+    var columns = table ? table.querySelectorAll('thead th').length : 2
+    for (var index = visible; index < size; index += 1) {
+      var filler = document.createElement('tr')
+      filler.setAttribute('data-filler-row', '')
+      filler.className = 'invisible'
+      var cell = document.createElement('td')
+      cell.colSpan = columns || 1
+      cell.textContent = '\u00a0'
+      filler.appendChild(cell)
+      tbody.appendChild(filler)
+    }
+    var paginator = document.querySelector(
+      '[data-paginator-for="' + tbody.getAttribute('data-table') + '"]'
+    )
+    if (!paginator) return
+    // `invisible` en vez de `d-none`: el paginador conserva su alto aunque no
+    // haya más de una página, así el card mantiene el tamaño.
+    paginator.classList.toggle('invisible', total <= 1)
+    var label = paginator.querySelector('[data-page-label]')
+    if (label) label.textContent = page + ' / ' + total
+    var prev = paginator.querySelector('[data-page-prev]')
+    var next = paginator.querySelector('[data-page-next]')
+    if (prev) prev.disabled = page <= 1
+    if (next) next.disabled = page >= total
+  }
+
+  function bindPaginators() {
+    document.querySelectorAll('[data-paginator-for]').forEach(function (paginator) {
+      var tbody = document.querySelector(
+        '[data-table="' + paginator.getAttribute('data-paginator-for') + '"]'
+      )
+      if (!tbody) return
+      var prev = paginator.querySelector('[data-page-prev]')
+      var next = paginator.querySelector('[data-page-next]')
+      if (prev) {
+        prev.addEventListener('click', function () {
+          tbody.setAttribute('data-page', String(currentPage(tbody) - 1))
+          applyPage(tbody)
+        })
+      }
+      if (next) {
+        next.addEventListener('click', function () {
+          tbody.setAttribute('data-page', String(currentPage(tbody) + 1))
+          applyPage(tbody)
+        })
+      }
+      applyPage(tbody)
     })
   }
 
@@ -343,7 +639,9 @@
     }
     Object.keys(tables).forEach(function (name) {
       var tbody = document.querySelector('[data-table="' + name + '"]')
-      if (tbody) renderRows(tbody, tables[name])
+      if (!tbody) return
+      renderRows(tbody, tables[name])
+      applyPage(tbody)
     })
 
     var empty = document.querySelector('[data-traffic-empty]')
@@ -389,10 +687,10 @@
     applyVitals(snapshot)
     applyTables(snapshot)
     if (snapshot.http && snapshot.http.series) {
-      renderSparkline('http', snapshot.http.series, 'count')
+      updateChart('http', snapshot.http.series)
     }
     if (snapshot.traffic && snapshot.traffic.series) {
-      renderSparkline('traffic', snapshot.traffic.series, 'count')
+      updateChart('traffic', snapshot.traffic.series)
     }
   }
 
@@ -462,6 +760,38 @@
     })
   }
 
+  // Rueda del mouse sobre el tracking: mueve el scroll lateral del card,
+  // no la pagina. `passive: false` porque hay que bloquear el scroll
+  // vertical del body con preventDefault.
+  function bindTrackingWheel() {
+    var wrapper = document.querySelector('.tracking-scroll-wrapper')
+    if (!wrapper) return
+    wrapper.addEventListener('wheel', function (event) {
+      var horizontal = event.deltaX !== 0
+      var atEnd =
+        wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 1
+      var atStart = wrapper.scrollLeft <= 0
+      // Solo captura la rueda vertical cuando hay recorrido en esa
+      // direccion; si no, la pagina se sigue scrolleando con normalidad.
+      if (!horizontal && ((event.deltaY > 0 && !atEnd) || (event.deltaY < 0 && !atStart))) {
+        event.preventDefault()
+        wrapper.scrollLeft += event.deltaY
+      }
+    }, { passive: false })
+  }
+
+  function bindOnce() {
+    if (bindOnce.done) return
+    bindOnce.done = true
+    bindTrackingWheel()
+    bindPaginators()
+    initCharts()
+  }
+  // Los tooltips de bloques y núcleos los inicializa tabler.min.js (script
+  // `defer`) sobre cada [data-bs-toggle="tooltip"], así que acá solo queda el
+  // scroll lateral. Se espera `load` para no competir con esos `defer`.
+  window.addEventListener('load', bindOnce)
+
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       stop()
@@ -471,5 +801,6 @@
     }
   })
 
+  initStatusAlert()
   start()
 })()

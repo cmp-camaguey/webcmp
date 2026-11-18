@@ -1,8 +1,10 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from datetime import timezone as dt_timezone
 
 from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 
+from apps.core.timezone_utils import reset_request_time_format, set_request_time_format
 from apps.monitoring.models import RequestMetric
 from apps.monitoring.services import http
 
@@ -141,6 +143,36 @@ class UptimeTests(TestCase):
         metric(status_code=500, created_at=self.now.replace(second=0))
         slots = http.uptime_slots(hours=1, now=self.now, slot_minutes=15)
         self.assertEqual(slots[-1]['state'], 'down')
+
+
+class UptimeClockTests(TestCase):
+    """La etiqueta de cada bloque usa la zona y el formato del sitio."""
+
+    def setUp(self):
+        # Ultimo tramo de una hora con bloques de 15 min: arranca 19:55 UTC.
+        self.now = datetime(2026, 11, 17, 20, 10, tzinfo=UTC)
+
+    def tearDown(self):
+        timezone.deactivate()
+        reset_request_time_format()
+
+    def _last_label(self):
+        return http.uptime_slots(hours=1, now=self.now, slot_minutes=15)[-1]['label']
+
+    def test_zona_manual_en_formato_24_horas(self):
+        timezone.activate(dt_timezone(timedelta(hours=-5)))
+        set_request_time_format('H:i')
+        self.assertEqual(self._last_label(), '14:55')
+
+    def test_zona_manual_en_formato_12_horas(self):
+        timezone.activate(dt_timezone(timedelta(hours=-5)))
+        set_request_time_format('h:i A')
+        self.assertEqual(self._last_label(), '02:55 PM')
+
+    def test_otra_diferencia_mueve_la_hora(self):
+        timezone.activate(dt_timezone(timedelta(hours=2)))
+        set_request_time_format('H:i')
+        self.assertEqual(self._last_label(), '21:55')
 
 
 class IncidentTests(TestCase):

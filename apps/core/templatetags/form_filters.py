@@ -5,7 +5,7 @@ from django import template
 from django.utils import timezone as dj_timezone
 from django.utils.formats import date_format
 
-from apps.core.timezone_utils import get_request_time_format
+from apps.core.timezone_utils import get_request_clock_pattern
 
 register = template.Library()
 
@@ -76,10 +76,7 @@ def iso_datetime(value):
 
 def _clock_pattern(with_seconds=False):
     """Patrón de hora según el formato configurado para el request."""
-    pattern = get_request_time_format()
-    if with_seconds:
-        return 'h:i:s A' if 'A' in pattern else 'H:i:s'
-    return pattern
+    return get_request_clock_pattern(with_seconds)
 
 
 def _site_localtime(value):
