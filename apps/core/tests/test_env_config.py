@@ -6,6 +6,7 @@ import tempfile
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
@@ -24,7 +25,9 @@ from apps.core.env_apply import (
 )
 from apps.core.env_config import (
     EDITABLE_FIELDS,
+    SECRET_MASK,
     as_bool,
+    build_env_preview,
     build_environment,
     effective_value,
     same_value,
@@ -155,10 +158,32 @@ class EnvFileTests(TestCase):
 class EnvConfigTests(SimpleTestCase):
     def test_readonly_groups_are_only_the_boot_critical_ones(self):
         environment = build_environment(environ={}, file_values={})
+        # La info de "Aplicación" viaja dentro de la tarjeta editable "Sitio".
         self.assertEqual(
             [group['key'] for group in environment['groups']],
-            ['app', 'domain', 'database', 'cache'],
+            ['domain', 'database', 'cache'],
         )
+
+    def test_editable_sections_have_no_lone_half_width_field(self):
+        """Los campos a media columna van de a pares; un `full` cierra la fila."""
+        grouped: dict[str, list[str]] = {}
+        for spec in EDITABLE_FIELDS:
+            grouped.setdefault(spec.group, []).append(spec.width)
+
+        for group, widths in grouped.items():
+            runs = []
+            current = 0
+            for width in widths:
+                if width == 'full':
+                    if current:
+                        runs.append(current)
+                    current = 0
+                else:
+                    current += 1
+            if current:
+                runs.append(current)
+            for run in runs:
+                self.assertEqual(run % 2, 0, msg=f'{group}: {run} campo(s) suelto(s)')
 
     def test_editable_groups_cover_email_ldap_updates_and_ftp(self):
         groups = []
@@ -292,6 +317,37 @@ class EnvConfigTests(SimpleTestCase):
             self.assertTrue(as_bool(value))
         for value in ('0', 'false', '', None):
             self.assertFalse(as_bool(value))
+
+    def test_env_preview_masks_secrets_and_skips_unknown_keys(self):
+        lines = build_env_preview(
+            {'DEBUG': 'False', 'PRODUCTION': '1', 'EXTERNAL_TOKEN': 'no-debe-aparecer'},
+            {
+                'EMAIL_HOST_PASSWORD': 'claveSmtpSecreta',  # pragma: allowlist secret
+                'OTHER_API_TOKEN': 'otroSecreto',  # pragma: allowlist secret
+            },
+            {},
+            'produccion',
+        )
+        text = '\n'.join(line['text'] for line in lines)
+
+        self.assertIn(f'EMAIL_HOST_PASSWORD={SECRET_MASK}', text)
+        self.assertNotIn('claveSmtpSecreta', text)
+        self.assertNotIn('OTHER_API_TOKEN', text)
+        self.assertNotIn('EXTERNAL_TOKEN', text)
+        self.assertNotIn('otroSecreto', text)
+
+    def test_env_preview_reports_profile_and_unconfigured_secrets(self):
+        lines = build_env_preview({'DEBUG': 'True'}, {}, {}, 'desarrollo')
+        text = '\n'.join(line['text'] for line in lines)
+
+        self.assertIn('# Entorno: desarrollo', text)
+        self.assertIn('DEBUG=True', text)
+        self.assertNotIn('PRODUCTION=', text)
+        self.assertIn('EMAIL_HOST_PASSWORD=(sin configurar)', text)
+
+    def test_env_preview_uses_effective_value_when_key_is_absent(self):
+        lines = build_env_preview({}, {}, {'SITE_URL': 'https://cmp.camaguey.cu/'}, 'pruebas')
+        self.assertIn('SITE_URL=https://cmp.camaguey.cu/', [line['text'] for line in lines])
 
 
 class EnvironmentViewTestBase(TestCase):
@@ -557,46 +613,161 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
             values = {item['label']: item['value'] for item in groups[key]['items']}
             self.assertNotIn('.', values['Motor'])
 
+    def test_sitio_card_carries_the_application_readonly_info(self):
+        """Los datos de arranque viven en la tabla de referencia, sin títulos de tarjeta."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertIn('Referencia', html)
+        self.assertIn('Perfil de configuración', html)
+        self.assertIn('Zona horaria', html)
+        self.assertNotIn('>Aplicación<', html)
+        self.assertNotIn('Sitio y correo', html)
+        self.assertNotIn('En ejecución y secretos fuera del panel', html)
+
     def test_field_width_follows_the_catalog(self):
         """Los valores largos ocupan la fila; los cortos comparten columna."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
         self.assertEqual(self._column_of(html, 'SITE_URL'), 'col-12')
-        self.assertEqual(self._column_of(html, 'LDAP_SERVER_URI'), 'col-12')
+        self.assertEqual(self._column_of(html, 'DEFAULT_FROM_EMAIL'), 'col-12')
         self.assertEqual(self._column_of(html, 'EMAIL_USE_TLS'), 'col-md-6')
         self.assertEqual(self._column_of(html, 'UPDATE_CHECK_TTL'), 'col-md-6')
+        self.assertEqual(self._column_of(html, 'LDAP_SERVER_URI'), 'col-md-6')
 
-    def test_email_port_and_user_take_the_full_column_row(self):
-        """Puerto y usuario SMTP van cada uno en su propia fila."""
+    def test_email_fields_are_grouped_in_pairs(self):
+        """Correo: servidor/puerto, usuario/clave, STARTTLS/TLS y remitente al final."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        for key in ('EMAIL_PORT', 'EMAIL_HOST_USER'):
-            self.assertEqual(self._column_of(html, key), 'col-12', msg=key)
+        for first, second in (
+            ('EMAIL_HOST', 'EMAIL_PORT'),
+            ('EMAIL_HOST_USER', 'EMAIL_HOST_PASSWORD'),
+            ('EMAIL_USE_TLS', 'EMAIL_USE_SSL'),
+        ):
+            self.assertEqual(self._column_of(html, first), 'col-md-6', msg=first)
+            self.assertEqual(self._column_of(html, second), 'col-md-6', msg=second)
+            start = html.index(f'id="id_{first}"')
+            end = html.index(f'id="id_{second}"')
+            self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
 
-    def test_pending_invoice_reminder_takes_the_full_column_row(self):
-        """El recordatorio de factura pendiente va en su propia fila."""
+        self.assertEqual(self._column_of(html, 'DEFAULT_FROM_EMAIL'), 'col-12')
+        self.assertLess(
+            html.index('id="id_EMAIL_USE_SSL"'),
+            html.index('id="id_DEFAULT_FROM_EMAIL"'),
+        )
+
+    def test_ldap_switches_share_the_grid_and_superuser_closes_it(self):
+        """Autenticación LDAP y STARTTLS van juntos; el grupo de superusuarios cierra la fila."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for first, second in (('LDAP_ENABLED', 'LDAP_START_TLS'),):
+            self.assertEqual(self._column_of(html, first), 'col-md-6', msg=first)
+            self.assertEqual(self._column_of(html, second), 'col-md-6', msg=second)
+            start = html.index(f'id="id_{first}"')
+            end = html.index(f'id="id_{second}"')
+            self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
+        self.assertEqual(self._column_of(html, 'LDAP_SUPERUSER_GROUP'), 'col-12')
+
+    def test_notification_switches_are_stacked(self):
+        """La franja de emergencia y los avisos operativos ocupan cada uno su fila."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertEqual(self._column_of(html, 'EMERGENCY_BANNER_ENABLED'), 'col-12')
+        self.assertEqual(self._column_of(html, 'NOTIFICATIONS_ENABLED'), 'col-12')
+
+    def test_pending_invoice_reminder_closes_the_row(self):
+        """El recordatorio de factura pendiente cierra la tarjeta de avisos."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
         self.assertEqual(self._column_of(html, 'INVOICE_PENDING_REMINDER_DAYS'), 'col-12')
 
-    def test_save_button_is_labelled_guardar(self):
-        """Solo hay dos verbos en la página: "Guardar" escribe y "Aplicar cambios" reinicia."""
+    def test_primary_button_is_labelled_aceptar(self):
+        """Solo hay dos verbos en la página: "Aceptar" escribe y "Aplicar cambios" reinicia."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        self.assertIn('</i> Guardar', html)
-        self.assertNotIn('Aceptar', html)
+        self.assertIn('</i> Aceptar', html)
+        self.assertNotIn('</i> Guardar', html)
 
-    def test_ftp_section_stays_in_a_single_column(self):
-        """El bloque FTP va en una sola columna: host, puerto, usuario y clave."""
+    def test_page_identifies_the_environment_without_offering_a_switcher(self):
+        """Cada servidor muestra su perfil; el panel nunca administra otro host."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        html = response.content.decode()
+
+        self.assertContains(response, 'Entorno actual:')
+        self.assertIn(settings.IS_PRODUCTION and 'Producción' or 'Desarrollo', html)
+        self.assertNotIn('data-variant=', html)
+
+    def test_env_preview_uses_the_deploy_logs_console_style(self):
+        self.env_path.write_text('EMAIL_HOST_PASSWORD=claveSmtpSecreta\n', encoding='utf-8')
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        html = response.content.decode()
+
+        self.assertContains(response, 'Ver como .env')
+        self.assertIn('bg-dark text-white', html)
+        self.assertIn('ti-terminal-2', html)
+        self.assertIn('modal-dialog-scrollable', html)
+        self.assertIn('env-console-body', html)
+        self.assertIn(f'EMAIL_HOST_PASSWORD={SECRET_MASK}', html)
+        self.assertNotIn('claveSmtpSecreta', html)
+
+    def test_ftp_fields_share_the_grid(self):
+        """El switch va solo y host/puerto y usuario/clave FTP comparten fila."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        for key in ('FTP_OBS_HOST', 'FTP_OBS_PORT', 'FTP_OBS_USER', 'FTP_OBS_PASS'):
-            self.assertEqual(self._column_of(html, key), 'col-12', msg=key)
+        self.assertEqual(self._column_of(html, 'OBS_AUTOMATIC'), 'col-12')
+        for first, second in (
+            ('FTP_OBS_HOST', 'FTP_OBS_PORT'),
+            ('FTP_OBS_USER', 'FTP_OBS_PASS'),
+        ):
+            self.assertEqual(self._column_of(html, first), 'col-md-6', msg=first)
+            self.assertEqual(self._column_of(html, second), 'col-md-6', msg=second)
+            start = html.index(f'id="id_{first}"')
+            end = html.index(f'id="id_{second}"')
+            self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
+
+    def test_template_comments_do_not_leak_into_the_page(self):
+        """Los comentarios de plantilla nunca llegan al HTML que ve el operador.
+
+        Django 5.2 solo reconoce `{# ... #}` de una sola linea: uno partido en
+        dos se renderiza como texto visible. Los comentarios largos usan el
+        bloque `{% comment %}` para que no ocurra.
+        """
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for fragment in (
+            'Zona 1:',
+            'Zona 2:',
+            'Zona 3:',
+            'Zona 4:',
+            'No es un selector',
+            'spaceless` evita',
+            'Los switches van solos',
+            'Campos editables de una seccion',
+            'el modal comparte el form',
+            'Preview del .env',
+        ):
+            self.assertNotIn(fragment, html, msg=fragment)
+        self.assertNotIn('{#', html)
+
+    def test_status_badges_use_colored_light_variants(self):
+        """La consola usa bg-*-lt con color; nunca el gris de bg-secondary-lt."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for variant in ('bg-green-lt', 'bg-blue-lt', 'bg-orange-lt'):
+            self.assertIn(variant, html)
+        for variant in ('bg-secondary-lt', 'bg-success-lt', 'bg-warning-lt'):
+            self.assertNotIn(variant, html)
 
     def test_help_text_comes_before_the_running_value(self):
         """El orden es etiqueta, campo, ayuda y por último el valor en ejecución.
@@ -707,6 +878,62 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
 
         request.user = self.staff
         self.assertNotIn('Entorno del servidor', render_to_string(template, request=request))
+
+    def test_verifier_no_secret_or_unknown_key_reaches_html(self):
+        """Ni secretos del .env, ni de os.environ, ni claves de terceros llegan al HTML."""
+        self.env_path.write_text(
+            'EMAIL_HOST_PASSWORD=claveSmtpProbe\n'  # pragma: allowlist secret
+            'LDAP_BIND_PASSWORD=claveBindProbe\n'  # pragma: allowlist secret
+            'FTP_OBS_PASS=claveFtpProbe\n'  # pragma: allowlist secret
+            'EXTERNAL_TOKEN=tokenTercerosProbe\n',  # pragma: allowlist secret
+            encoding='utf-8',
+        )
+        environ = {
+            'DEBUG': 'True',
+            'PRODUCTION': '1',
+            'SECRET_KEY': 'secretoEnvironProbe',  # pragma: allowlist secret
+            'ENCRYPTION_KEY': 'cifradoEnvironProbe',  # pragma: allowlist secret
+            'EXTERNAL_TOKEN': 'tokenEnvironProbe',  # pragma: allowlist secret
+            'INJECTED_VALUE': '<script>alert(1)</script>',
+        }
+        self.client.force_login(self.superuser)
+        with patch.dict('os.environ', environ, clear=False):
+            html = self.client.get(self.url).content.decode()
+
+        for needle in (
+            'claveSmtpProbe',
+            'claveBindProbe',
+            'claveFtpProbe',
+            'tokenTercerosProbe',
+            'secretoEnvironProbe',
+            'cifradoEnvironProbe',
+            'tokenEnvironProbe',
+            'INJECTED_VALUE',
+            '<script>alert(1)</script>',
+        ):
+            self.assertNotIn(needle, html, msg=f'FILTRADO: {needle}')
+        for key in ('EMAIL_HOST_PASSWORD', 'LDAP_BIND_PASSWORD', 'FTP_OBS_PASS'):
+            self.assertIn(f'{key}={SECRET_MASK}', html)
+
+    def test_verifier_no_template_comment_text_in_rendered_page(self):
+        """Los fragmentos de los comentarios de plantilla no aparecen en la página."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for fragment in (
+            'Zona 1:',
+            'Zona 2:',
+            'Zona 3:',
+            'Zona 4:',
+            'No es un selector',
+            'spaceless` evita',
+            'Campos editables de una seccion',
+            'Preview del .env',
+            'formaction` y no',
+        ):
+            self.assertNotIn(fragment, html, msg=fragment)
+        self.assertNotIn('{#', html)
+        self.assertNotIn('{%', html)
 
 
 class EnvApplyStatusTests(SimpleTestCase):
@@ -845,13 +1072,12 @@ class EnvApplyPendingRequestTests(SimpleTestCase):
 
 
 class EnvironmentApplyViewTests(EnvironmentViewTestBase):
-    """El botón "Aplicar cambios": guarda y pide el reinicio en un solo paso."""
+    """El botón "Aplicar": guarda y pide el reinicio en un solo paso."""
 
     def setUp(self):
         super().setUp()
-        # El reinicio baja el sitio unos segundos, así que solo se permite en la
-        # ventana de mantenimiento. Los casos de esta clase parten de ahí.
-        self._set_maintenance(True)
+        # Aplicar enciende el mantenimiento por su cuenta: los casos parten del
+        # sitio en marcha, que es como el operador llega al panel.
         self.request_path = Path(self.tempdir) / 'apply-request'
         self.status_path = Path(self.tempdir) / 'apply-status.json'
         override = override_settings(
@@ -939,9 +1165,6 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
     def test_staff_without_superuser_cannot_request_the_restart(self):
         self.client.force_login(self.superuser)
         payload = self._payload()
-        # Sin mantenimiento el middleware no tapa la respuesta: el 403 lo da el
-        # control de acceso de la vista, no la página de mantenimiento.
-        self._set_maintenance(False)
         self.client.force_login(self.staff)
 
         response = self.client.post(self.apply_url, payload)
@@ -955,7 +1178,7 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         response = self.client.get(self.url)
 
         self.assertTrue(response.context['can_apply'])
-        self.assertContains(response, 'Aplicar cambios')
+        self.assertContains(response, '</i> Aplicar')
         self.assertContains(response, f'formaction="{self.apply_url}"')
 
     def test_page_disables_the_button_without_the_watcher(self):
@@ -980,14 +1203,14 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
 
         self.assertContains(self.client.get(self.url), 'Último reinicio completado')
 
-    def test_page_disables_the_button_outside_the_maintenance_window(self):
-        self._set_maintenance(False)
+    def test_page_offers_the_apply_button_without_maintenance(self):
+        """El operador ya no tiene que activar el mantenimiento a mano."""
         self.client.force_login(self.superuser)
 
         response = self.client.get(self.url)
 
-        self.assertFalse(response.context['can_apply'])
-        self.assertContains(response, 'solo se habilita con el sitio en mantenimiento')
+        self.assertTrue(response.context['can_apply'])
+        self.assertContains(response, '</i> Aplicar')
 
     def test_page_warns_when_the_request_was_never_picked_up(self):
         """El síntoma del servidor sin la unidad: se pidió y no muestra nada."""
@@ -1007,26 +1230,68 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         response = self.client.post(self.apply_url, self._payload(), follow=True)
 
         self.assertNotContains(response, 'quedó sin recoger')
-        self.assertContains(response, f'href="{reverse("core:site_configuration")}"')
+        self.assertContains(response, reverse('core:environment_maintenance_disable'))
 
-    def test_apply_is_refused_outside_the_maintenance_window(self):
-        self._set_maintenance(False)
+    def test_apply_enables_maintenance_before_the_restart(self):
         self.client.force_login(self.superuser)
-        before = self.env_path.read_text(encoding='utf-8')
 
         response = self.client.post(self.apply_url, self._payload(NOTIFICATIONS_MAX_VISIBLE='25'))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.env_path.read_text(encoding='utf-8'), before)
-        self.assertFalse(self.request_path.exists())
-        self.assertContains(response, 'Active el modo mantenimiento')
-        self.assertNotIn(
-            'Parámetros actualizados',
-            ActivityLog.objects.values_list('message', flat=True),
-        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+        self.assertTrue(self.request_path.exists())
+        self.assertIn('NOTIFICATIONS_MAX_VISIBLE=25', self.env_path.read_text(encoding='utf-8'))
 
-    def test_save_still_works_outside_the_maintenance_window(self):
-        self._set_maintenance(False)
+    def test_apply_keeps_an_existing_maintenance_window(self):
+        self._set_maintenance(True)
+        self.client.force_login(self.superuser)
+
+        self.client.post(self.apply_url, self._payload())
+
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_apply_restores_maintenance_when_the_restart_request_fails(self):
+        """Si no se pudo pedir el reinicio, no se deja el sitio apagado."""
+        self.client.force_login(self.superuser)
+        override = override_settings(
+            ENV_APPLY_REQUEST_FILE=Path(self.tempdir) / 'no-existe' / 'apply-request'
+        )
+        override.enable()
+        self.addCleanup(override.disable)
+
+        response = self.client.post(self.apply_url, self._payload(), follow=True)
+
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+        self.assertContains(response, 'el servidor no aceptó la petición de reinicio')
+
+    def test_apply_with_an_invalid_form_does_not_enable_maintenance(self):
+        self.client.force_login(self.superuser)
+
+        self.client.post(self.apply_url, self._payload(SITE_URL='ftp://cmp.cu/'))
+
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_page_offers_two_actions_and_no_cancel_link(self):
+        self.client.force_login(self.superuser)
+
+        html = self.client.get(self.url).content.decode()
+
+        self.assertIn('</i> Aceptar', html)
+        self.assertIn('</i> Aplicar', html)
+        self.assertRegex(html, r'class="btn btn-secondary"\s+data-bs-toggle="modal"')
+        # El modal del navbar compartido tiene su propio "Cancelar"; lo que no
+        # debe quedar es el botón de acción de esta página.
+        self.assertNotIn(f'href="{self.url}" class="btn btn-secondary"', html)
+        self.assertNotIn('ti-x"></i> Cancelar', html)
+        self.assertIn('data-bs-target="#apply-changes-modal"', html)
+        self.assertNotIn('confirm(', html)
+
+    def test_page_shows_the_environment_status_console(self):
+        self.client.force_login(self.superuser)
+
+        self.assertContains(self.client.get(self.url), 'Estado del entorno')
+
+    def test_save_still_works_without_touching_maintenance(self):
         self.client.force_login(self.superuser)
 
         response = self.client.post(self.url, self._payload(NOTIFICATIONS_MAX_VISIBLE='25'))
@@ -1034,3 +1299,67 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('NOTIFICATIONS_MAX_VISIBLE=25', self.env_path.read_text(encoding='utf-8'))
         self.assertFalse(self.request_path.exists())
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+
+class EnvironmentMaintenanceDisableViewTests(EnvironmentViewTestBase):
+    """Salida directa del mantenimiento que enciende el propio panel."""
+
+    def setUp(self):
+        super().setUp()
+        self._set_maintenance(True)
+        self.disable_url = reverse('core:environment_maintenance_disable')
+
+    def _set_maintenance(self, enabled: bool):
+        site = SiteConfiguration.get_instance()
+        site.maintenance_mode = enabled
+        site.save()
+
+    def test_superuser_can_disable_maintenance(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(self.disable_url)
+
+        self.assertRedirects(response, self.url)
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+        self.assertTrue(
+            ActivityLog.objects.filter(
+                message='Modo mantenimiento desactivado desde el panel de entorno'
+            ).exists()
+        )
+
+    def test_staff_cannot_disable_maintenance(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(self.disable_url)
+
+        # Con mantenimiento activo el middleware responde 503 antes de llegar a
+        # la vista; sin la bandera, la vista responde 403 por no ser superusuario.
+        self.assertEqual(response.status_code, 503)
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+        self._set_maintenance(False)
+        self.assertEqual(self.client.post(self.disable_url).status_code, 403)
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_get_is_not_allowed(self):
+        self.client.force_login(self.superuser)
+
+        self.assertEqual(self.client.get(self.disable_url).status_code, 405)
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_page_offers_the_way_out_while_in_maintenance(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, self.disable_url)
+        self.assertContains(response, 'Desactivar mantenimiento')
+
+    def test_page_does_not_offer_the_way_out_without_maintenance(self):
+        self._set_maintenance(False)
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, self.disable_url)
