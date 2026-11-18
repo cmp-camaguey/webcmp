@@ -6,6 +6,7 @@ import tempfile
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
@@ -877,6 +878,62 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
 
         request.user = self.staff
         self.assertNotIn('Entorno del servidor', render_to_string(template, request=request))
+
+    def test_verifier_no_secret_or_unknown_key_reaches_html(self):
+        """Ni secretos del .env, ni de os.environ, ni claves de terceros llegan al HTML."""
+        self.env_path.write_text(
+            'EMAIL_HOST_PASSWORD=claveSmtpProbe\n'  # pragma: allowlist secret
+            'LDAP_BIND_PASSWORD=claveBindProbe\n'  # pragma: allowlist secret
+            'FTP_OBS_PASS=claveFtpProbe\n'  # pragma: allowlist secret
+            'EXTERNAL_TOKEN=tokenTercerosProbe\n',  # pragma: allowlist secret
+            encoding='utf-8',
+        )
+        environ = {
+            'DEBUG': 'True',
+            'PRODUCTION': '1',
+            'SECRET_KEY': 'secretoEnvironProbe',  # pragma: allowlist secret
+            'ENCRYPTION_KEY': 'cifradoEnvironProbe',  # pragma: allowlist secret
+            'EXTERNAL_TOKEN': 'tokenEnvironProbe',  # pragma: allowlist secret
+            'INJECTED_VALUE': '<script>alert(1)</script>',
+        }
+        self.client.force_login(self.superuser)
+        with patch.dict('os.environ', environ, clear=False):
+            html = self.client.get(self.url).content.decode()
+
+        for needle in (
+            'claveSmtpProbe',
+            'claveBindProbe',
+            'claveFtpProbe',
+            'tokenTercerosProbe',
+            'secretoEnvironProbe',
+            'cifradoEnvironProbe',
+            'tokenEnvironProbe',
+            'INJECTED_VALUE',
+            '<script>alert(1)</script>',
+        ):
+            self.assertNotIn(needle, html, msg=f'FILTRADO: {needle}')
+        for key in ('EMAIL_HOST_PASSWORD', 'LDAP_BIND_PASSWORD', 'FTP_OBS_PASS'):
+            self.assertIn(f'{key}={SECRET_MASK}', html)
+
+    def test_verifier_no_template_comment_text_in_rendered_page(self):
+        """Los fragmentos de los comentarios de plantilla no aparecen en la página."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for fragment in (
+            'Zona 1:',
+            'Zona 2:',
+            'Zona 3:',
+            'Zona 4:',
+            'No es un selector',
+            'spaceless` evita',
+            'Campos editables de una seccion',
+            'Preview del .env',
+            'formaction` y no',
+        ):
+            self.assertNotIn(fragment, html, msg=fragment)
+        self.assertNotIn('{#', html)
+        self.assertNotIn('{%', html)
 
 
 class EnvApplyStatusTests(SimpleTestCase):
