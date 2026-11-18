@@ -114,6 +114,18 @@
       }
     }
 
+    /* Errores y peso de página tienen poco contenido: con la altura de las
+       tarjetas de media columna queda un hueco grande al final. */
+    .monitoring-compact-card {
+      min-height: 16rem;
+    }
+
+    @media (min-width: 576px) {
+      .monitoring-compact-card {
+        min-height: 18rem;
+      }
+    }
+
     /* Status dots con icono: asegurar que el icono se vea */
     .status .icon {
       font-size: 0.6rem;
@@ -883,7 +895,7 @@
       </div>
       <!-- Fila 5: errores JS y peso de página -->
       <div class="col-lg-6">
-        <div class="card monitoring-half-card h-100">
+        <div class="card monitoring-compact-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
               <div class="monitoring-eyebrow">
@@ -941,7 +953,7 @@
         </div>
       </div>
       <div class="col-lg-6">
-        <div class="card monitoring-half-card h-100">
+        <div class="card monitoring-compact-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
               <div class="monitoring-eyebrow">
