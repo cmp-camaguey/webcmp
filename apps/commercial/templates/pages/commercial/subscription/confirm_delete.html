@@ -47,12 +47,15 @@
     </div>
   </div>
   <!-- Modal para HARD DELETE (eliminación permanente) -->
-  <div class="modal fade"
+  <div class="modal modal-blur fade"
        id="hardDeleteModal"
        tabindex="-1"
        aria-labelledby="hardDeleteModalLabel"
-       aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false"
+       role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title" id="hardDeleteModalLabel">
@@ -63,7 +66,7 @@
                   class="btn-close btn-close-white"
                   id="closeHardModalBtn"
                   data-bs-dismiss="modal"
-                  aria-label="Close"></button>
+                  aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
           <p>¿Estás seguro de que deseas <strong class="text-danger">eliminar permanentemente</strong> la suscripción de <strong>{{ object.customer.display_name }}</strong>?</p>
@@ -80,12 +83,15 @@
     </div>
   </div>
   <!-- Modal para SOFT DELETE (desactivación) -->
-  <div class="modal fade"
+  <div class="modal modal-blur fade"
        id="softDeleteModal"
        tabindex="-1"
        aria-labelledby="softDeleteModalLabel"
-       aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false"
+       role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header bg-warning text-dark">
           <h5 class="modal-title" id="softDeleteModalLabel">
@@ -96,7 +102,7 @@
                   class="btn-close"
                   id="closeSoftModalBtn"
                   data-bs-dismiss="modal"
-                  aria-label="Close"></button>
+                  aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
           <p>¿Estás seguro de que deseas <strong>desactivar</strong> la suscripción de <strong>{{ object.customer.display_name }}</strong>?</p>

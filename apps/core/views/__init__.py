@@ -9,7 +9,11 @@ from apps.core.views.email_recipients import (
     EmailRecipientListListView,
     EmailRecipientListUpdateView,
 )
-from apps.core.views.env_config import EnvironmentConfigApplyView, EnvironmentConfigView
+from apps.core.views.env_config import (
+    EnvironmentConfigApplyView,
+    EnvironmentConfigView,
+    EnvironmentMaintenanceDisableView,
+)
 from apps.core.views.serve_file import PublicServeFileView, ServeModelFileView
 from apps.core.views.site_configuration import (
     SiteConfigurationUpdateView,
@@ -25,6 +29,7 @@ __all__ = [
     'EmailRecipientListUpdateView',
     'EnvironmentConfigApplyView',
     'EnvironmentConfigView',
+    'EnvironmentMaintenanceDisableView',
     'PublicServeFileView',
     'ServeModelFileView',
     'SiteConfigurationUpdateView',

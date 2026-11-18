@@ -22,7 +22,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, View
 
 from apps.core.env_apply import (
     ApplyRequestPendingError,
@@ -35,6 +35,7 @@ from apps.core.env_config import (
     EDITABLE_FIELDS,
     EDITABLE_GROUP_TITLES,
     as_bool,
+    build_env_preview,
     build_environment,
     display_value,
 )
@@ -73,6 +74,8 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         )
         watcher_available = can_request(settings.ENV_APPLY_REQUEST_FILE)
         maintenance_mode = self._maintenance_mode()
+        sections = self._sections(form, environment)
+        profile, profile_name = self._profile()
 
         context.update(
             {
@@ -81,17 +84,29 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
                 'segment': 'core:environment_config',
                 'groups': environment['groups'],
                 'secrets': environment['secrets'],
-                'editable_sections': self._sections(form, environment),
+                'editable_sections': sections,
+                # La plantilla acomoda las secciones por clave, no en el orden
+                # plano del formulario: Sitio y Correo comparten tarjeta ancha,
+                # Avisos y Actualizaciones la estrecha, LDAP y FTP van plegados.
+                'sections_by_key': {section['key']: section for section in sections},
+                'environment_profile': profile,
+                'environment_name': profile_name,
+                'env_file_path': str(env_path),
+                'env_preview': build_env_preview(
+                    os.environ, file_values, environment['effective'], profile
+                ),
+                'pending_count': sum(environment['pending'].values()),
                 'form': form,
                 'can_write': can_write,
                 # Sin la unidad systemd instalada, la petición no tiene quién la
                 # recoja. Se deshabilita el botón en vez de dejar que el operador
                 # pulse y espere un reinicio que nunca ocurre.
                 'watcher_available': watcher_available,
-                # El reinicio deja el sitio sin responder unos segundos: solo se
-                # permite dentro de la ventana de mantenimiento anunciada.
+                # Aplicar enciende el mantenimiento por su cuenta antes de
+                # pedir el reinicio: el operador no tiene que acordarse de
+                # activarlo en otra página.
                 'maintenance_mode': maintenance_mode,
-                'can_apply': watcher_available and maintenance_mode,
+                'can_apply': watcher_available,
                 'apply_status': apply_status(settings.ENV_APPLY_STATUS_FILE),
                 # Una peticion que sigue en disco no es un reinicio en curso: es
                 # uno que nadie proceso (falta la unidad `systemd`, o esta
@@ -101,6 +116,20 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
             }
         )
         return context
+
+    @staticmethod
+    def _profile() -> tuple[str, str]:
+        """Identidad del servidor que está mirando el operador.
+
+        Cada deployment lee su propio `.env`, asi que este dato es solo
+        identificacion: nunca es un selector ni cruza archivos de otros hosts.
+        La misma precedencia que `config/settings/__init__.py` elige el perfil.
+        """
+        if getattr(settings, 'IS_PRODUCTION', False):
+            return 'produccion', 'Producción'
+        if getattr(settings, 'DEBUG', False):
+            return 'desarrollo', 'Desarrollo'
+        return 'pruebas', 'Pruebas'
 
     def _maintenance_mode(self) -> bool:
         """Bandera del modo mantenimiento.
@@ -122,19 +151,6 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
                 'El proceso web no puede guardar la configuración; queda en solo lectura.',
             )
             return redirect(self.success_url)
-
-        if self.apply_changes and not self._maintenance_mode():
-            # Aplicar reinicia el servicio y tira las conexiones abiertas. Fuera
-            # de la ventana de mantenimiento se rechaza antes de escribir: lo que
-            # el operador escribió se vuelve a pintar para que pueda guardarlo.
-            messages.error(
-                request,
-                'Active el modo mantenimiento en Configuración del sitio antes de '
-                'aplicar: el reinicio deja el sitio sin responder unos segundos.',
-            )
-            return self.render_to_response(
-                self.get_context_data(form=EnvironmentConfigForm(request.POST))
-            )
 
         form = EnvironmentConfigForm(request.POST)
         if not form.is_valid():
@@ -176,19 +192,31 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         return changed
 
     def _request_apply(self, request, changed: list[str]):
-        """Deja la petición de reinicio después de guardar.
+        """Enciende el mantenimiento y deja la petición de reinicio.
+
+        El encendido va ANTES de escribir el archivo: el ejecutor root baja los
+        servicios en cuanto lo ve aparecer, y sin la bandera el sitio quedaría
+        caído a la vista de quien navegara en ese instante. Si la petición no llega
+        a escribirse se restaura la bandera; apagar el sitio sin reinicio sería
+        peor que no aplicar los cambios.
 
         Se pide aunque no haya cambios que guardar: el operador pudo editar el
         archivo a mano y usar el botón solo para aplicar.
         """
+        previous = self._maintenance_mode()
+        if not previous:
+            self._set_maintenance(request, True)
+
         try:
             request_apply(settings.ENV_APPLY_REQUEST_FILE, request.user)
         except ApplyRequestPendingError:
+            self._set_maintenance(request, previous)
             messages.warning(
                 request, 'Ya hay un reinicio en curso. Espere a que termine antes de repetirlo.'
             )
             return redirect(self.success_url)
         except OSError:
+            self._set_maintenance(request, previous)
             logger.exception('No se pudo escribir la petición de reinicio')
             messages.error(
                 request,
@@ -200,10 +228,20 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         self._log_apply(request)
         messages.success(
             request,
-            'Cambios guardados y reinicio solicitado. El sitio vuelve en unos segundos '
-            'con los valores nuevos.',
+            'Cambios guardados y reinicio solicitado. El sitio quedó en mantenimiento '
+            'mientras reinicia; al volver puede desactivarlo desde el aviso del panel.',
         )
         return redirect(self.success_url)
+
+    @staticmethod
+    def _set_maintenance(request, enabled: bool) -> None:
+        """Cambia la bandera sin tocar el singleton que ya cacheó el middleware."""
+        site = getattr(request, 'site_config', None) or SiteConfiguration.get_instance()
+        if site.maintenance_mode == enabled:
+            return
+        site.maintenance_mode = enabled
+        site.save(update_fields=['maintenance_mode'])
+        request.site_config = site
 
     @staticmethod
     def _initial(file_values: dict[str, str], effective: dict[str, str]) -> dict:
@@ -298,3 +336,38 @@ class EnvironmentConfigApplyView(EnvironmentConfigView):
     """
 
     apply_changes = True
+
+
+class EnvironmentMaintenanceDisableView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Salida directa del mantenimiento que el panel enciende al aplicar.
+
+    El reinicio baja el sitio y lo deja en mantenimiento para que nadie navegue
+    una versión a medias. Si la salida estuviera en otra página, es fácil que
+    el operador se olvide y deje el sitio caído; por eso vive junto al botón
+    que encendió la bandera.
+    """
+
+    http_method_names = ['post']
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def post(self, request, *args, **kwargs):
+        site = SiteConfiguration.get_instance()
+        if site.maintenance_mode:
+            site.maintenance_mode = False
+            site.save(update_fields=['maintenance_mode'])
+            ActivityLog.objects.create(
+                user=request.user,
+                action_flag=ActivityLog.ACTIVITY_CHANGE,
+                content_type=None,
+                object_id=None,
+                object_repr='Entorno del servidor',
+                message='Modo mantenimiento desactivado desde el panel de entorno',
+                ip_address=request.META.get('REMOTE_ADDR') or None,
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            )
+        messages.success(
+            request, 'Modo mantenimiento desactivado. El sitio vuelve a estar disponible.'
+        )
+        return redirect('core:environment_config')

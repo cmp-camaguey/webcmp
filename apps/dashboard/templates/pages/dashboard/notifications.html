@@ -129,12 +129,15 @@
     su mensaje en `data-*`, y `static/dist/js/notifications.js` los copia al
     abrirlo. Diez modales por pagina serian diez copias del mismo bloque.
   {% endcomment %}
-  <div class="modal fade"
+  <div class="modal modal-blur fade"
        id="notification-delete-modal"
        tabindex="-1"
        aria-labelledby="notification-delete-title"
-       aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false"
+       role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title" id="notification-delete-title">

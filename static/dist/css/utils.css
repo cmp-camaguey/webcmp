@@ -40,11 +40,14 @@
     to { transform: rotate(360deg); }
   }
 
-  /* Entorno del servidor: tarjetas de solo lectura con alto acotado y scroll
-     interno, para que las cuatro quepan en una fila con el mismo tamaño. */
-  .environment-card-scroll {
-    max-height: 18rem;
-    overflow-y: auto;
+  /* Entorno del servidor: en pantallas anchas las tarjetas de solo lectura
+     comparten alto con scroll interno. En móvil crecen con su contenido: dos
+     scrolls anidados hacen imposible leerlas con el pulgar. */
+  @media (min-width: 576px) {
+    .environment-card-scroll {
+      max-height: 18rem;
+      overflow-y: auto;
+    }
   }
 
   /* Volver arriba: boton flotante que solo aparece con scroll real. Lo muestra

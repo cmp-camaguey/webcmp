@@ -12,6 +12,7 @@ el proceso web (`webcmp`) comparten a traves de archivos:
 
 import json
 import os
+import re
 import tempfile
 import urllib.error
 from datetime import UTC, datetime, timedelta
@@ -25,6 +26,15 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.dashboard.views.dashboard import update as update_module
+
+APERTURA_MODAL = re.compile(
+    r'<div\s+class="modal[^"]*fade"[^>]*>(.*?)'
+    r'(?=<div\s+class="modal[^"]*fade"|\Z)',
+    re.DOTALL,
+)
+HEADER_MODAL = re.compile(
+    r'<(?:div|header)[^>]*class="[^"]*(?:modal-header|card-header)[^"]*"[^>]*>'
+)
 
 SHA_DEPLOYED = 'a' * 40
 SHA_LATEST = 'b' * 40
@@ -1597,3 +1607,145 @@ class DashboardUpdateScriptTest(TestCase):
         )
 
         self.assertIn("dist/js/dashboard-update.js' %}?v=6", html)
+
+    def test_todos_los_modales_ignoran_escape_y_clic_fuera(self):
+        # Un Escape o un clic en el backdrop cierra un modal de confirmacion
+        # sin que nadie confirme nada. La X sigue siendo la salida explicita:
+        # todos los modales del sitio llevan la data API de cierre.
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        apertura = re.compile(r'<div\s+class="modal[^"]*fade"[^>]*>', re.DOTALL)
+        ofensores = []
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                for match in apertura.finditer(path.read_text(encoding='utf-8')):
+                    tag = match.group(0)
+                    if (
+                        'data-bs-backdrop="static"' not in tag
+                        or 'data-bs-keyboard="false"' not in tag
+                    ):
+                        ofensores.append(str(path.relative_to(base)))
+
+        self.assertEqual(
+            sorted(set(ofensores)),
+            [],
+            'modales sin backdrop static / keyboard false en: ' + ', '.join(sorted(set(ofensores))),
+        )
+
+    def test_el_modal_de_confirmacion_sigue_el_estilo_del_dashboard(self):
+        # Mismo lenguaje visual que los modales de confirmacion del panel:
+        # blur, roles ARIA y header con color. El aviso de despliegue no es
+        # destructivo (el ejecutor revierte), asi que usa warning, no danger.
+        # Ademas solo se cierra con la X: sin Cancelar y sin Escape/backdrop.
+        html = (
+            Path(settings.BASE_DIR) / 'templates/includes/dashboard/update_navbar.html'
+        ).read_text(encoding='utf-8')
+        modal = html.split('id="update-confirm-modal"', 1)[1]
+        apertura = re.compile(r'<div\s+class="modal[^"]*fade"[^>]*>', re.DOTALL)
+        tag = next(t for t in apertura.findall(html) if 'id="update-confirm-modal"' in t)
+
+        self.assertIn('class="modal modal-blur fade"', tag)
+        self.assertIn('role="dialog"', tag)
+        self.assertIn('data-bs-backdrop="static"', tag)
+        self.assertIn('data-bs-keyboard="false"', tag)
+        self.assertIn('role="document"', modal)
+        self.assertIn('class="modal-header bg-warning text-dark"', modal)
+        self.assertIn('aria-label="Cerrar"', modal)
+        self.assertIn('>Cancelar</button>', modal)
+        self.assertIn('id="update-confirm-deploy"', modal)
+
+    def test_todos_los_modales_comparten_el_mismo_patron_visual(self):
+        # Un solo lenguaje visual en todo el sitio: blur, roles ARIA, X con
+        # etiqueta en espanol y header con color segun el proposito.
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        ofensores = []
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                texto = path.read_text(encoding='utf-8')
+                for match in APERTURA_MODAL.finditer(texto):
+                    bloque = match.group(0)
+                    tag = bloque.split('>', 1)[0]
+                    fallos = []
+                    if 'modal-blur' not in tag or 'role="dialog"' not in tag:
+                        fallos.append('blur/role')
+                    dialog = re.search(r'<div\s+class="modal-dialog[^"]*"[^>]*>', bloque)
+                    if not dialog or 'role="document"' not in dialog.group(0):
+                        fallos.append('role=document')
+                    header = HEADER_MODAL.search(bloque)
+                    if not header or not re.search(
+                        r'bg-(?:danger|warning|primary|dark)\b', header.group(0)
+                    ):
+                        fallos.append('header sin color')
+                    if 'aria-label="Cerrar"' not in bloque:
+                        fallos.append('X sin etiqueta')
+                    if fallos:
+                        ofensores.append(f'{path.relative_to(base)}: ' + ', '.join(fallos))
+
+        self.assertEqual(ofensores, [], '\n'.join(ofensores))
+
+    def test_los_modales_de_accion_conservan_el_boton_cancelar(self):
+        # El usuario pidio conservar Cancelar en todos los modales de accion.
+        # Los informativos (PDF, log, KPIs, traceback) solo llevan la X.
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        con_cancelar = set()
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                texto = path.read_text(encoding='utf-8')
+                for match in APERTURA_MODAL.finditer(texto):
+                    bloque = match.group(0)
+                    if '>Cancelar</button>' in bloque:
+                        ident = re.search(r'id="([^"]+)"', bloque.split('>', 1)[0])
+                        con_cancelar.add((str(path.relative_to(base)), ident.group(1)))
+
+        esperados = {
+            ('templates/includes/dashboard/modal_delete.html', 'confirmDeleteModal'),
+            ('templates/includes/dashboard/update_navbar.html', 'update-confirm-modal'),
+            (
+                'apps/dashboard/templates/pages/dashboard/notifications.html',
+                'notification-delete-modal',
+            ),
+            ('apps/dashboard/templates/pages/dashboard/tasks.html', 'confirmTaskDeleteModal'),
+            ('apps/core/templates/pages/core/site/settings.html', 'reset-theme-modal'),
+            (
+                'apps/commercial/templates/pages/commercial/certificate/list.html',
+                'confirmDeleteModal',
+            ),
+            ('apps/commercial/templates/pages/commercial/contract/list.html', 'confirmDeleteModal'),
+            ('apps/commercial/templates/pages/commercial/customer/list.html', 'confirmDeleteModal'),
+            (
+                'apps/commercial/templates/pages/commercial/invoice/create.html',
+                'modal-company-settings',
+            ),
+            (
+                'apps/commercial/templates/pages/commercial/invoice/list.html',
+                'confirmInvoiceActionModal',
+            ),
+            ('apps/commercial/templates/pages/commercial/service/list.html', 'confirmDeleteModal'),
+            (
+                'apps/commercial/templates/pages/commercial/subscription/confirm_delete.html',
+                'hardDeleteModal',
+            ),
+            (
+                'apps/commercial/templates/pages/commercial/subscription/confirm_delete.html',
+                'softDeleteModal',
+            ),
+            (
+                'apps/commercial/templates/pages/commercial/subscription/list.html',
+                'confirmSubscriptionActionModal',
+            ),
+        }
+        self.assertEqual(con_cancelar, esperados)
+
+    def test_el_modal_de_suscripciones_no_tiene_footer(self):
+        # El modal solo muestra la tabla de suscripciones: la X del header
+        # es la unica salida, sin un boton gris repetido al pie.
+        html = (
+            Path(settings.BASE_DIR) / 'templates/includes/dashboard/resumen_comercial.html'
+        ).read_text(encoding='utf-8')
+        modal = html.split('id="subscriptionsModal"', 1)[1]
+
+        self.assertNotIn('<div class="modal-footer">', modal)
+        self.assertNotIn('data-bs-dismiss="modal">Cerrar</button>', modal)
+        self.assertIn('aria-label="Cerrar"', modal)

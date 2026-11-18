@@ -167,21 +167,20 @@
        id="subscriptionsModal"
        tabindex="-1"
        role="dialog"
-       aria-hidden="true">
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="subscriptionsModalLabel">Suscripciones</h5>
           <button type="button"
-                  class="btn-close"
+                  class="btn-close btn-close-white"
                   data-bs-dismiss="modal"
                   aria-label="Cerrar"></button>
         </div>
         <div class="modal-body p-3">
           <div id="subscriptionsModalContent"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>

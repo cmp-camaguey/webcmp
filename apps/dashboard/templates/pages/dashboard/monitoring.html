@@ -2,9 +2,65 @@
 {% load static monitoring_tags %}
 {% block extrastyle %}
   <style>
+    /* La consola de estado es la firma de esta vista: la franja de
+       disponibilidad manda y el resto de tarjetas acompaña en silencio. */
+    .monitoring-console {
+      border-top: 3px solid var(--tblr-primary);
+    }
+
+    /* En móvil el bloque baja de fila: ocupar el ancho completo deja que la
+       hora se alinee a la derecha sin pegarse a "Última captura". */
+    .monitoring-last-capture {
+      width: 100%;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    @media (min-width: 576px) {
+      .monitoring-last-capture {
+        width: auto;
+        justify-content: flex-start;
+      }
+    }
+
+    /* El móvil cambia rótulos largos por cortos sin tocar el HTML en vivo. */
+    .monitoring-short {
+      display: none;
+    }
+
+    @media (max-width: 575px) {
+      .monitoring-long {
+        display: none;
+      }
+
+      .monitoring-short {
+        display: inline;
+      }
+    }
+
+    .monitoring-eyebrow {
+      color: var(--tblr-secondary);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Las cifras que cambian solas no deben bailar de ancho en cada refresco. */
+    .monitoring-figure {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
     .monitoring-chart {
       width: 100%;
-      min-height: 150px;
+      min-height: 130px;
+    }
+
+    .monitoring-card > .card-body > .monitoring-chart:last-child {
+      flex: 1 1 auto;
     }
 
     .monitoring-cores {
@@ -28,6 +84,32 @@
       width: 100%;
       display: block;
       border-radius: 2px 2px 0 0;
+      transition: height 0.2s ease, background-color 0.2s ease;
+    }
+
+    /* Bloques de 30 min: cada seis (3 h) separa un grupo para poder leer
+       la franja sin contar. El separador es CSS, así que sobrevive al
+       innerHTML con el que el refresco reconstruye los bloques. */
+    .monitoring-slots {
+      gap: 2px;
+    }
+
+    .monitoring-slots .tracking-block {
+      height: 2rem;
+      min-width: 0.5rem;
+      border-radius: 2px;
+      flex: 1 1 0;
+      transition: background-color 0.2s ease;
+    }
+
+    .monitoring-slots .tracking-block:nth-child(6n) {
+      margin-right: 4px;
+    }
+
+    @media (min-width: 576px) {
+      .monitoring-slots .tracking-block {
+        height: 2.5rem;
+      }
     }
 
     /* Tracking scroll wrapper: contenedor con scroll horizontal de reserva.
@@ -40,44 +122,57 @@
       scrollbar-width: thin;
       scrollbar-color: var(--tblr-border-color) transparent;
     }
+
     .tracking-scroll-wrapper .tracking {
       flex-wrap: nowrap;
     }
-    .tracking-scroll-wrapper .tracking-block {
-      flex: 1 1 0;
-      min-width: 0.4rem;
-      height: 1.5rem;
-    }
-    @media (min-width: 576px) {
-      .tracking-scroll-wrapper .tracking-block {
-        height: 1.75rem;
-      }
+
+    /* Un solo sistema de altura para los cards de fila. Bootstrap ya iguala
+       la altura de los hermanos con h-100: aquí solo distribuimos el contenido
+       para que no quede un hueco muerto abajo cuando cambia el refresco. */
+    .monitoring-card > .card-body {
+      display: flex;
+      flex-direction: column;
     }
 
-    /* KPI cards: misma altura mínima para que no varíen con el contenido */
-    .monitoring-kpi-card {
-      min-height: 9rem;
-    }
-    @media (min-width: 576px) {
-      .monitoring-kpi-card {
-        min-height: 10.5rem;
-      }
+    .monitoring-card > .card-body > :last-child:not(.monitoring-chart) {
+      margin-top: auto;
     }
 
-    /* Cards de sección a ancho completo: recursos, disponibilidad 24 h,
-       Web Vitals. Alto mínimo estable para que el contenido no cambie el card. */
-    .monitoring-section-card {
-      min-height: 24rem;
+    /* Recursos es el card corto de una fila cuyo hermano lleva el chart HTTP.
+       Empujar su último bloque al fondo dejaba un hueco del tamaño del chart:
+       aquí el sobrante se reparte entre las métricas y el datagrid para que
+       ambos respiren, sin perder la altura pareja de la fila. */
+    .monitoring-card > .card-body.monitoring-resources-body > :last-child:not(.monitoring-chart) {
+      margin-top: 0;
     }
 
-    /* Cards de media columna: tráfico, errores JS, peso de página. */
-    .monitoring-half-card {
-      min-height: 24rem;
+    .monitoring-card > .card-body.monitoring-resources-body > .row.g-3,
+    .monitoring-card > .card-body.monitoring-resources-body > .datagrid.monitoring-pairs {
+      flex: 1 1 auto;
+      align-content: space-around;
     }
-    @media (min-width: 576px) {
-      .monitoring-half-card {
-        min-height: 28rem;
-      }
+
+    .monitoring-fill {
+      flex: 1 1 auto;
+      align-content: center;
+    }
+
+    /* "Páginas por visitante" se parte en dos líneas en móvil: sin alinear
+       por la base, su cifra queda más abajo que las otras dos. */
+    .monitoring-traffic-kpis > [class*="col-"] {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .monitoring-traffic-kpis .monitoring-figure {
+      margin-top: auto;
+    }
+
+    /* La tabla paginada crece y empuja su paginador al fondo: los dos quedan
+       juntos, sin hueco entre medias, también cuando la fila se estira. */
+    .monitoring-card > .card-body > .table-responsive.monitoring-table-grow {
+      flex: 1 1 auto;
     }
 
     /* Status dots con icono: asegurar que el icono se vea */
@@ -87,13 +182,67 @@
       align-items: center;
       justify-content: center;
     }
+
+    /* Tabler define .datagrid con minmax(15rem, 1fr): el card se angosta en
+       col-lg-6 aunque la ventana sea ancha y entonces todo cae a una columna.
+       El selector doble gana por especificidad (este bloque se carga antes
+       que el CSS de Tabler) y fuerza las parejas a cualquier ancho. */
+    .datagrid.monitoring-pairs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .datagrid.monitoring-pairs .datagrid-title,
+    .datagrid.monitoring-pairs .datagrid-content {
+      overflow-wrap: anywhere;
+    }
+
+    /* En móvil la celda de Huey ocupa las dos columnas: así "Al día" y los
+       contadores comparten línea en lugar de partirse en dos. */
+    @media (max-width: 575px) {
+      .monitoring-queue-wide {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* Columnas fijas para que los círculos de la leyenda alineen al envolver. */
+    .monitoring-uptime-legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem 0.75rem;
+    }
+
+    @media (min-width: 576px) {
+      .monitoring-uptime-legend {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .monitoring-core-bar,
+      .monitoring-slots .tracking-block {
+        transition: none;
+      }
+    }
   </style>
 {% endblock %}
 {% block page_header %}
   <div class="row g-2 align-items-center">
-    <div class="col">
+    <div class="col-12 col-md">
       <div class="page-pretitle">{{ parent }}</div>
       <h2 class="page-title">{{ title }}</h2>
+    </div>
+    <div class="col-12 col-md-auto d-flex justify-content-end">
+      <div class="btn-list">
+        <button type="button" class="btn btn-outline-secondary" id="monitoringToggle">
+          <i class="icon ti ti-player-pause me-1" aria-hidden="true"></i>
+          <span data-toggle-label>Pausar</span>
+        </button>
+        <button type="button" class="btn btn-primary" id="monitoringRefresh">
+          <i class="icon ti ti-refresh me-1" aria-hidden="true"></i>
+          Refrescar
+        </button>
+      </div>
     </div>
   </div>
 {% endblock %}
@@ -103,7 +252,7 @@
        data-refresh-ms="{{ refresh_ms }}">
     {% if not snapshot.enabled %}
       <div class="alert alert-warning d-flex align-items-center" role="alert">
-        <i class="icon ti ti-alert-triangle me-2"></i>
+        <i class="icon ti ti-alert-triangle me-2" aria-hidden="true"></i>
         <div>
           La captura de métricas está desactivada (<code>MONITORING_ENABLED=False</code>).
           Se muestran los recursos del servidor y los datos ya guardados, pero no se
@@ -115,7 +264,7 @@
                 alert-dismissible d-flex align-items-start{% if not snapshot.status.reasons %} d-none{% endif %}"
          role="alert"
          data-status-alert>
-      <i class="icon ti ti-alert-triangle me-2 mt-1"></i>
+      <i class="icon ti ti-alert-triangle me-2 mt-1" aria-hidden="true"></i>
       <div>
         <h4 class="alert-title" data-status-alert-title>Estado {{ snapshot.status.label }}</h4>
         <ul class="mb-0 ps-3" data-status-reasons>
@@ -127,36 +276,103 @@
               data-status-alert-close
               aria-label="Cerrar aviso"></button>
     </div>
+    <!-- Consola de estado: la tesis de la página, arriba y a ancho completo. -->
     <div class="row row-cards">
-      <!-- Fila 1: las cuatro cifras que se miran primero -->
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card monitoring-kpi-card h-100">
+      <div class="col-12">
+        <div class="card monitoring-console">
           <div class="card-body">
-            <div class="d-flex align-items-center mb-3">
-              <div class="subheader">Estado del sitio</div>
-              <div class="ms-auto">
-                <i class="icon ti ti-traffic-lights text-secondary"></i>
+            <div class="d-flex flex-wrap align-items-start gap-3 mb-3">
+              <div class="me-auto">
+                <div class="monitoring-eyebrow mb-1">Consola de estado</div>
+                <div class="d-flex align-items-center gap-2">
+                  <h3 class="h1 mb-0 monitoring-figure" data-status-label>{{ snapshot.status.label }}</h3>
+                  <span class="badge bg-{{ snapshot.status.level|state_class }}-lt"
+                        data-status-badge>{{ snapshot.status.level }}</span>
+                </div>
+                <div class="text-secondary small mt-1">Base de datos, caché, cola de tareas y errores 5xx.</div>
+              </div>
+              <div class="monitoring-last-capture d-flex align-items-baseline gap-2">
+                <div class="monitoring-eyebrow">Última captura</div>
+                <div class="small monitoring-figure"
+                     data-live="generated_at_display"
+                     data-fmt="text">{{ snapshot.generated_at_display|default:'—' }}</div>
               </div>
             </div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" data-status-label>{{ snapshot.status.label }}</div>
-              <span class="badge bg-{{ snapshot.status.level|state_class }}-lt"
-                    data-status-badge>{{ snapshot.status.level }}</span>
+            <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+              <div class="monitoring-eyebrow">Disponibilidad de las últimas 24 horas · un bloque cada 30 min</div>
+              <div class="text-end small text-secondary" data-incident-line>
+                {% if snapshot.incident.active %}
+                  <span class="text-danger">
+                    <i class="icon ti ti-alert-triangle" aria-hidden="true"></i>
+                    Incidente activo: {{ snapshot.incident.duration_display|dash }}
+                  </span>
+                {% else %}
+                  Sin incidentes activos
+                {% endif %}
+              </div>
             </div>
-            <div class="text-secondary small mt-2">Base de datos, caché, cola de tareas y errores 5xx.</div>
+            <div class="tracking-scroll-wrapper">
+              <div class="tracking monitoring-slots"
+                   data-uptime-slots
+                   role="img"
+                   aria-label="Disponibilidad de las últimas 24 horas, un bloque por cada 30 minutos">
+                {% for slot in snapshot.uptime.slots|reverse %}
+                  <div class="tracking-block bg-{{ slot.state|state_class }}"
+                       aria-hidden="true"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
+                       data-bs-original-title="{{ slot.label }} · {{ slot.total }} peticiones · {{ slot.errors }} errores">
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="d-flex justify-content-between text-secondary small mt-2">
+              <span>ahora</span>
+              <span>hace 12 h</span>
+              <span>hace 24 h</span>
+            </div>
+            <div class="mt-3 small monitoring-uptime-legend">
+              <span class="d-flex align-items-center">
+                <span class="status status-success me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"><i class="icon ti ti-check" aria-hidden="true"></i></span>
+                Sin errores
+              </span>
+              <span class="d-flex align-items-center">
+                <span class="status status-warning me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"><i class="icon ti ti-alert-triangle" aria-hidden="true"></i></span>
+                Algún 5xx
+              </span>
+              <span class="d-flex align-items-center">
+                <span class="status status-danger me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"><i class="icon ti ti-x" aria-hidden="true"></i></span>
+                Todo 5xx
+              </span>
+              <span class="d-flex align-items-center">
+                <span class="status status-secondary me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"><i class="icon ti ti-minus" aria-hidden="true"></i></span>
+                Sin datos
+              </span>
+            </div>
           </div>
         </div>
       </div>
+      <!-- Fila 1: las cuatro cifras que se miran primero -->
       <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card monitoring-kpi-card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">Disponibilidad 24 h</div>
+              <div class="monitoring-eyebrow">Disponibilidad 24 h</div>
               <div class="ms-auto">
-                <i class="icon ti ti-activity text-secondary"></i>
+                <i class="icon ti ti-activity text-secondary" aria-hidden="true"></i>
               </div>
             </div>
-            <div class="h1 mb-0" data-live="uptime.percent" data-fmt="pct">{{ snapshot.uptime.percent|pct }}</div>
+            <div class="h1 mb-0 monitoring-figure"
+                 data-live="uptime.percent"
+                 data-fmt="pct">{{ snapshot.uptime.percent|pct }}</div>
             <div class="text-secondary small mt-2">
               <span data-live="uptime.samples" data-fmt="int">{{ snapshot.uptime.samples|num }}</span>
               peticiones ·
@@ -167,15 +383,17 @@
         </div>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card monitoring-kpi-card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">Tiempo de respuesta (p95)</div>
+              <div class="monitoring-eyebrow">Tiempo de respuesta (p95)</div>
               <div class="ms-auto">
-                <i class="icon ti ti-gauge text-secondary"></i>
+                <i class="icon ti ti-gauge text-secondary" aria-hidden="true"></i>
               </div>
             </div>
-            <div class="h1 mb-0" data-live="http.p95_ms" data-fmt="ms">{{ snapshot.http.p95_ms|ms }}</div>
+            <div class="h1 mb-0 monitoring-figure"
+                 data-live="http.p95_ms"
+                 data-fmt="ms">{{ snapshot.http.p95_ms|ms }}</div>
             <div class="text-secondary small mt-2">
               media <span data-live="http.avg_ms" data-fmt="ms">{{ snapshot.http.avg_ms|ms }}</span>
               · máx <span data-live="http.max_ms" data-fmt="ms">{{ snapshot.http.max_ms|ms }}</span>
@@ -184,17 +402,17 @@
         </div>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card monitoring-kpi-card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">Visitantes activos</div>
+              <div class="monitoring-eyebrow">Visitantes activos</div>
               <div class="ms-auto">
-                <i class="icon ti ti-users text-secondary"></i>
+                <i class="icon ti ti-users text-secondary" aria-hidden="true"></i>
               </div>
             </div>
-            <div class="h1 mb-0" data-live="traffic.visitors_5m" data-fmt="int">
-              {{ snapshot.traffic.visitors_5m|num }}
-            </div>
+            <div class="h1 mb-0 monitoring-figure"
+                 data-live="traffic.visitors_5m"
+                 data-fmt="int">{{ snapshot.traffic.visitors_5m|num }}</div>
             <div class="text-secondary small mt-2">
               últimos 5 min ·
               <span data-live="traffic.visitors_30m" data-fmt="int">{{ snapshot.traffic.visitors_30m|num }}</span>
@@ -203,60 +421,40 @@
           </div>
         </div>
       </div>
-      <!-- Fila 2: disponibilidad en bloques + incidente -->
-      <div class="col-12">
-        <div class="card">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
-            <div class="subheader mb-2">Disponibilidad de las últimas 24 horas</div>
-            <div class="d-flex align-items-center justify-content-between mb-1">
-              <div class="h3 mb-0">Un bloque cada 30 minutos</div>
-              <div class="text-end small text-secondary" data-incident-line>
-                {% if snapshot.incident.active %}
-                  <span class="text-danger">
-                    <i class="icon ti ti-alert-triangle"></i>
-                    Incidente activo: {{ snapshot.incident.duration_display|dash }}
-                  </span>
-                {% else %}
-                  Sin incidentes activos
-                {% endif %}
+            <div class="d-flex align-items-center mb-3">
+              <div class="monitoring-eyebrow">Peticiones ({{ snapshot.http.window_minutes }} min)</div>
+              <div class="ms-auto">
+                <i class="icon ti ti-arrow-left-right text-secondary" aria-hidden="true"></i>
               </div>
             </div>
-            <div class="tracking-scroll-wrapper mt-3">
-              <div class="tracking" data-uptime-slots>
-                {% for slot in snapshot.uptime.slots|reverse %}
-                  <div class="tracking-block bg-{{ slot.state|state_class }}"
-                       data-bs-toggle="tooltip"
-                       data-bs-placement="top"
-                       data-bs-original-title="{{ slot.label }} · {{ slot.total }} peticiones · {{ slot.errors }} errores">
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-            <div class="d-flex justify-content-between text-secondary small mt-1">
-              <span>ahora</span>
-              <span>hace 12 h</span>
-              <span>hace 24 h</span>
-            </div>
-            <div class="d-flex flex-wrap gap-2 mt-2 small">
-              <span class="d-flex align-items-center"><span class="status status-success" style="--tblr-status-size: 0.85rem"><i class="icon ti ti-check me-1" style="--tblr-icon-size: 0.75rem"></i>Sin errores</span></span>
-              <span class="d-flex align-items-center"><span class="status status-warning" style="--tblr-status-size: 0.85rem"><i class="icon ti ti-alert-triangle me-1"
-                                                                                                                                 style="--tblr-icon-size: 0.75rem"></i>Algún 5xx</span></span>
-              <span class="d-flex align-items-center"><span class="status status-danger" style="--tblr-status-size: 0.85rem"><i class="icon ti ti-x me-1" style="--tblr-icon-size: 0.75rem"></i>Todo 5xx</span></span>
-              <span class="d-flex align-items-center"><span class="status status-secondary" style="--tblr-status-size: 0.85rem"><i class="icon ti ti-minus me-1" style="--tblr-icon-size: 0.75rem"></i>Sin datos</span></span>
+            <div class="h1 mb-0 monitoring-figure"
+                 data-live="http.total"
+                 data-fmt="int">{{ snapshot.http.total|num }}</div>
+            <div class="text-secondary small mt-2">
+              tasa de error
+              <span data-live="http.error_rate" data-fmt="pct">{{ snapshot.http.error_rate|pct }}</span>
+              · <span data-live="http.concurrency" data-fmt="int">{{ snapshot.http.concurrency|dash }}</span>
+              simultáneas
             </div>
           </div>
         </div>
       </div>
-      <!-- Fila 3: recursos del servidor -->
+      <!-- Fila 2: recursos del servidor -->
       <div class="col-lg-6">
-        <div class="card h-100">
-          <div class="card-body">
+        <div class="card monitoring-card h-100">
+          <div class="card-body monitoring-resources-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">
-                <i class="icon ti ti-cpu me-1"></i> Recursos del servidor
+              <div class="monitoring-eyebrow">
+                <i class="icon ti ti-cpu me-1" aria-hidden="true"></i>
+                <span class="monitoring-long">Recursos del servidor</span>
+                <span class="monitoring-short">Recursos</span>
               </div>
               <div class="ms-auto text-secondary small">
-                uptime del host
+                <span class="monitoring-long">tiempo de actividad del servidor</span>
+                <span class="monitoring-short">tiempo de actividad</span>
                 <span class="ms-1"
                       data-live="system.host_uptime_display"
                       data-fmt="text">{{ snapshot.system.host_uptime_display|dash }}</span>
@@ -266,17 +464,22 @@
               <div class="col-12 col-sm-6">
                 <div class="d-flex justify-content-between align-items-baseline">
                   <span>CPU</span>
-                  <strong data-live="system.cpu.percent" data-fmt="pct">{{ snapshot.system.cpu.percent|pct }}</strong>
+                  <strong class="monitoring-figure"
+                          data-live="system.cpu.percent"
+                          data-fmt="pct">{{ snapshot.system.cpu.percent|pct }}</strong>
                 </div>
-                <div class="progress progress-sm mt-1">
+                <div class="progress progress-sm mt-1" aria-hidden="true">
                   <div class="progress-bar"
-                       role="progressbar"
                        data-live-width="system.cpu.percent"
                        style="width: {{ snapshot.system.cpu.percent|default:0 }}%"></div>
                 </div>
-                <div class="d-flex flex-wrap gap-1 mt-2 monitoring-cores" data-cores>
+                <div class="d-flex flex-wrap gap-1 mt-2 monitoring-cores"
+                     data-cores
+                     role="img"
+                     aria-label="Uso de cada núcleo de la CPU">
                   {% for core in snapshot.system.cpu.cores %}
                     <span class="monitoring-core"
+                          aria-hidden="true"
                           data-bs-toggle="tooltip"
                           data-bs-placement="top"
                           data-bs-original-title="Núcleo {{ forloop.counter }}: {{ core }}%">
@@ -293,12 +496,12 @@
               <div class="col-12 col-sm-6">
                 <div class="d-flex justify-content-between align-items-baseline">
                   <span>Memoria RAM</span>
-                  <strong data-live="system.memory.percent"
+                  <strong class="monitoring-figure"
+                          data-live="system.memory.percent"
                           data-fmt="pct">{{ snapshot.system.memory.percent|pct }}</strong>
                 </div>
-                <div class="progress progress-sm mt-1">
+                <div class="progress progress-sm mt-1" aria-hidden="true">
                   <div class="progress-bar bg-{% if snapshot.system.memory.percent >= 90 %}danger{% elif snapshot.system.memory.percent >= 70 %}warning{% else %}success{% endif %}"
-                       role="progressbar"
                        data-live-width="system.memory.percent"
                        data-live-class="memory"
                        style="width: {{ snapshot.system.memory.percent|default:0 }}%"></div>
@@ -315,11 +518,12 @@
               <div class="col-12 col-sm-6">
                 <div class="d-flex justify-content-between align-items-baseline">
                   <span>Swap</span>
-                  <strong data-live="system.swap.percent" data-fmt="pct">{{ snapshot.system.swap.percent|pct }}</strong>
+                  <strong class="monitoring-figure"
+                          data-live="system.swap.percent"
+                          data-fmt="pct">{{ snapshot.system.swap.percent|pct }}</strong>
                 </div>
-                <div class="progress progress-sm mt-1">
+                <div class="progress progress-sm mt-1" aria-hidden="true">
                   <div class="progress-bar bg-{% if snapshot.system.swap.percent >= 50 %}warning{% else %}success{% endif %}"
-                       role="progressbar"
                        data-live-width="system.swap.percent"
                        data-live-class="swap"
                        style="width: {{ snapshot.system.swap.percent|default:0 }}%"></div>
@@ -333,11 +537,12 @@
               <div class="col-12 col-sm-6">
                 <div class="d-flex justify-content-between align-items-baseline">
                   <span>Disco</span>
-                  <strong data-live="system.disk.percent" data-fmt="pct">{{ snapshot.system.disk.percent|pct }}</strong>
+                  <strong class="monitoring-figure"
+                          data-live="system.disk.percent"
+                          data-fmt="pct">{{ snapshot.system.disk.percent|pct }}</strong>
                 </div>
-                <div class="progress progress-sm mt-1">
+                <div class="progress progress-sm mt-1" aria-hidden="true">
                   <div class="progress-bar bg-{% if snapshot.system.disk.percent >= 90 %}danger{% elif snapshot.system.disk.percent >= 75 %}warning{% else %}success{% endif %}"
-                       role="progressbar"
                        data-live-width="system.disk.percent"
                        data-live-class="disk"
                        style="width: {{ snapshot.system.disk.percent|default:0 }}%"></div>
@@ -351,7 +556,7 @@
                 </div>
               </div>
             </div>
-            <div class="datagrid mt-3">
+            <div class="datagrid monitoring-pairs mt-3">
               <div class="datagrid-item">
                 <div class="datagrid-title">Red recibida</div>
                 <div class="datagrid-content">
@@ -406,14 +611,14 @@
           </div>
         </div>
       </div>
-      <!-- Fila 3b: dependencias + HTTP -->
+      <!-- Fila 2b: dependencias + HTTP -->
       <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
-            <div class="subheader mb-3">
-              <i class="icon ti ti-database me-1"></i> Dependencias
+            <div class="monitoring-eyebrow mb-3">
+              <i class="icon ti ti-database me-1" aria-hidden="true"></i> Dependencias
             </div>
-            <div class="datagrid mb-3">
+            <div class="datagrid monitoring-pairs mb-3">
               <div class="datagrid-item">
                 <div class="datagrid-title">Base de datos</div>
                 <div class="datagrid-content">
@@ -435,14 +640,14 @@
                   </span>
                 </div>
               </div>
-              <div class="datagrid-item">
-                <div class="datagrid-title">Worker de tareas (Huey)</div>
-                <div class="datagrid-content">
+              <div class="datagrid-item monitoring-queue-wide">
+                <div class="datagrid-title">Tareas (Huey)</div>
+                <div class="datagrid-content d-flex flex-wrap align-items-center gap-1">
                   <span class="badge bg-{% if snapshot.health.queue.ok %}success{% else %}warning{% endif %}-lt"
                         data-state-badge="health.queue.ok">
                     {% if snapshot.health.queue.ok %}Al día{% else %}Atrasado{% endif %}
                   </span>
-                  <span class="text-secondary small ms-1">
+                  <span class="text-secondary small text-nowrap">
                     <span data-live="health.queue.stale" data-fmt="int">{{ snapshot.health.queue.stale|dash }}</span>
                     sin arrancar ·
                     <span data-live="health.queue.errors" data-fmt="int">{{ snapshot.health.queue.errors|dash }}</span>
@@ -451,9 +656,14 @@
                 </div>
               </div>
               <div class="datagrid-item">
-                <div class="datagrid-title">Peticiones simultáneas</div>
+                <div class="datagrid-title">
+                  <span class="monitoring-long">Peticiones simultáneas</span>
+                  <span class="monitoring-short">Peticiones</span>
+                </div>
                 <div class="datagrid-content">
-                  <strong data-live="http.concurrency" data-fmt="int">{{ snapshot.http.concurrency|dash }}</strong>
+                  <strong class="monitoring-figure"
+                          data-live="http.concurrency"
+                          data-fmt="int">{{ snapshot.http.concurrency|dash }}</strong>
                   <span class="text-secondary small">(último minuto)</span>
                 </div>
               </div>
@@ -465,49 +675,57 @@
                 peticiones
               </div>
             </div>
-            <div class="progress progress-lg mb-2">
+            <div class="progress progress-lg mb-2" aria-hidden="true">
               <div class="progress-bar bg-success"
-                   role="progressbar"
                    style="width: {{ snapshot.http.status.2xx|percent_of:snapshot.http.total }}%"></div>
               <div class="progress-bar bg-info"
-                   role="progressbar"
                    style="width: {{ snapshot.http.status.3xx|percent_of:snapshot.http.total }}%"></div>
               <div class="progress-bar bg-warning"
-                   role="progressbar"
                    style="width: {{ snapshot.http.status.4xx|percent_of:snapshot.http.total }}%"></div>
               <div class="progress-bar bg-danger"
-                   role="progressbar"
                    style="width: {{ snapshot.http.status.5xx|percent_of:snapshot.http.total }}%"></div>
             </div>
             <div class="d-flex flex-wrap gap-3 small">
-              <span class="d-flex align-items-center"><span class="status status-success me-1"
-                                                            style="--tblr-status-size: 0.85rem"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-placement="top"
-                                                            title="2xx: {{ snapshot.http.status.2xx|num }} peticiones exitosas"><i class="icon ti ti-check me-1" style="--tblr-icon-size: 0.75rem"></i><strong data-live="http.status.2xx" data-fmt="int">{{ snapshot.http.status.2xx|num }}</strong></span></span>
-              <span class="d-flex align-items-center"><span class="status status-info me-1"
-                                                            style="--tblr-status-size: 0.85rem"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-placement="top"
-                                                            title="3xx: {{ snapshot.http.status.3xx|num }} redirecciones"><i class="icon ti ti-arrow-up-right me-1"
-                                                                                                                             style="--tblr-icon-size: 0.75rem"></i><strong data-live="http.status.3xx" data-fmt="int">{{ snapshot.http.status.3xx|num }}</strong></span></span>
-              <span class="d-flex align-items-center"><span class="status status-warning me-1"
-                                                            style="--tblr-status-size: 0.85rem"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-placement="top"
-                                                            title="4xx: {{ snapshot.http.status.4xx|num }} errores del cliente"><i class="icon ti ti-alert-triangle me-1"
-                                                                                                                                   style="--tblr-icon-size: 0.75rem"></i><strong data-live="http.status.4xx" data-fmt="int">{{ snapshot.http.status.4xx|num }}</strong></span></span>
-              <span class="d-flex align-items-center"><span class="status status-danger me-1"
-                                                            style="--tblr-status-size: 0.85rem"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-placement="top"
-                                                            title="5xx: {{ snapshot.http.status.5xx|num }} errores del servidor"><i class="icon ti ti-x me-1" style="--tblr-icon-size: 0.75rem"></i><strong data-live="http.status.5xx" data-fmt="int">{{ snapshot.http.status.5xx|num }}</strong></span></span>
+              <span class="d-flex align-items-center">
+                <span class="status status-success me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="2xx: {{ snapshot.http.status.2xx|num }} peticiones exitosas"><i class="icon ti ti-check me-1" aria-hidden="true"></i><strong data-live="http.status.2xx" data-fmt="int">{{ snapshot.http.status.2xx|num }}</strong></span>
+              </span>
+              <span class="d-flex align-items-center">
+                <span class="status status-info me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="3xx: {{ snapshot.http.status.3xx|num }} redirecciones"><i class="icon ti ti-arrow-up-right me-1" aria-hidden="true"></i><strong data-live="http.status.3xx" data-fmt="int">{{ snapshot.http.status.3xx|num }}</strong></span>
+              </span>
+              <span class="d-flex align-items-center">
+                <span class="status status-warning me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="4xx: {{ snapshot.http.status.4xx|num }} errores del cliente"><i class="icon ti ti-alert-triangle me-1" aria-hidden="true"></i><strong data-live="http.status.4xx" data-fmt="int">{{ snapshot.http.status.4xx|num }}</strong></span>
+              </span>
+              <span class="d-flex align-items-center">
+                <span class="status status-danger me-1"
+                      style="--tblr-status-size: 0.85rem"
+                      aria-hidden="true"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="top"
+                      title="5xx: {{ snapshot.http.status.5xx|num }} errores del servidor"><i class="icon ti ti-x me-1" aria-hidden="true"></i><strong data-live="http.status.5xx" data-fmt="int">{{ snapshot.http.status.5xx|num }}</strong></span>
+              </span>
             </div>
-            <div class="datagrid mt-3">
+            <div class="datagrid monitoring-pairs mt-3">
               <div class="datagrid-item">
                 <div class="datagrid-title">Tasa de error 5xx</div>
                 <div class="datagrid-content">
-                  <strong data-live="http.error_rate" data-fmt="pct">{{ snapshot.http.error_rate|pct }}</strong>
+                  <strong class="monitoring-figure"
+                          data-live="http.error_rate"
+                          data-fmt="pct">{{ snapshot.http.error_rate|pct }}</strong>
                 </div>
               </div>
               <div class="datagrid-item">
@@ -519,7 +737,10 @@
                 </div>
               </div>
             </div>
-            <div class="subheader mt-3">Peticiones por minuto</div>
+            <div class="monitoring-eyebrow mt-3">
+              <span class="monitoring-long">Peticiones por minuto</span>
+              <span class="monitoring-short">peticiones/min</span>
+            </div>
             {{ snapshot.http.series|json_script:"monitoring-http-series" }}
             <div id="monitoringHttpChart"
                  class="monitoring-chart"
@@ -528,15 +749,18 @@
           </div>
         </div>
       </div>
-      <!-- Fila 4: Core Web Vitals -->
+      <!-- Fila 3: métricas web esenciales -->
       <div class="col-12">
         <div class="card">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">
-                <i class="icon ti ti-bolt me-1"></i> Core Web Vitals
+              <div class="monitoring-eyebrow">
+                <i class="icon ti ti-bolt me-1" aria-hidden="true"></i> Métricas web esenciales
               </div>
-              <div class="ms-auto text-secondary small">p75 de las últimas {{ snapshot.vitals.window_hours }} h</div>
+              <div class="ms-auto text-secondary small text-nowrap">
+                <span class="monitoring-long">p75 de las últimas {{ snapshot.vitals.window_hours }} h</span>
+                <span class="monitoring-short">p75 últimas {{ snapshot.vitals.window_hours }} h</span>
+              </div>
             </div>
             <div class="row g-4">
               {% for key, vital in snapshot.vitals.metrics.items %}
@@ -544,23 +768,20 @@
                   <div class="d-flex align-items-baseline mb-1">
                     <div class="subheader">{{ vital.label }}</div>
                     <span class="badge bg-{{ vital.rating|state_class }}-lt ms-auto"
-                          data-vital-badge="{{ key }}">{{ vital.rating|default:'sin datos' }}</span>
+                          data-vital-badge="{{ key }}">{{ vital.rating_label|default:'sin datos' }}</span>
                   </div>
-                  <div class="h2 mb-1">
+                  <div class="h2 mb-1 monitoring-figure">
                     <span data-live="vitals.metrics.{{ key }}.p75"
                           data-fmt="{% if key == 'cls' %}num2{% else %}ms{% endif %}">{{ vital.p75|dash }}</span>
                   </div>
-                  <div class="progress progress-sm mb-1">
+                  <div class="progress progress-sm mb-1" aria-hidden="true">
                     <div class="progress-bar bg-success"
-                         role="progressbar"
                          data-vital-bar="good"
                          style="width: {{ vital.distribution.good|percent_of:vital.samples }}%"></div>
                     <div class="progress-bar bg-warning"
-                         role="progressbar"
                          data-vital-bar="needs_improvement"
                          style="width: {{ vital.distribution.needs_improvement|percent_of:vital.samples }}%"></div>
                     <div class="progress-bar bg-danger"
-                         role="progressbar"
                          data-vital-bar="poor"
                          style="width: {{ vital.distribution.poor|percent_of:vital.samples }}%"></div>
                   </div>
@@ -579,13 +800,13 @@
           </div>
         </div>
       </div>
-      <!-- Fila 5: tráfico en vivo -->
+      <!-- Fila 4: tráfico en vivo -->
       <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body" data-traffic-body>
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">
-                <i class="icon ti ti-world me-1"></i> Tráfico en vivo
+              <div class="monitoring-eyebrow">
+                <i class="icon ti ti-world me-1" aria-hidden="true"></i> Tráfico en vivo
               </div>
               <div class="ms-auto text-secondary small">últimos 30 min</div>
             </div>
@@ -598,39 +819,39 @@
                 </p>
               </div>
             {% endif %}
-            <div class="row g-3 mb-3">
+            <div class="row g-3 mb-3 monitoring-traffic-kpis">
               <div class="col-4">
                 <div class="subheader">Páginas vistas</div>
-                <div class="h2 mb-0" data-live="traffic.pageviews_30m" data-fmt="int">
-                  {{ snapshot.traffic.pageviews_30m|num }}
-                </div>
+                <div class="h2 mb-0 monitoring-figure"
+                     data-live="traffic.pageviews_30m"
+                     data-fmt="int">{{ snapshot.traffic.pageviews_30m|num }}</div>
               </div>
               <div class="col-4">
                 <div class="subheader">Por minuto</div>
-                <div class="h2 mb-0"
+                <div class="h2 mb-0 monitoring-figure"
                      data-live="traffic.pageviews_last_minute"
                      data-fmt="int">{{ snapshot.traffic.pageviews_last_minute|num }}</div>
               </div>
               <div class="col-4">
                 <div class="subheader">Páginas por visitante</div>
-                <div class="h2 mb-0" data-live="traffic.pages_per_visitor" data-fmt="num2">
-                  {{ snapshot.traffic.pages_per_visitor|dash }}
-                </div>
+                <div class="h2 mb-0 monitoring-figure"
+                     data-live="traffic.pages_per_visitor"
+                     data-fmt="num2">{{ snapshot.traffic.pages_per_visitor|dash }}</div>
               </div>
             </div>
-            <div class="subheader">Páginas vistas por minuto</div>
+            <div class="monitoring-eyebrow">Páginas vistas por minuto</div>
             {{ snapshot.traffic.series|json_script:"monitoring-traffic-series" }}
             <div id="monitoringTrafficChart"
                  class="monitoring-chart mt-1 mb-3"
                  role="img"
                  aria-label="Páginas vistas por minuto en los últimos 30 minutos"></div>
-            <div class="subheader">Páginas más activas</div>
-            <div class="table-responsive">
+            <div class="monitoring-eyebrow">Páginas más activas</div>
+            <div class="table-responsive monitoring-table-grow">
               <table class="table table-sm card-table">
                 <thead>
                   <tr>
-                    <th>Ruta</th>
-                    <th class="text-end">Vistas</th>
+                    <th scope="col">Ruta</th>
+                    <th scope="col" class="text-end">Vistas</th>
                   </tr>
                 </thead>
                 <tbody data-table="top_pages" data-paginate="3">
@@ -653,14 +874,14 @@
                       class="btn btn-sm btn-ghost-secondary px-2"
                       data-page-prev
                       aria-label="Página anterior">
-                <i class="icon ti ti-chevron-left"></i>
+                <i class="icon ti ti-chevron-left" aria-hidden="true"></i>
               </button>
               <span class="text-secondary small" data-page-label>1 / 1</span>
               <button type="button"
                       class="btn btn-sm btn-ghost-secondary px-2"
                       data-page-next
                       aria-label="Página siguiente">
-                <i class="icon ti ti-chevron-right"></i>
+                <i class="icon ti ti-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
             <div class="text-secondary small">
@@ -672,18 +893,18 @@
         </div>
       </div>
       <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
-            <div class="subheader mb-3">
-              <i class="icon ti ti-share me-1"></i> Fuentes, dispositivos y navegadores
+            <div class="monitoring-eyebrow mb-3">
+              <i class="icon ti ti-share me-1" aria-hidden="true"></i> Fuentes, dispositivos y navegadores
             </div>
-            <div class="subheader">Fuentes de tráfico</div>
-            <div class="table-responsive">
+            <div class="monitoring-eyebrow">Fuentes de tráfico</div>
+            <div class="table-responsive monitoring-table-grow">
               <table class="table table-sm card-table">
                 <thead>
                   <tr>
-                    <th>Origen</th>
-                    <th class="text-end">Visitas</th>
+                    <th scope="col">Origen</th>
+                    <th scope="col" class="text-end">Visitas</th>
                   </tr>
                 </thead>
                 <tbody data-table="referrers" data-paginate="3">
@@ -706,14 +927,14 @@
                       class="btn btn-sm btn-ghost-secondary px-2"
                       data-page-prev
                       aria-label="Página anterior">
-                <i class="icon ti ti-chevron-left"></i>
+                <i class="icon ti ti-chevron-left" aria-hidden="true"></i>
               </button>
               <span class="text-secondary small" data-page-label>1 / 1</span>
               <button type="button"
                       class="btn btn-sm btn-ghost-secondary px-2"
                       data-page-next
                       aria-label="Página siguiente">
-                <i class="icon ti ti-chevron-right"></i>
+                <i class="icon ti ti-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
             <div class="d-flex flex-wrap gap-2 mt-2">
@@ -723,50 +944,68 @@
             </div>
             <div class="row g-3 mt-3">
               <div class="col-sm-6">
-                <div class="subheader">Dispositivo</div>
-                <table class="table table-sm card-table">
-                  <tbody data-table="devices">
-                    {% for row in snapshot.traffic.devices %}
-                      <tr>
-                        <td>{{ row.label }}</td>
-                        <td class="text-end">{{ row.count }}</td>
-                      </tr>
-                    {% empty %}
-                      <tr>
-                        <td colspan="2" class="text-secondary">Sin datos todavía.</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
+                <div class="monitoring-eyebrow">Dispositivo</div>
+                <div class="table-responsive">
+                  <table class="table table-sm card-table">
+                    <tbody data-table="devices">
+                      {% for row in snapshot.traffic.devices %}
+                        <tr>
+                          <td>
+                            <div>{{ row.label }}</div>
+                            <div class="progress progress-sm monitoring-share-bar mt-1"
+                                 aria-hidden="true">
+                              <div class="progress-bar"
+                                   style="width: {{ row.count|percent_of:snapshot.traffic.pageviews_30m }}%"></div>
+                            </div>
+                          </td>
+                          <td class="text-end align-top">{{ row.count }}</td>
+                        </tr>
+                      {% empty %}
+                        <tr>
+                          <td colspan="2" class="text-secondary">Sin datos todavía.</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div class="col-sm-6">
-                <div class="subheader">Navegador</div>
-                <table class="table table-sm card-table">
-                  <tbody data-table="browsers">
-                    {% for row in snapshot.traffic.browsers %}
-                      <tr>
-                        <td>{{ row.browser }}</td>
-                        <td class="text-end">{{ row.count }}</td>
-                      </tr>
-                    {% empty %}
-                      <tr>
-                        <td colspan="2" class="text-secondary">Sin datos todavía.</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
+                <div class="monitoring-eyebrow">Navegador</div>
+                <div class="table-responsive">
+                  <table class="table table-sm card-table">
+                    <tbody data-table="browsers">
+                      {% for row in snapshot.traffic.browsers %}
+                        <tr>
+                          <td>
+                            <div>{{ row.browser }}</div>
+                            <div class="progress progress-sm monitoring-share-bar mt-1"
+                                 aria-hidden="true">
+                              <div class="progress-bar"
+                                   style="width: {{ row.count|percent_of:snapshot.traffic.pageviews_30m }}%"></div>
+                            </div>
+                          </td>
+                          <td class="text-end align-top">{{ row.count }}</td>
+                        </tr>
+                      {% empty %}
+                        <tr>
+                          <td colspan="2" class="text-secondary">Sin datos todavía.</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <!-- Fila 6: errores JS y peso de página -->
+      <!-- Fila 5: errores JS y peso de página -->
       <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">
-                <i class="icon ti ti-bug me-1"></i> Errores JavaScript
+              <div class="monitoring-eyebrow">
+                <i class="icon ti ti-bug me-1" aria-hidden="true"></i> Errores JavaScript
               </div>
               <div class="ms-auto text-secondary small">
                 <span data-live="errors.count" data-fmt="int">{{ snapshot.errors.count|num }}</span>
@@ -776,13 +1015,13 @@
                 por 100 páginas
               </div>
             </div>
-            <div class="table-responsive">
+            <div class="table-responsive monitoring-table-grow">
               <table class="table table-sm card-table">
                 <thead>
                   <tr>
-                    <th>Hora</th>
-                    <th>Mensaje</th>
-                    <th>Ruta</th>
+                    <th scope="col">Hora</th>
+                    <th scope="col">Mensaje</th>
+                    <th scope="col">Ruta</th>
                   </tr>
                 </thead>
                 <tbody data-table="errors" data-paginate="3">
@@ -806,42 +1045,42 @@
                       class="btn btn-sm btn-ghost-secondary px-2"
                       data-page-prev
                       aria-label="Página anterior">
-                <i class="icon ti ti-chevron-left"></i>
+                <i class="icon ti ti-chevron-left" aria-hidden="true"></i>
               </button>
               <span class="text-secondary small" data-page-label>1 / 1</span>
               <button type="button"
                       class="btn btn-sm btn-ghost-secondary px-2"
                       data-page-next
                       aria-label="Página siguiente">
-                <i class="icon ti ti-chevron-right"></i>
+                <i class="icon ti ti-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
           </div>
         </div>
       </div>
       <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="card monitoring-card h-100">
           <div class="card-body">
             <div class="d-flex align-items-center mb-3">
-              <div class="subheader">
-                <i class="icon ti ti-chart-line me-1"></i> Peso de página y recursos lentos
+              <div class="monitoring-eyebrow">
+                <i class="icon ti ti-chart-line me-1" aria-hidden="true"></i> Peso de página y recursos lentos
               </div>
               <div class="ms-auto text-secondary small">
                 <span data-live="weight.samples" data-fmt="int">{{ snapshot.weight.samples|num }}</span>
                 páginas medidas
               </div>
             </div>
-            <div class="row g-3">
+            <div class="row g-3 monitoring-fill">
               <div class="col-sm-6">
                 <div class="subheader">Peso medio transferido</div>
-                <div class="h1 mb-0">
+                <div class="h1 mb-0 monitoring-figure">
                   <span data-live="weight.avg_kb" data-fmt="num1">{{ snapshot.weight.avg_kb|dash }}</span>
                   <span class="h3 text-secondary">KB</span>
                 </div>
               </div>
               <div class="col-sm-6">
                 <div class="subheader">Recursos lentos por página</div>
-                <div class="h1 mb-0">
+                <div class="h1 mb-0 monitoring-figure">
                   <span data-live="weight.avg_slow" data-fmt="num1">{{ snapshot.weight.avg_slow|dash }}</span>
                   <span class="h3 text-secondary">&gt; 500 ms</span>
                 </div>
@@ -859,5 +1098,5 @@
 {% endblock %}
 {% block extrajs %}
   <script src="{% static 'dist/libs/apexcharts/dist/apexcharts.min.js' %}"></script>
-  <script src="{% static 'dist/js/site-monitoring.js' %}?v=6"></script>
+  <script src="{% static 'dist/js/site-monitoring.js' %}?v=13"></script>
 {% endblock %}

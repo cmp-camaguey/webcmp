@@ -117,13 +117,18 @@
 <div data-tasks-modals>
   {% for execution in executions %}
     {% if execution.status == 'ERROR' %}
-      <div class="modal fade" id="tb-{{ execution.uuid }}" tabindex="-1">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+      <div class="modal modal-blur fade"
+           id="tb-{{ execution.uuid }}"
+           tabindex="-1"
+           data-bs-backdrop="static"
+           data-bs-keyboard="false"
+           role="dialog">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
           <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-danger text-white">
               <h5 class="modal-title">Traceback · {{ execution.task_name }}</h5>
               <button type="button"
-                      class="btn-close"
+                      class="btn-close btn-close-white"
                       data-bs-dismiss="modal"
                       aria-label="Cerrar"></button>
             </div>

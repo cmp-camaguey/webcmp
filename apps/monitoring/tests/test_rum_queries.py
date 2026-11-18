@@ -115,6 +115,7 @@ class WebVitalsTests(TestCase):
         self.assertEqual(lcp['samples'], 4)
         self.assertEqual(lcp['p75'], 3000)
         self.assertEqual(lcp['rating'], WebVital.RATING_NEEDS_IMPROVEMENT)
+        self.assertEqual(lcp['rating_label'], 'Necesita mejorar')
         self.assertEqual(lcp['distribution']['good'], 2)
         self.assertEqual(lcp['distribution']['needs_improvement'], 1)
         self.assertEqual(lcp['distribution']['poor'], 1)
@@ -124,6 +125,7 @@ class WebVitalsTests(TestCase):
         lcp = data['metrics'][WebVital.LCP]
         self.assertIsNone(lcp['p75'])
         self.assertIsNone(lcp['rating'])
+        self.assertIsNone(lcp['rating_label'])
         self.assertEqual(lcp['samples'], 0)
 
     def test_umbrales_por_metrica(self):

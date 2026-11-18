@@ -51,14 +51,17 @@
               <div class="invalid-feedback d-block">{{ form.theme_radius.errors.0 }}</div>
             {% endif %}
           </div>
-          <div class="modal fade"
+          <div class="modal modal-blur fade"
                id="reset-theme-modal"
                tabindex="-1"
                aria-labelledby="reset-theme-modal-title"
-               aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
+               aria-hidden="true"
+               data-bs-backdrop="static"
+               data-bs-keyboard="false"
+               role="dialog">
+            <div class="modal-dialog modal-dialog-centered" role="document">
               <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-warning text-dark">
                   <h5 class="modal-title" id="reset-theme-modal-title">Restablecer</h5>
                   <button type="button"
                           class="btn-close"

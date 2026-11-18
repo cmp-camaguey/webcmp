@@ -213,23 +213,25 @@
       background-color: var(--tblr-blue);
     }
   </style>
-  <div class="modal fade"
+  <div class="modal modal-blur fade"
        id="update-log-modal"
        tabindex="-1"
        aria-hidden="true"
        aria-labelledby="update-log-title"
        data-bs-backdrop="static"
-       data-bs-keyboard="false">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+       data-bs-keyboard="false"
+       role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+         role="document">
       <div class="modal-content">
-        <div class="card-header d-flex align-items-center p-2">
+        <div class="card-header d-flex align-items-center p-2 bg-dark text-white">
           <i class="icon ti ti-terminal-2 me-2" aria-hidden="true"></i>
           <span class="font-monospace" id="update-log-title">deploy.log</span>
           <span class="ms-auto d-inline-flex align-items-center gap-2 update-console-attempt">
             <span class="font-monospace text-truncate" id="update-log-attempt"></span>
           </span>
           <button type="button"
-                  class="btn-close ms-2"
+                  class="btn-close btn-close-white ms-2"
                   data-bs-dismiss="modal"
                   aria-label="Cerrar"></button>
         </div>
@@ -248,11 +250,14 @@
   <div class="modal modal-blur fade"
        id="update-confirm-modal"
        tabindex="-1"
+       role="dialog"
        aria-hidden="true"
-       aria-labelledby="update-confirm-title">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
+       aria-labelledby="update-confirm-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header bg-warning text-dark">
           <h5 class="modal-title" id="update-confirm-title">Desplegar en producción</h5>
           <button type="button"
                   class="btn-close"
@@ -269,7 +274,7 @@
         </div>
         <div class="modal-footer">
           <button type="button"
-                  class="btn btn-link link-secondary"
+                  class="btn btn-link link-secondary me-auto"
                   data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-primary" id="update-confirm-deploy">Desplegar</button>
         </div>

@@ -10,6 +10,7 @@ from apps.core.views import (
     EmailRecipientListUpdateView,
     EnvironmentConfigApplyView,
     EnvironmentConfigView,
+    EnvironmentMaintenanceDisableView,
     SiteConfigurationUpdateView,
 )
 
@@ -24,6 +25,11 @@ urlpatterns = [
         'entorno/aplicar/',
         EnvironmentConfigApplyView.as_view(),
         name='environment_apply',
+    ),
+    path(
+        'entorno/mantenimiento/desactivar/',
+        EnvironmentMaintenanceDisableView.as_view(),
+        name='environment_maintenance_disable',
     ),
     path('listas-correo/', EmailRecipientListListView.as_view(), name='email_recipient_list'),
     path(
