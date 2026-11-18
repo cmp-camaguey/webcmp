@@ -69,7 +69,7 @@ class SiteMonitoringAccessTests(TestCase):
             self.assertIn(key, data)
         self.assertIn('cpu', data['system'])
         self.assertIn('slots', data['uptime'])
-        self.assertEqual(len(data['uptime']['slots']), 96)
+        self.assertEqual(len(data['uptime']['slots']), 48)
 
     @override_settings(MONITORING_ENABLED=True)
     def test_sin_captura_no_se_muestra_el_aviso_de_apagado(self):
@@ -81,6 +81,33 @@ class SiteMonitoringAccessTests(TestCase):
         self.client.force_login(superuser())
         response = self.client.get(reverse('dashboard:monitoring'))
         self.assertContains(response, 'MONITORING_ENABLED=False')
+
+
+class MonitoringClockTests(TestCase):
+    """La configuración horaria del sitio llega hasta el panel."""
+
+    def setUp(self):
+        SiteConfiguration.objects.get_or_create(defaults={'maintenance_mode': False})
+        self.client.force_login(superuser())
+
+    def _configure(self, **fields):
+        site = SiteConfiguration.get_instance()
+        for key, value in fields.items():
+            setattr(site, key, value)
+        site.save()
+
+    def _last_slot_label(self):
+        response = self.client.get(reverse('dashboard:monitoring_data'))
+        self.assertEqual(response.status_code, 200)
+        return response.json()['uptime']['slots'][-1]['label']
+
+    def test_formato_de_12_horas(self):
+        self._configure(time_format='12')
+        self.assertRegex(self._last_slot_label(), r'^\d{2}:\d{2} (AM|PM)$')
+
+    def test_formato_de_24_horas(self):
+        self._configure(time_format='24')
+        self.assertRegex(self._last_slot_label(), r'^\d{2}:\d{2}$')
 
 
 class RequestMetricsMiddlewareTests(TestCase):

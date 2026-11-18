@@ -10,7 +10,9 @@ from datetime import UTC, timedelta
 from django.db.models import Avg, Count, Min, Subquery
 from django.db.models.functions import TruncMinute
 from django.utils import timezone
+from django.utils.formats import date_format
 
+from apps.core.timezone_utils import get_request_clock_pattern
 from apps.monitoring.models import JavaScriptError, PageView, WebVital
 
 # Umbrales oficiales de Core Web Vitals: (bueno, necesita mejorar). Por encima
@@ -101,7 +103,7 @@ def pageview_series(minutes=30, now=None):
     return series
 
 
-def top_pages(minutes=30, limit=6, now=None):
+def top_pages(minutes=30, limit=12, now=None):
     now = now or timezone.now()
     since = now - timedelta(minutes=minutes)
     return list(
@@ -112,7 +114,7 @@ def top_pages(minutes=30, limit=6, now=None):
     )
 
 
-def referrers(minutes=30, limit=6, now=None):
+def referrers(minutes=30, limit=12, now=None):
     now = now or timezone.now()
     since = now - timedelta(minutes=minutes)
     queryset = PageView.objects.filter(created_at__gte=since)
@@ -234,6 +236,7 @@ def javascript_errors(hours=24, limit=10, now=None):
     queryset = JavaScriptError.objects.filter(created_at__gte=since)
     total = queryset.count()
     items = []
+    clock_pattern = get_request_clock_pattern(with_seconds=True)
     for error in queryset.order_by('-created_at')[:limit]:
         items.append(
             {
@@ -241,7 +244,7 @@ def javascript_errors(hours=24, limit=10, now=None):
                 'path': error.path,
                 'source': error.source,
                 'lineno': error.lineno,
-                'at': timezone.localtime(error.created_at).strftime('%H:%M:%S'),
+                'at': date_format(timezone.localtime(error.created_at), clock_pattern),
             }
         )
     return {'count': total, 'items': items}

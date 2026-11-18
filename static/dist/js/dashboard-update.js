@@ -182,6 +182,21 @@
       (options.badge ? ' update-dot-' + options.badge : '');
     badge.classList.toggle('d-none', !options.badge);
 
+    // El punto es `aria-hidden`: sin esto el lector de pantalla escucha
+    // "actualizaciones del servidor" y nada mas, aunque el estado sea "el
+    // despliegue fallo". El tooltip dice lo mismo que se anuncia.
+    var etiqueta = 'Actualizaciones del servidor';
+    if (options.title) {
+      etiqueta += ': ' + options.title;
+    }
+    if (options.message && !options.progress) {
+      etiqueta += ' ' + options.message;
+    }
+    if (root) {
+      root.setAttribute('aria-label', etiqueta);
+      root.setAttribute('title', etiqueta);
+    }
+
     icon.className = 'icon ' + (options.icon || 'ti ti-refresh');
     // El spinner sustituye al icono durante el despliegue. Se aplica despues de
     // reescribir `className` porque esa asignacion borra cualquier `d-none`
@@ -313,28 +328,49 @@
     attemptLabel.textContent = partes.length ? partes.join(' · ') : 'sin intento registrado';
   }
 
-  // El sync de artefactos root escribe su ultima corrida BUENA en otro archivo:
-  // cuando falla no deja estado de fallo, se queda el anterior. La unica senal
-  // honesta es que no completa una corrida desde hace demasiado, y eso es lo
-  // que se muestra. Sin archivo, el sync no esta instalado y no se dice nada.
+  // El sync de artefactos root escribe su estado en otro archivo que el del
+  // deploy: si el timer no corre a diario, los artefactos viejos siguen
+  // funcionando y nadie se entera. La linea es el unico aviso de eso.
   function paintSync(sync) {
     if (!syncLine || !syncText) {
       return;
     }
-    if (!sync || !sync.installed_at) {
+    if (!sync) {
+      // Sin archivo el sync no esta instalado en el servidor.
       syncLine.classList.add('d-none');
       return;
     }
-    var cuando = hace(sync.installed_at);
-    var estancado = Boolean(sync.stale);
-    syncText.textContent = estancado
-      ? 'El sync de artefactos no completa una corrida' + (cuando ? ' desde ' + cuando : '') + '.'
-      : 'Artefactos root: ' +
-        (sync.sha_short || 'sin SHA') +
-        (cuando ? ' · ' + cuando : '');
+    var atencion = false;
+    var texto = '';
+    if (sync.failed) {
+      // El helper escribe el fallo: el servidor sigue con los artefactos del
+      // commit anterior y nada mas avisa, porque el deploy es fail-open.
+      var fallo = hace(sync.failed_at);
+      texto = 'El último intento del sync falló' + (fallo ? ' ' + fallo : '') + '.';
+      atencion = true;
+    } else if (!sync.installed_at) {
+      // Un `ok` sin fecha no se muestra: no hay nada que decir con certeza.
+      syncLine.classList.add('d-none');
+      return;
+    } else if (sync.stale) {
+      // Sin fallo registrado pero sin corrida desde hace demasiado: el timer
+      // no esta completando sus corridas. No se dice "fallo" porque no lo
+      // hay en el archivo; se dice lo que si se puede afirmar.
+      var atras = hace(sync.installed_at);
+      texto =
+        'El sync de artefactos no completa una corrida' + (atras ? ' desde ' + atras : '') + '.';
+      atencion = true;
+    } else {
+      texto = 'Artefactos root: ' + (sync.sha_short || 'sin SHA');
+      var cuando = hace(sync.installed_at);
+      if (cuando) {
+        texto += ' · ' + cuando;
+      }
+    }
+    syncText.textContent = texto;
     // Rojo solo cuando hay algo que mirar: un sync al dia no es una alarma.
-    syncLine.classList.toggle('text-red', estancado);
-    syncLine.classList.toggle('text-secondary', !estancado);
+    syncLine.classList.toggle('text-red', atencion);
+    syncLine.classList.toggle('text-secondary', !atencion);
     syncLine.classList.remove('d-none');
   }
 
@@ -551,6 +587,16 @@
     // al final, se conserva su posicion.
     var keep = nearBottom();
     var contenido = payload.log ? String(payload.log) : '(sin salida)';
+    // Cada intento de despliegue empieza con una linea "autodeploy: Desplegando …".
+    // Mostramos solo desde el ultimo inicio para que el modal muestre el log
+    // de la corrida actual y no el historico acumulado.
+    var deployRunStart = contenido.lastIndexOf('autodeploy: Desplegando ');
+    if (deployRunStart !== -1) {
+      // `lastIndexOf` apunta a 'a' de 'autodeploy'. Buscamos el salto de linea
+      // anterior para no partir una linea a la mitad.
+      var nl = contenido.lastIndexOf('\n', deployRunStart - 1);
+      contenido = (nl === -1 ? '' : contenido.substring(nl + 1)) + contenido.substring(deployRunStart);
+    }
     var lineas = contenido.replace(ANSI_COLOR, '').split('\n');
     var fragmento = document.createDocumentFragment();
 

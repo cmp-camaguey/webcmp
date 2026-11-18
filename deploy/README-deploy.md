@@ -798,6 +798,11 @@ deploy e `install.sh` al terminar la instalacion), y el
 ultimo de `main` de un `git ls-remote` contra el repositorio publico: sin
 credenciales, sin clave y sin tocar el checkout.
 
+El punto no es la unica senal: el `aria-label` y el tooltip del icono dicen el
+mismo estado que el punto de color. Sin eso, quien usa un lector de pantalla
+escucha "actualizaciones del servidor" y nada mas, aunque el despliegue haya
+fallado.
+
 El desplegable tambien muestra un **chip con la version**. La version es un tag
 que apunta **exacto** al commit: el mismo `git ls-remote` pide ademas
 `refs/tags/*` (con el peeled `^{}` de cada tag anotado) y el panel compara
@@ -934,14 +939,25 @@ escribir no tumba un deploy que salio bien: es una ayuda, no una dependencia.
 
 ### Estado del sync de artefactos root
 
-Debajo del boton, el desplegable muestra la ultima corrida **buena** del sync
-(`deploy-sync.json`): el SHA instalado y cuanto hace. El sync es fail-open y no
-escribe estado cuando falla, asi que no hay un "fallo" que leer: lo que el panel
-avisa es que **no completa una corrida** desde hace mas de 36 horas
-(`UPDATE_SYNC_MAX_AGE`), que es el sintoma real de un timer roto. Ahi la linea pasa
-a rojo.
+Debajo del boton, el desplegable muestra el ultimo intento del sync
+(`deploy-sync.json`), sea que termino o que fallo:
+
+```
+Artefactos root: 97c43ec · hace 3 h
+El último intento del sync falló hace 2 h.
+```
+
+El sync es fail-open: si falla, el deploy no aborta y los artefactos root del
+commit anterior siguen funcionando. Eso es lo que hace al sync peligroso de
+vigilar — nadie se entera por el deploy—, por eso el panel lo tiene como linea
+propia. Si no completa una corrida desde hace mas de 36 horas
+(`UPDATE_SYNC_MAX_AGE`) sin un fallo registrado, la linea pasa a rojo tambien:
+es el sintoma del timer roto.
 
 Sin el archivo, el sync no esta instalado en el servidor y la linea no aparece.
+El archivo no guarda el error del intento: el panel solo puede decir que fallo y
+cuando, porque el texto que escribe root no puede pasar al navegador. El detalle
+de por que fallo esta en el journal.
 
 ### Archivos y permisos
 
@@ -1186,7 +1202,7 @@ cat /var/lib/webcmp/apply-status.json
 | `deploy/webcmp-deploy-sync.sh` → `/usr/local/sbin/webcmp-deploy-sync.sh` | root 0755 | Extrae del espejo, renderiza, valida, instala atómico |
 | `deploy/systemd/webcmp-sync.{service,timer}` | root | Refresca el espejo diario a las 04:30 |
 | `/var/lib/webcmp/webcmp-sync.mirror` | root:root 0700 | Espejo bare del repo; única fuente de los archivos root |
-| `/var/lib/webcmp/deploy-sync.json` | root:root 0644 | Estado del último sync (SHA, fecha) para el panel y `--check` |
+| `/var/lib/webcmp/deploy-sync.json` | root:root 0644 | Estado del ultimo sync (`status`, SHA, fechas) para el panel y `--check` |
 
 Flujo en un deploy: tras el checkout, `deploy.sh` invoca
 `webcmp-deploy-sync.sh --quiet --refresh --sha <current_sha>`. El `--refresh`
@@ -1209,15 +1225,17 @@ que el último refresco del timer). El helper luego:
 **Fail-open a propósito**: si el sync falla (espejo sin el SHA, red caida,
 render roto), el deploy **no** aborta — el script instalado actual sigue siendo
 root-owned y conocido — y `missing_units` detecta cualquier unidad ausente como
-red de seguridad. `webcmp-deploy --check` muestra el SHA instalado contra el
-último del espejo, y el panel muestra la ultima corrida buena (ver «Estado del
+red de seguridad. El helper deja ademas el fallo en `deploy-sync.json`
+(`status: failed` con la fecha), que es lo que leen el panel y
+`webcmp-deploy --check`. `--check` muestra el SHA instalado contra el
+último del espejo, y el panel muestra el ultimo intento (ver «Estado del
 sync de artefactos root»).
 
 ### Diagnosticar el sync
 
 ```bash
-cat /var/lib/webcmp/deploy-sync.json        # SHA y hora del último sync
-sudo journalctl -u webcmp-sync -n 50        # refresco diario
+cat /var/lib/webcmp/deploy-sync.json        # status: ok | failed, SHA y fechas
+sudo journalctl -u webcmp-sync -n 50        # refresco diario (y su error)
 /usr/local/sbin/webcmp-deploy-sync.sh --help
 ```
 

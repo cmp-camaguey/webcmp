@@ -13,7 +13,9 @@ from django.conf import settings
 from django.db.models import Avg, Count, Max, Q
 from django.db.models.functions import TruncMinute
 from django.utils import timezone
+from django.utils.formats import date_format
 
+from apps.core.timezone_utils import get_request_clock_pattern
 from apps.monitoring.models import RequestMetric
 
 logger = logging.getLogger(__name__)
@@ -128,7 +130,7 @@ def uptime(hours=24, now=None):
     }
 
 
-def uptime_slots(hours=24, now=None, slot_minutes=15):
+def uptime_slots(hours=24, now=None, slot_minutes=30):
     """Bloques estilo status page: un bloque por tramo, con su estado."""
     now = now or timezone.now()
     since = now - timedelta(hours=hours)
@@ -167,8 +169,14 @@ def uptime_slots(hours=24, now=None, slot_minutes=15):
         buckets[index][1] += values[1]
 
     slots = []
+    clock_pattern = get_request_clock_pattern()
     for index in range(slot_count):
         slot_start = start + timedelta(minutes=slot_minutes * index)
+        # La rejilla se arma en UTC (la truncacion tambien), pero la hora que
+        # se muestra es la del sitio: su zona configurada (auto o manual) y su
+        # formato de 12/24 horas.
+        if timezone.is_aware(slot_start):
+            slot_start = timezone.localtime(slot_start)
         total, errors = buckets[index]
         if total == 0:
             state = 'nodata'
@@ -180,7 +188,7 @@ def uptime_slots(hours=24, now=None, slot_minutes=15):
             state = 'down'
         slots.append(
             {
-                'label': slot_start.strftime('%H:%M'),
+                'label': date_format(slot_start, clock_pattern),
                 'state': state,
                 'total': total,
                 'errors': errors,
