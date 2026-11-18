@@ -1525,6 +1525,21 @@ class DashboardUpdateScriptTest(TestCase):
         self.assertIn("'update-console-text'", source)
         self.assertNotIn('text-white-50 pe-3', source)
 
+    def test_el_modal_de_confirmacion_no_usa_bootstrap_global_a_secas(self):
+        # Tabler 1.5.1 expone el bootstrap como `window.tabler.bootstrap`; un
+        # `window.bootstrap.Modal` a secas es `undefined` y el boton de
+        # desplegar no abre la confirmacion. El resto del proyecto abre modales
+        # con el patron `(window.tabler && window.tabler.bootstrap) || window.bootstrap`.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertNotIn('window.bootstrap.Modal(', source)
+        self.assertIn(
+            '(window.tabler && window.tabler.bootstrap) || window.bootstrap',
+            source,
+        )
+
     def test_el_script_del_panel_lleva_cache_buster(self):
         # Sin la version, un despliegue que cambia el JS sirve al admin el
         # codigo viejo desde la cache hasta que haga un hard refresh.
@@ -1532,4 +1547,4 @@ class DashboardUpdateScriptTest(TestCase):
             encoding='utf-8'
         )
 
-        self.assertIn("dist/js/dashboard-update.js' %}?v=4", html)
+        self.assertIn("dist/js/dashboard-update.js' %}?v=5", html)
