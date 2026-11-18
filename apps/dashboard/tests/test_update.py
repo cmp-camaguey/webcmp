@@ -1063,6 +1063,19 @@ class DashboardNavbarTest(UpdateTestCase):
         self.assertIn('var(--tblr-code-bg)', html)
         self.assertIn('var(--tblr-heading-color)', html)
 
+    def test_el_modal_del_log_no_se_cierra_con_click_fuera_ni_con_esc(self):
+        # El log del deploy solo se cierra con la X del header: un click
+        # accidental en el backdrop o un Escape borraría la lectura del log.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+        modal = html.split('id="update-log-modal"', 1)[1].split('id="update-confirm-modal"', 1)[0]
+
+        self.assertIn('data-bs-backdrop="static"', modal)
+        self.assertIn('data-bs-keyboard="false"', modal)
+
     def test_el_modal_identifica_el_intento_del_log(self):
         # La barra del terminal dice de que intento es el log que se va a leer;
         # el JS lo pinta con textContent, nunca con innerHTML.

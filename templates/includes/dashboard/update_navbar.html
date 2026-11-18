@@ -129,35 +129,12 @@
     /* Consola del log. Tabler no trae un componente terminal: se arma con sus
        variables de tema, que cambian con `data-bs-theme`, en vez de fijar
        `bg-dark`, que ignoraba el tema configurado en el sitio. */
-    .update-console {
-      overflow: hidden;
-      border: 1px solid var(--tblr-border-color);
-      border-radius: var(--tblr-border-radius);
-      background-color: var(--tblr-code-bg);
-    }
-
-    .update-console-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-      padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid var(--tblr-border-color);
-      background-color: var(--tblr-bg-surface-secondary);
-      color: light-dark(#4b5563, #9ca3af);
-      font-size: 0.75rem;
-    }
-
-    .update-console-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-    }
-
     .update-console-body {
       margin: 0;
       padding: 0.75rem 1rem;
       max-height: 60vh;
       overflow: auto;
+      background-color: var(--tblr-code-bg);
       color: var(--tblr-heading-color);
       font-family: var(--tblr-font-monospace);
       font-size: 0.75rem;
@@ -177,8 +154,7 @@
 
     .update-console-line-no {
       padding-right: 0.5rem;
-      border-right: 1px solid var(--tblr-border-color);
-      color: light-dark(#4b5563, #9ca3af);
+      color: var(--tblr-tertiary-color);
       text-align: right;
       user-select: none;
     }
@@ -241,31 +217,26 @@
        id="update-log-modal"
        tabindex="-1"
        aria-hidden="true"
-       aria-labelledby="update-log-title">
+       aria-labelledby="update-log-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="update-log-title">Log del último despliegue</h5>
+        <div class="card-header d-flex align-items-center p-2">
+          <i class="icon ti ti-terminal-2 me-2" aria-hidden="true"></i>
+          <span class="font-monospace" id="update-log-title">deploy.log</span>
+          <span class="ms-auto d-inline-flex align-items-center gap-2 update-console-attempt">
+            <span class="font-monospace text-truncate" id="update-log-attempt"></span>
+          </span>
           <button type="button"
-                  class="btn-close"
+                  class="btn-close ms-2"
                   data-bs-dismiss="modal"
                   aria-label="Cerrar"></button>
         </div>
-        <div class="modal-body">
-          <p class="text-secondary small mb-3 d-none" id="update-log-note"></p>
-          <div class="update-console">
-            <div class="update-console-bar">
-              <span class="update-console-dot bg-red"></span>
-              <span class="update-console-dot bg-yellow"></span>
-              <span class="update-console-dot bg-lime"></span>
-              <span class="ms-2 font-monospace">deploy.log</span>
-              <span class="ms-auto d-inline-flex align-items-center gap-2 update-console-attempt">
-                <span class="font-monospace text-truncate" id="update-log-attempt"></span>
-                <i class="icon ti ti-terminal-2 flex-shrink-0" aria-hidden="true"></i>
-              </span>
-            </div>
-            <pre id="update-log-pre" class="update-console-body"></pre>
-          </div>
+        <div class="card-body p-0">
+          <p class="text-secondary small mb-3 d-none mx-3 mt-3"
+             id="update-log-note"></p>
+          <pre id="update-log-pre" class="update-console-body"></pre>
         </div>
       </div>
     </div>
