@@ -297,7 +297,8 @@
         return (
           '<div class="tracking-block bg-' +
           (STATE_COLORS[slot.state] || 'secondary') +
-          '" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="' +
+          '" aria-hidden="true" data-bs-toggle="tooltip" data-bs-placement="top"' +
+          ' data-bs-original-title="' +
           escapeAttribute(slotTitle(slot)) +
           '"></div>'
         )
@@ -337,7 +338,8 @@
     return cores
       .map(function (value, index) {
         return (
-          '<span class="monitoring-core" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="' +
+          '<span class="monitoring-core" aria-hidden="true" data-bs-toggle="tooltip"' +
+          ' data-bs-placement="top" data-bs-original-title="' +
           escapeAttribute(coreTitle(value, index)) +
           '"><span class="monitoring-core-bar bg-' +
           coreColor(value) +
