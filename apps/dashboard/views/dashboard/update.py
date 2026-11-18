@@ -375,13 +375,17 @@ def _age_seconds(iso_text):
 
 
 def deploy_sync_state(deployed=None):
-    """Ultima corrida **buena** del sync de artefactos root, saneada.
+    """Ultima corrida del sync de artefactos root, saneada.
 
-    El sync escribe este archivo solo al terminar bien: cuando falla no toca
-    nada, y el servidor sigue con los artefactos root del commit anterior
-    (fail-open). Por eso el panel no puede afirmar "el sync fallo"; lo que si
-    puede afirmar es que no completa una corrida desde cierta fecha, que es el
-    sintoma real de un timer roto.
+    El helper escribe este archivo en los dos casos: al terminar bien
+    (``status: ok``) y al morir (``status: failed``, mas ``failed_at`` y el
+    SHA que quedo instalado). El segundo caso es el que el panel necesita
+    avisar: un sync que no corre a diario es el problema real del timer, y el
+    deploy es fail-open, asi que los artefactos viejos siguen funcionando y nadie
+    lo nota.
+
+    El archivo no guarda el error del intento: el texto que escribe root no
+    puede pasar al navegador. El detalle de por que fallo vive en el journal.
 
     ``None`` significa "no consta": el sync no esta instalado en este servidor.
     """
@@ -398,10 +402,20 @@ def deploy_sync_state(deployed=None):
 
     sha = data.get('sha')
     sha = sha if isinstance(sha, str) and SHA_RE.match(sha) else None
+    # Archivos anteriores a este cambio no traen `status`: siempre eran un
+    # exito, porque el helper solo escribia al terminar bien.
+    status = data.get('status')
+    status = status if status in ('ok', 'failed') else 'ok'
+    failed = status == 'failed'
     installed_at = _iso_text(data.get('installed_at'))
+    failed_at = _iso_text(data.get('failed_at')) if failed else None
     age = _age_seconds(installed_at)
     installed = data.get('installed')
     return {
+        'status': status,
+        'failed': failed,
+        'failed_at': failed_at,
+        'failed_age_seconds': _age_seconds(failed_at),
         'sha': sha,
         'sha_short': sha[:7] if sha else None,
         'installed_at': installed_at,
@@ -409,7 +423,7 @@ def deploy_sync_state(deployed=None):
         'age_seconds': age,
         # Sin edad legible no se avisa: un archivo con una fecha que no se
         # entiende no prueba que el sync este atrasado.
-        'stale': age is not None and age > settings.UPDATE_SYNC_MAX_AGE,
+        'stale': (not failed) and age is not None and age > settings.UPDATE_SYNC_MAX_AGE,
         # El deploy corre su propio sync con el commit que acaba de instalar,
         # asi que despues de desplegar los artefactos root tienen que ser de
         # ese commit. Un desacuerdo significa que ese sync no los instalo.

@@ -156,6 +156,39 @@ assert_eq 'webcmp-deploy-sync.sh sin espejo sale 1' 1 "$no_mirror_rc"
 assert_contains 'webcmp-deploy-sync.sh sin espejo lo explica' \
     'Espejo root no existe' "$no_mirror"
 
+# --- Un sync que muere deja estado fallido ----------------------------------
+#
+# El timer es lo que mantiene al dia los artefactos root, y el deploy es
+# fail-open: si el sync muere, el deploy sigue y nadie se entera. Este archivo
+# es lo unico que lee el panel para avisar de eso.
+
+failed_state="$SYNC_STATE_DIR/deploy-sync.json"
+failed_src=$(cat "$failed_state" 2>/dev/null || true)
+assert_contains 'un sync que muere deja un archivo de estado' '"status":"failed"' "$failed_src"
+assert_contains 'el estado fallido lleva la fecha del intento' '"failed_at"' "$failed_src"
+# Sin texto libre del error: el archivo lo escribe root, el panel no lo puede
+# mostrar y el detalle es del journal.
+assert_not_contains 'el estado fallido no guarda texto libre' '"error"' "$failed_src"
+
+# El SHA que quedo instalado se conserva: el panel puede decir que artefactos
+# sirven mientras tanto.
+seeded_sha=$(git -C "$REPO_ROOT" rev-parse HEAD)
+printf '{"status":"ok","sha":"%s","installed_at":"2026-11-17T04:30:00+00:00","from":"refs/heads/main","installed":5}\n' \
+    "$seeded_sha" > "$failed_state"
+
+set +e
+bash "$SYNC_SCRIPT" --quiet >/dev/null 2>&1
+set -e
+after=$(cat "$failed_state" 2>/dev/null || true)
+assert_contains 'el intento fallido conserva el sha instalado' "$seeded_sha" "$after"
+assert_contains 'el intento fallido conserva la fecha de instalacion' '2026-11-17T04:30:00+00:00' "$after"
+
+# El exito escribe `status: ok`. Sin el campo, un archivo anterior a este
+# cambio y uno fallido se confunden en el panel.
+assert_contains 'el estado bueno lleva status ok' '"status":"ok"' "$sync_src"
+assert_contains 'deploy.sh --check reporta el sync fallido' \
+    'el ultimo intento fallo' "$(cat "$DEPLOY_SH")"
+
 # --- Con espejo: extrae del SHA, instala, escribe estado --------------------
 
 setup_mirror
