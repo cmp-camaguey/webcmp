@@ -27,6 +27,15 @@ from django.urls import reverse
 
 from apps.dashboard.views.dashboard import update as update_module
 
+APERTURA_MODAL = re.compile(
+    r'<div\s+class="modal[^"]*fade"[^>]*>(.*?)'
+    r'(?=<div\s+class="modal[^"]*fade"|\Z)',
+    re.DOTALL,
+)
+HEADER_MODAL = re.compile(
+    r'<(?:div|header)[^>]*class="[^"]*(?:modal-header|card-header)[^"]*"[^>]*>'
+)
+
 SHA_DEPLOYED = 'a' * 40
 SHA_LATEST = 'b' * 40
 
@@ -1642,5 +1651,89 @@ class DashboardUpdateScriptTest(TestCase):
         self.assertIn('role="document"', modal)
         self.assertIn('class="modal-header bg-warning text-dark"', modal)
         self.assertIn('aria-label="Cerrar"', modal)
-        self.assertNotIn('>Cancelar</button>', modal)
+        self.assertIn('>Cancelar</button>', modal)
         self.assertIn('id="update-confirm-deploy"', modal)
+
+    def test_todos_los_modales_comparten_el_mismo_patron_visual(self):
+        # Un solo lenguaje visual en todo el sitio: blur, roles ARIA, X con
+        # etiqueta en espanol y header con color segun el proposito.
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        ofensores = []
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                texto = path.read_text(encoding='utf-8')
+                for match in APERTURA_MODAL.finditer(texto):
+                    bloque = match.group(0)
+                    tag = bloque.split('>', 1)[0]
+                    fallos = []
+                    if 'modal-blur' not in tag or 'role="dialog"' not in tag:
+                        fallos.append('blur/role')
+                    dialog = re.search(r'<div\s+class="modal-dialog[^"]*"[^>]*>', bloque)
+                    if not dialog or 'role="document"' not in dialog.group(0):
+                        fallos.append('role=document')
+                    header = HEADER_MODAL.search(bloque)
+                    if not header or not re.search(
+                        r'bg-(?:danger|warning|primary|dark)\b', header.group(0)
+                    ):
+                        fallos.append('header sin color')
+                    if 'aria-label="Cerrar"' not in bloque:
+                        fallos.append('X sin etiqueta')
+                    if fallos:
+                        ofensores.append(f'{path.relative_to(base)}: ' + ', '.join(fallos))
+
+        self.assertEqual(ofensores, [], '\n'.join(ofensores))
+
+    def test_los_modales_de_accion_conservan_el_boton_cancelar(self):
+        # El usuario pidio conservar Cancelar en todos los modales de accion.
+        # Los informativos (PDF, log, KPIs, traceback) solo llevan la X.
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        con_cancelar = set()
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                texto = path.read_text(encoding='utf-8')
+                for match in APERTURA_MODAL.finditer(texto):
+                    bloque = match.group(0)
+                    if '>Cancelar</button>' in bloque:
+                        ident = re.search(r'id="([^"]+)"', bloque.split('>', 1)[0])
+                        con_cancelar.add((str(path.relative_to(base)), ident.group(1)))
+
+        esperados = {
+            ('templates/includes/dashboard/modal_delete.html', 'confirmDeleteModal'),
+            ('templates/includes/dashboard/update_navbar.html', 'update-confirm-modal'),
+            (
+                'apps/dashboard/templates/pages/dashboard/notifications.html',
+                'notification-delete-modal',
+            ),
+            ('apps/dashboard/templates/pages/dashboard/tasks.html', 'confirmTaskDeleteModal'),
+            ('apps/core/templates/pages/core/site/settings.html', 'reset-theme-modal'),
+            (
+                'apps/commercial/templates/pages/commercial/certificate/list.html',
+                'confirmDeleteModal',
+            ),
+            ('apps/commercial/templates/pages/commercial/contract/list.html', 'confirmDeleteModal'),
+            ('apps/commercial/templates/pages/commercial/customer/list.html', 'confirmDeleteModal'),
+            (
+                'apps/commercial/templates/pages/commercial/invoice/create.html',
+                'modal-company-settings',
+            ),
+            (
+                'apps/commercial/templates/pages/commercial/invoice/list.html',
+                'confirmInvoiceActionModal',
+            ),
+            ('apps/commercial/templates/pages/commercial/service/list.html', 'confirmDeleteModal'),
+            (
+                'apps/commercial/templates/pages/commercial/subscription/confirm_delete.html',
+                'hardDeleteModal',
+            ),
+            (
+                'apps/commercial/templates/pages/commercial/subscription/confirm_delete.html',
+                'softDeleteModal',
+            ),
+            (
+                'apps/commercial/templates/pages/commercial/subscription/list.html',
+                'confirmSubscriptionActionModal',
+            ),
+        }
+        self.assertEqual(con_cancelar, esperados)
