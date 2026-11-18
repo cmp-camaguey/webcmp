@@ -366,6 +366,57 @@ def _run_is_stale(run):
     return (datetime.now(UTC) - started).total_seconds() > RUN_STALE_SECONDS
 
 
+def _age_seconds(iso_text):
+    """Segundos desde un ISO del servidor, o ``None`` si no se puede calcular."""
+    moment = _iso_moment(iso_text)
+    if moment is None:
+        return None
+    return max(0, int((datetime.now(UTC) - moment).total_seconds()))
+
+
+def deploy_sync_state(deployed=None):
+    """Ultima corrida **buena** del sync de artefactos root, saneada.
+
+    El sync escribe este archivo solo al terminar bien: cuando falla no toca
+    nada, y el servidor sigue con los artefactos root del commit anterior
+    (fail-open). Por eso el panel no puede afirmar "el sync fallo"; lo que si
+    puede afirmar es que no completa una corrida desde cierta fecha, que es el
+    sintoma real de un timer roto.
+
+    ``None`` significa "no consta": el sync no esta instalado en este servidor.
+    """
+    raw = _read_text(settings.UPDATE_SYNC_FILE)
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning('%s no es JSON valido', settings.UPDATE_SYNC_FILE)
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    sha = data.get('sha')
+    sha = sha if isinstance(sha, str) and SHA_RE.match(sha) else None
+    installed_at = _iso_text(data.get('installed_at'))
+    age = _age_seconds(installed_at)
+    installed = data.get('installed')
+    return {
+        'sha': sha,
+        'sha_short': sha[:7] if sha else None,
+        'installed_at': installed_at,
+        'installed': installed if isinstance(installed, int) else None,
+        'age_seconds': age,
+        # Sin edad legible no se avisa: un archivo con una fecha que no se
+        # entiende no prueba que el sync este atrasado.
+        'stale': age is not None and age > settings.UPDATE_SYNC_MAX_AGE,
+        # El deploy corre su propio sync con el commit que acaba de instalar,
+        # asi que despues de desplegar los artefactos root tienen que ser de
+        # ese commit. Un desacuerdo significa que ese sync no los instalo.
+        'matches_deployed': bool(sha and deployed and sha == deployed),
+    }
+
+
 def last_run():
     """Ultimo intento de despliegue escrito por el ejecutor, saneado."""
     raw = _read_text(settings.UPDATE_STATUS_FILE)
@@ -564,6 +615,10 @@ def build_state(refresh=False, include_commits=True):
         'latest_short': remote['sha'][:7] if remote['sha'] else None,
         'check_error': remote['error'],
         'last_run': run,
+        # Estado del sync de artefactos root: es lo que instala las unidades de
+        # systemd y el script de sync. Su fallo no se ve en ningun otro lado, y
+        # sin esta linea el panel decia "al dia" con el sync parado.
+        'sync': deploy_sync_state(deployed),
         'progress': progress,
         'commits': commits,
     }

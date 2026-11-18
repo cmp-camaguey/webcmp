@@ -31,6 +31,7 @@
   var text = document.getElementById('update-navbar-text');
   var detail = document.getElementById('update-navbar-detail');
   var button = document.getElementById('update-navbar-button');
+  var logButton = document.getElementById('update-navbar-log');
   var commitsBox = document.getElementById('update-navbar-commits');
   var progressBox = document.getElementById('update-navbar-progress');
   var progressBar = document.getElementById('update-navbar-progress-bar');
@@ -44,8 +45,18 @@
   var logModal = document.getElementById('update-log-modal');
   var logNote = document.getElementById('update-log-note');
   var logPre = document.getElementById('update-log-pre');
+  var attemptLabel = document.getElementById('update-log-attempt');
+  var syncLine = document.getElementById('update-navbar-sync');
+  var syncText = document.getElementById('update-navbar-sync-text');
+  var confirmModalEl = document.getElementById('update-confirm-modal');
+  var confirmTarget = document.getElementById('update-confirm-target');
+  var confirmDeploy = document.getElementById('update-confirm-deploy');
 
   var timer = null;
+  // Ultimo estado pintado. El modal de confirmacion arma su texto con el, asi
+  // que no puede leerlo de un DOM que ya cambio.
+  var current = null;
+  var confirmModal = null;
 
   function schedule(delay) {
     window.clearTimeout(timer);
@@ -160,11 +171,15 @@
   }
 
   function paint(options) {
-    // `badge` es la senal: un punto rojo en el navbar. El resto del texto vive
-    // dentro del desplegable, que solo se ve si el admin lo abre.
+    // `badge` es la senal: un punto sobre el icono del navbar. El resto del
+    // texto vive dentro del desplegable, que solo se ve si el admin lo abre.
+    //
+    // El punto lleva color pleno (`update-dot-<color>`), no el light variant
+    // `-lt`: ese mezcla un 10% del color y sobre el navbar claro dejaba un
+    // rosa palido de 8px que no se distinguia.
     badge.className =
-      'badge badge-pill position-absolute top-0 start-100 translate-middle ' +
-      (options.badge ? 'bg-' + options.badge + '-lt' : 'd-none');
+      'update-dot position-absolute top-0 start-100 translate-middle' +
+      (options.badge ? ' update-dot-' + options.badge : '');
     badge.classList.toggle('d-none', !options.badge);
 
     icon.className = 'icon ' + (options.icon || 'ti ti-refresh');
@@ -205,6 +220,14 @@
     // El label por defecto, o el que arma `render` con la version exacta del
     // tag. El tag ya trae su `v`: aca no se compone ningun formato.
     button.textContent = options.buttonLabel || 'Actualizar ahora';
+
+    // El log solo cuando el archivo corresponde a lo que se ve. Con una
+    // actualizacion pendiente el log es del intento anterior —otro commit— y
+    // mostrarlo hace creer que el despliegue que falta ya corrio. En exito,
+    // fallo y despliegue en curso si sirve.
+    if (logButton) {
+      logButton.classList.toggle('d-none', Boolean(options.hideLog));
+    }
   }
 
   // Version que muestra el chip: la que se esta instalando (tag exacto del
@@ -218,10 +241,146 @@
     return state.deployed_version || state.deployed_short || '';
   }
 
+  // Tiempo relativo y no una fecha: el navegador del admin puede estar en otro
+  // huso, y "hace 2 h" se lee igual en cualquiera. Un ISO invalido no inventa
+  // nada: devuelve vacio.
+  function hace(iso) {
+    if (!iso) {
+      return '';
+    }
+    var fecha = new Date(iso);
+    if (isNaN(fecha.getTime())) {
+      return '';
+    }
+    var minutos = Math.floor((Date.now() - fecha.getTime()) / 60000);
+    if (minutos < 1) {
+      return 'hace un momento';
+    }
+    if (minutos < 60) {
+      return 'hace ' + minutos + ' min';
+    }
+    var horas = Math.floor(minutos / 60);
+    if (horas < 24) {
+      return 'hace ' + horas + ' h';
+    }
+    var dias = Math.floor(horas / 24);
+    return 'hace ' + dias + (dias === 1 ? ' día' : ' días');
+  }
+
+  // El ultimo intento es contexto, nunca el titulo del desplegable: el archivo
+  // de estado conserva el ultimo `ok` o `failed` hasta el intento siguiente, y
+  // usarlo de titulo anunciaria como presente algo que ya paso.
+  //
+  // Sin version a proposito: el chip ya la muestra, y repetirla aca es el mismo
+  // ruido que "Ahora se esta sirviendo vX" que se saco del estado completado.
+  function ultimoIntento(run) {
+    if (!run || !run.status) {
+      return '';
+    }
+    if (run.status === 'failed') {
+      // El servidor no esta en el commit que fallo: se actualizo por otra via.
+      // Decir "el commit anterior sigue sirviendo" seria falso.
+      return 'El último intento falló; el detalle está en «Ver log del despliegue».';
+    }
+    if (run.status === 'ok') {
+      var cuando = hace(run.finished_at || run.started_at);
+      return 'Último despliegue' + (cuando ? ': ' + cuando : '') + '.';
+    }
+    return '';
+  }
+
+  // Que intento es el log que muestra el modal. El archivo del log es del
+  // ultimo intento, no necesariamente del commit pendiente: sin esto el lector
+  // cree que esta viendo el despliegue que todavia no corrio.
+  function paintAttempt(state) {
+    if (!attemptLabel) {
+      return;
+    }
+    var run = state.last_run || {};
+    var partes = [];
+    // La version solo cuando el intento es del commit que se esta sirviendo:
+    // para otro commit la version no se puede deducir del tag actual.
+    if (run.sha && run.sha === state.deployed && state.deployed_version) {
+      partes.push(state.deployed_version);
+    }
+    if (run.sha) {
+      partes.push(run.sha.slice(0, 7));
+    }
+    var cuando = hace(run.finished_at || run.started_at);
+    if (cuando) {
+      partes.push(cuando);
+    }
+    attemptLabel.textContent = partes.length ? partes.join(' · ') : 'sin intento registrado';
+  }
+
+  // El sync de artefactos root escribe su ultima corrida BUENA en otro archivo:
+  // cuando falla no deja estado de fallo, se queda el anterior. La unica senal
+  // honesta es que no completa una corrida desde hace demasiado, y eso es lo
+  // que se muestra. Sin archivo, el sync no esta instalado y no se dice nada.
+  function paintSync(sync) {
+    if (!syncLine || !syncText) {
+      return;
+    }
+    if (!sync || !sync.installed_at) {
+      syncLine.classList.add('d-none');
+      return;
+    }
+    var cuando = hace(sync.installed_at);
+    var estancado = Boolean(sync.stale);
+    syncText.textContent = estancado
+      ? 'El sync de artefactos no completa una corrida' + (cuando ? ' desde ' + cuando : '') + '.'
+      : 'Artefactos root: ' +
+        (sync.sha_short || 'sin SHA') +
+        (cuando ? ' · ' + cuando : '');
+    // Rojo solo cuando hay algo que mirar: un sync al dia no es una alarma.
+    syncLine.classList.toggle('text-red', estancado);
+    syncLine.classList.toggle('text-secondary', !estancado);
+    syncLine.classList.remove('d-none');
+  }
+
+  // Texto del objetivo para la confirmacion. La version del tag si la hay; sin
+  // tag exacto, el SHA, que es lo unico cierto.
+  function targetLabel(state) {
+    if (!state) {
+      return 'el último commit de main';
+    }
+    if (state.version) {
+      return state.version + (state.latest_short ? ' (' + state.latest_short + ')' : '');
+    }
+    return state.latest_short || 'el último commit de main';
+  }
+
+  // Ningun clic del navbar despliega: abre la confirmacion. Sin el nodo del
+  // modal (template viejo en cache) se usa un confirm nativo, que tambien
+  // impide el disparo accidental; lo que no se hace nunca es pedir el deploy
+  // sin preguntar.
+  function openConfirm() {
+    if (!confirmModalEl) {
+      if (window.confirm('¿Desplegar ' + targetLabel(current) + ' en producción?')) {
+        requestUpdate();
+      }
+      return;
+    }
+    if (confirmTarget) {
+      confirmTarget.textContent = targetLabel(current);
+    }
+    if (!confirmModal) {
+      confirmModal = new window.bootstrap.Modal(confirmModalEl);
+    }
+    confirmModal.show();
+  }
+
   function render(state) {
     // Antes de cualquier pintado: si el estado dejo de ser `available`, la
     // lista vieja tiene que desaparecer, no quedarse pegada al desplegable.
     paintCommits(state);
+    // La barra del modal dice de que intento es el log que se va a leer.
+    paintAttempt(state);
+    // El sync de artefactos root vive fuera de `state.state`: puede estar
+    // parado mientras el servidor esta al dia.
+    paintSync(state.sync);
+
+    current = state;
 
     var run = state.last_run || {};
     var chip = chipVersion(state);
@@ -243,57 +402,47 @@
     }
 
     if (state.state === 'available') {
-      // Con tag exacto el boton y el detalle nombran la version; sin el, el
-      // rango de SHA de siempre. El detalle lleva el SHA corto del commit que
-      // se instala, para que el operador pueda contrastarlo con el tag.
+      // `available` no es una alarma: es una accion pendiente. El punto azul lo
+      // separa del rojo de `failed`, que si es un problema.
       var target = state.version;
       paint({
-        badge: 'red',
+        badge: 'blue',
         icon: 'ti ti-download',
         title: 'Actualización disponible',
-        message:
-          state.deployed_short + ' → ' + state.latest_short + (target ? ' · ' + target : ''),
-        detail: target
-          ? 'Instala ' + target + ' (' + state.latest_short + ')…'
-          : 'Instala el último commit de main en este servidor.',
+        // Solo el rango de SHA: la version vive en el chip y en el boton, y
+        // repetirla aca era el mismo ruido que el detalle de "Instala vX (sha)".
+        message: state.deployed_short + ' → ' + state.latest_short,
+        // Sin tag exacto el chip muestra el SHA y el boton dice "Actualizar
+        // ahora": ahi si hace falta decir que instala, porque nada mas lo dice.
+        detail: target ? '' : 'Instala el último commit de main en este servidor.',
         action: true,
         buttonLabel: target ? 'Actualizar a ' + target : null,
+        // El log del intento anterior es de otro commit: no se ofrece.
+        hideLog: true,
         versionText: chip,
       });
       return;
     }
 
-    if (run.status === 'failed') {
-      // `state.state === 'failed'` es lo que responde el backend cuando el
-      // intento fallido fue sobre el commit que sigue pendiente: ahi el boton
-      // sirve para reintentar, que es lo que hace falta despues de arreglar la
-      // causa. En cualquier otro caso el fallo es historia (el servidor ya
-      // quedo al dia por otra via) y ofrecer el boton mandaria a desplegar lo
-      // que ya se esta sirviendo.
-      var retry = state.state === 'failed';
+    if (state.state === 'failed') {
+      // El backend solo responde `failed` cuando el intento fallido fue contra
+      // el commit que sigue pendiente: ahi el boton sirve para reintentar, que
+      // es lo que hace falta despues de arreglar la causa. Un fallo viejo sobre
+      // un commit que ya quedo atras no llega por aca: es contexto de
+      // `up_to_date`, y ofrecer el boton ahi mandaria a desplegar lo que ya se
+      // esta sirviendo.
       paint({
         badge: 'red',
         icon: 'ti ti-alert-triangle',
         title: 'El despliegue falló',
         message: run.message || 'El despliegue falló.',
-        detail: retry
-          ? 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo; puedes reintentar.'
-          : 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo.',
-        action: retry,
+        // El mensaje del backend ya manda al log; repetirlo aca era decirlo dos
+        // veces en dos renglones seguidos.
+        detail: 'El commit anterior sigue sirviendo; puedes reintentar.',
+        action: true,
         // El reintento vuelve a desplegar el mismo commit pendiente: con tag
         // exacto el boton nombra la version, igual que en `available`.
-        buttonLabel: retry && state.version ? 'Actualizar a ' + state.version : null,
-        versionText: chip,
-      });
-      return;
-    }
-
-    if (run.status === 'ok') {
-      paint({
-        icon: 'ti ti-check',
-        title: 'Despliegue completado',
-        message: run.message || 'Despliegue completado.',
-        detail: 'Ahora se está sirviendo ' + (chip || 'el nuevo commit') + '.',
+        buttonLabel: state.version ? 'Actualizar a ' + state.version : null,
         versionText: chip,
       });
       return;
@@ -306,7 +455,12 @@
     if (state.state === 'up_to_date') {
       paint({
         icon: 'ti ti-check',
-        message: 'El servidor está al día (' + (chip || '—') + ').',
+        // La version va en el chip, que esta al lado: entre parentesis aca era
+        // la misma version dos veces en el mismo renglon.
+        message: 'El servidor está al día.',
+        // El estado manda; el ultimo intento va aca, como contexto, y no como
+        // titulo. Sin intento previo no hay nada que contar.
+        detail: ultimoIntento(run),
         versionText: chip,
       });
       return;
@@ -535,7 +689,17 @@
   }
 
   if (button) {
-    button.addEventListener('click', requestUpdate);
+    // El boton, incluido el de reintento de `failed`, abre la confirmacion.
+    button.addEventListener('click', openConfirm);
+  }
+
+  if (confirmDeploy) {
+    confirmDeploy.addEventListener('click', function () {
+      if (confirmModal) {
+        confirmModal.hide();
+      }
+      requestUpdate();
+    });
   }
 
   load();

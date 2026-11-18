@@ -46,6 +46,7 @@ class UpdateTestCase(TestCase):
         self.request_file = os.path.join(self.tmpdir, 'deploy-request')
         self.progress_file = os.path.join(self.tmpdir, 'deploy-progress.json')
         self.log_file = os.path.join(self.tmpdir, 'deploy.log')
+        self.sync_file = os.path.join(self.tmpdir, 'deploy-sync.json')
 
         override = override_settings(
             UPDATE_DEPLOYED_SHA_FILE=self.deployed_file,
@@ -54,6 +55,7 @@ class UpdateTestCase(TestCase):
             UPDATE_PROGRESS_FILE=self.progress_file,
             UPDATE_LOG_FILE=self.log_file,
             UPDATE_LOG_MAX_BYTES=1024,
+            UPDATE_SYNC_FILE=self.sync_file,
         )
         override.enable()
         self.addCleanup(override.disable)
@@ -98,6 +100,12 @@ class UpdateTestCase(TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+    def set_sync(self, sha=SHA_DEPLOYED, installed_at=None, installed=3):
+        payload = {'sha': sha, 'installed': installed, 'from': 'refs/heads/main'}
+        if installed_at is not None:
+            payload['installed_at'] = installed_at
+        self.write(self.sync_file, json.dumps(payload))
+
 
 class UpdateStatusViewTest(UpdateTestCase):
     def test_anonimo_recibe_403_y_no_un_redirect(self):
@@ -131,6 +139,73 @@ class UpdateStatusViewTest(UpdateTestCase):
         self.assertEqual(payload['state'], 'available')
         self.assertEqual(payload['latest'], SHA_LATEST)
         self.assertEqual(payload['deployed'], SHA_DEPLOYED)
+
+    def test_el_sync_de_artefactos_va_en_el_estado(self):
+        # El sync de artefactos root escribe su ultima corrida buena aparte del
+        # deploy. Sin exponerlo, un timer roto dejaba el panel diciendo "al dia".
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(installed_at=datetime.now(UTC).isoformat())
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertEqual(sync['sha'], SHA_DEPLOYED)
+        self.assertEqual(sync['sha_short'], SHA_DEPLOYED[:7])
+        self.assertEqual(sync['installed'], 3)
+        self.assertFalse(sync['stale'])
+        self.assertTrue(sync['matches_deployed'])
+
+    def test_un_sync_que_no_completa_una_corrida_se_avisa(self):
+        # Un sync que falla no escribe estado de fallo: se queda el anterior.
+        # La senal honesta es la antiguedad, y a las 36 h ya es una corrida
+        # diaria perdida.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(installed_at=(datetime.now(UTC) - timedelta(days=3)).isoformat())
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertTrue(sync['stale'])
+        self.assertGreater(sync['age_seconds'], 36 * 3600)
+
+    def test_sin_archivo_de_sync_no_se_inventa_un_estado(self):
+        # En un servidor sin el sync instalado no hay nada que decir. `None` se
+        # distingue de "sync sano": el panel esconde la linea.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.client.force_login(self.admin)
+
+        self.assertIsNone(self.client.get(self.status_url).json()['sync'])
+
+    def test_un_sync_con_fecha_ilegible_no_se_anuncia_atrasado(self):
+        # Una fecha que no se entiende no prueba nada: avisar "atrasado" con
+        # ella seria inventar el motivo.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(installed_at='ayer por la tarde')
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertIsNone(sync['installed_at'])
+        self.assertIsNone(sync['age_seconds'])
+        self.assertFalse(sync['stale'])
+
+    def test_el_sync_no_reenvia_un_sha_que_no_lo_es(self):
+        # El archivo lo escribe otro proceso: su contenido no se reenvia tal cual
+        # al navegador, igual que el SHA del intento de deploy.
+        self.set_deployed()
+        self.set_remote(sha=SHA_DEPLOYED)
+        self.set_sync(sha='no-es-un-sha', installed_at=datetime.now(UTC).isoformat())
+        self.client.force_login(self.admin)
+
+        sync = self.client.get(self.status_url).json()['sync']
+
+        self.assertIsNone(sync['sha'])
+        self.assertIsNone(sync['sha_short'])
+        self.assertFalse(sync['matches_deployed'])
 
     def test_sin_commit_desplegado_no_afirma_actualizacion(self):
         self.set_remote()
@@ -803,6 +878,29 @@ class DashboardNavbarTest(UpdateTestCase):
 
         self.assertNotIn('{#', html)
 
+    def test_el_punto_de_aviso_usa_color_pleno(self):
+        # El light variant `-lt` mezcla solo un 10% del color. El badge de
+        # notificaciones lo lleva a proposito porque tiene el conteo encima; el
+        # punto de actualizaciones va vacio, y ahi el `-lt` dejaba un punto de
+        # 8px casi blanco sobre el navbar claro.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        # Se mira la clase del elemento exacto: el resto de la pagina tiene
+        # otros badge `-lt` que no son parte de este cambio.
+        antes, _, _ = html.partition('id="update-navbar-badge"')
+        clase = antes.rsplit('class="', 1)[-1].split('"', 1)[0]
+
+        self.assertIn('update-dot-red', clase)
+        self.assertNotIn('-lt', clase)
+
+        # Y el color tiene que estar definido en el bloque de estilos.
+        self.assertIn('background-color: var(--tblr-red)', html)
+        self.assertIn('box-shadow: 0 0 0 2px var(--tblr-bg-surface)', html)
+
     def test_el_desplegable_tiene_el_contenedor_de_mensajes(self):
         # El JS busca `#update-navbar-commits`; si el contenedor desaparece del
         # template, la lista se queda sin donde pintarse y falla en silencio.
@@ -866,7 +964,9 @@ class DashboardNavbarTest(UpdateTestCase):
         self.client.force_login(self.admin)
 
         html = self.client.get(reverse('dashboard:index')).content.decode()
-        modal = html.split('id="update-log-modal"', 1)[1].split('<!-- Tema Claro|Oscuro -->', 1)[0]
+        # Hasta el modal siguiente: el de confirmacion si lleva footer, y es
+        # otro modal, no el del log.
+        modal = html.split('id="update-log-modal"', 1)[1].split('id="update-confirm-modal"', 1)[0]
 
         self.assertNotIn('modal-footer', modal)
         self.assertNotIn('update-log-refresh', modal)
@@ -889,6 +989,44 @@ class DashboardNavbarTest(UpdateTestCase):
         # El bloque de estilos vive antes del modal; se busca en la pagina.
         self.assertIn('var(--tblr-code-bg)', html)
         self.assertIn('var(--tblr-heading-color)', html)
+
+    def test_el_modal_identifica_el_intento_del_log(self):
+        # La barra del terminal dice de que intento es el log que se va a leer;
+        # el JS lo pinta con textContent, nunca con innerHTML.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-log-attempt"', html)
+        self.assertIn('update-console-attempt', html)
+
+    def test_el_desplegable_tiene_la_linea_del_sync(self):
+        # Lo que el panel muestra del sync: una linea propia, oculta hasta que
+        # el JS la pinta con el estado real.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-navbar-sync"', html)
+        self.assertIn('id="update-navbar-sync-text"', html)
+
+    def test_desplegar_pide_confirmacion(self):
+        # Un clic en el navbar no puede mandar a produccion: el boton abre un
+        # modal con lo que se va a instalar y el ejecutor revierte si falla.
+        self.set_deployed()
+        self.set_remote()
+        self.client.force_login(self.admin)
+
+        html = self.client.get(reverse('dashboard:index')).content.decode()
+
+        self.assertIn('id="update-confirm-modal"', html)
+        self.assertIn('id="update-confirm-deploy"', html)
+        self.assertIn('id="update-confirm-target"', html)
+        self.assertIn('Desplegar en producción', html)
 
     def test_el_aviso_no_se_renderiza_para_no_superusuario(self):
         self.client.force_login(self.plain)
@@ -1127,6 +1265,117 @@ class DashboardUpdateScriptTest(TestCase):
 
         self.assertNotRegex(source, r'\.innerHTML\s*=')
         self.assertNotIn('insertAdjacentHTML', source)
+
+    def test_el_punto_del_navbar_no_usa_el_light_variant(self):
+        # Regresion: con `bg-<color>-lt` el punto se mezclaba al 10% y no se
+        # veia sobre el navbar claro. El color pleno lo resuelve desde el JS.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("' update-dot-' + options.badge", source)
+        self.assertNotIn("'bg-' + options.badge + '-lt'", source)
+
+    def test_el_titulo_lo_decide_el_estado_y_no_el_ultimo_intento(self):
+        # `deploy-status.json` conserva el ultimo `ok` o `failed` hasta el
+        # intento siguiente. Usarlo de titulo dejaba el desplegable en
+        # "Despliegue completado" —o en "el despliegue fallo"— para siempre,
+        # aunque el servidor ya estuviera sirviendo otro commit.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+        render_body = source.split('function render(')[1]
+
+        # Ninguna rama del render se decide por el ultimo intento.
+        self.assertNotIn('if (run.status', render_body)
+        self.assertIn("if (state.state === 'failed')", render_body)
+        # El intento pasa a ser detalle del estado, que es lo que se ve.
+        self.assertIn('detail: ultimoIntento(run)', render_body)
+        self.assertNotIn('Despliegue completado', source)
+        self.assertNotIn('Ahora se está sirviendo', source)
+        # Y solo se usa para armar ese texto de contexto.
+        helper = source.split('function ultimoIntento')[1].split('function render')[0]
+        self.assertIn("run.status === 'failed'", helper)
+        self.assertIn("run.status === 'ok'", helper)
+
+    def test_el_ultimo_intento_no_inventa_una_fecha(self):
+        # El detalle del intento se resume en tiempo relativo, y un ISO que el
+        # ejecutor no escribio bien no puede aparecer como "Invalid Date".
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn('function hace(iso)', source)
+        self.assertIn('isNaN(fecha.getTime())', source)
+        self.assertIn("'hace ' + minutos + ' min'", source)
+
+    def test_solo_el_fallo_se_anuncia_en_rojo(self):
+        # `available` es una accion pendiente, no una alarma: el punto azul lo
+        # separa del rojo de `failed`. Antes los dos eran rojos y el navbar
+        # gritaba error cuando solo habia algo por actualizar.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+        render_body = source.split('function render(')[1]
+
+        self.assertEqual(render_body.count("badge: 'red'"), 1)
+        self.assertIn("badge: 'blue'", render_body)
+
+    def test_la_version_del_desplegable_se_muestra_una_sola_vez(self):
+        # La version estaba en el chip, en el rango, en el detalle y en el
+        # boton. Queda el chip (y el boton, que es la accion); el rango pasa a
+        # ser solo de SHA.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertNotIn("' · ' + target", source)
+        self.assertNotIn("'El servidor está al día ('", source)
+        self.assertNotIn("'Instala ' + target", source)
+
+    def test_el_modal_dice_de_que_intento_es_el_log(self):
+        # El archivo del log es del ultimo intento, no necesariamente del
+        # commit pendiente. Sin identificarlo, el lector cree que esta viendo el
+        # despliegue que todavia no corrio.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn('function paintAttempt(state)', source)
+        self.assertIn('attemptLabel.textContent', source)
+        self.assertIn("'sin intento registrado'", source)
+        # La version solo se deduce cuando el intento es del commit servido.
+        self.assertIn('run.sha === state.deployed', source)
+
+    def test_el_boton_no_despliega_sin_confirmacion(self):
+        # S8: un clic en el navbar no puede disparar un deploy a produccion. El
+        # listener abre el modal; el POST sale del boton del modal.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("button.addEventListener('click', openConfirm)", source)
+        self.assertNotIn("button.addEventListener('click', requestUpdate)", source)
+        self.assertIn("confirmDeploy.addEventListener('click'", source)
+        # Sin el nodo del modal (template viejo en cache) el guardia sigue: un
+        # confirm nativo, nunca el POST directo.
+        self.assertIn('window.confirm(', source)
+
+    def test_el_panel_pinta_el_sync_estancado(self):
+        # El sync no tiene estado de fallo: se avisa cuando no completa una
+        # corrida. El color lo decide el estado, no una clase fija en el HTML.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+        render_body = source.split('function render(')[1]
+
+        self.assertIn('paintSync(state.sync)', render_body)
+        self.assertIn('El sync de artefactos no completa una corrida', source)
+        self.assertIn("syncLine.classList.toggle('text-red', estancado)", source)
+        self.assertIn('syncText.textContent', source)
+        self.assertNotIn('syncText.innerHTML', source)
+        # Sin archivo de sync no se muestra nada: no hay estado que contar.
+        self.assertIn("syncLine.classList.add('d-none')", source)
         self.assertIn('createElement', source)
 
     def test_el_script_no_revienta_si_falta_la_lista(self):
@@ -1172,4 +1421,4 @@ class DashboardUpdateScriptTest(TestCase):
             encoding='utf-8'
         )
 
-        self.assertIn("dist/js/dashboard-update.js' %}?v=1", html)
+        self.assertIn("dist/js/dashboard-update.js' %}?v=4", html)
