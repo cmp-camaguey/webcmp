@@ -248,11 +248,14 @@
   <div class="modal modal-blur fade"
        id="update-confirm-modal"
        tabindex="-1"
+       role="dialog"
        aria-hidden="true"
-       aria-labelledby="update-confirm-title">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
+       aria-labelledby="update-confirm-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header bg-warning text-dark">
           <h5 class="modal-title" id="update-confirm-title">Desplegar en producción</h5>
           <button type="button"
                   class="btn-close"
@@ -268,9 +271,6 @@
           </p>
         </div>
         <div class="modal-footer">
-          <button type="button"
-                  class="btn btn-link link-secondary"
-                  data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-primary" id="update-confirm-deploy">Desplegar</button>
         </div>
       </div>

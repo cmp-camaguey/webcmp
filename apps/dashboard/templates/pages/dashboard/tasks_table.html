@@ -117,7 +117,11 @@
 <div data-tasks-modals>
   {% for execution in executions %}
     {% if execution.status == 'ERROR' %}
-      <div class="modal fade" id="tb-{{ execution.uuid }}" tabindex="-1">
+      <div class="modal fade"
+           id="tb-{{ execution.uuid }}"
+           tabindex="-1"
+           data-bs-backdrop="static"
+           data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-scrollable modal-lg">
           <div class="modal-content">
             <div class="modal-header">
