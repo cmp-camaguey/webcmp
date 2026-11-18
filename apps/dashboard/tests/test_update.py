@@ -1160,6 +1160,39 @@ class DashboardUpdateScriptTest(TestCase):
 
         self.assertIn("' update-dot-' + options.badge", source)
         self.assertNotIn("'bg-' + options.badge + '-lt'", source)
+
+    def test_el_titulo_lo_decide_el_estado_y_no_el_ultimo_intento(self):
+        # `deploy-status.json` conserva el ultimo `ok` o `failed` hasta el
+        # intento siguiente. Usarlo de titulo dejaba el desplegable en
+        # "Despliegue completado" —o en "el despliegue fallo"— para siempre,
+        # aunque el servidor ya estuviera sirviendo otro commit.
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+        render_body = source.split('function render(')[1]
+
+        # Ninguna rama del render se decide por el ultimo intento.
+        self.assertNotIn('if (run.status', render_body)
+        self.assertIn("if (state.state === 'failed')", render_body)
+        # El intento pasa a ser detalle del estado, que es lo que se ve.
+        self.assertIn('detail: ultimoIntento(run, chip)', render_body)
+        self.assertNotIn('Despliegue completado', source)
+        self.assertNotIn('Ahora se está sirviendo', source)
+        # Y solo se usa para armar ese texto de contexto.
+        helper = source.split('function ultimoIntento')[1].split('function render')[0]
+        self.assertIn("run.status === 'failed'", helper)
+        self.assertIn("run.status === 'ok'", helper)
+
+    def test_el_ultimo_intento_no_inventa_una_fecha(self):
+        # El detalle del intento se resume en tiempo relativo, y un ISO que el
+        # ejecutor no escribio bien no puede aparecer como "Invalid Date".
+        source = (Path(settings.BASE_DIR) / 'static/dist/js/dashboard-update.js').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn('function hace(iso)', source)
+        self.assertIn('isNaN(fecha.getTime())', source)
+        self.assertIn("'hace ' + minutos + ' min'", source)
         self.assertIn('createElement', source)
 
     def test_el_script_no_revienta_si_falta_la_lista(self):

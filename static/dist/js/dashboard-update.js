@@ -231,6 +231,51 @@
     return state.deployed_version || state.deployed_short || '';
   }
 
+  // Tiempo relativo y no una fecha: el navegador del admin puede estar en otro
+  // huso, y "hace 2 h" se lee igual en cualquiera. Un ISO invalido no inventa
+  // nada: devuelve vacio.
+  function hace(iso) {
+    if (!iso) {
+      return '';
+    }
+    var fecha = new Date(iso);
+    if (isNaN(fecha.getTime())) {
+      return '';
+    }
+    var minutos = Math.floor((Date.now() - fecha.getTime()) / 60000);
+    if (minutos < 1) {
+      return 'hace un momento';
+    }
+    if (minutos < 60) {
+      return 'hace ' + minutos + ' min';
+    }
+    var horas = Math.floor(minutos / 60);
+    if (horas < 24) {
+      return 'hace ' + horas + ' h';
+    }
+    var dias = Math.floor(horas / 24);
+    return 'hace ' + dias + (dias === 1 ? ' día' : ' días');
+  }
+
+  // El ultimo intento es contexto, nunca el titulo del desplegable: el archivo
+  // de estado conserva el ultimo `ok` o `failed` hasta el intento siguiente, y
+  // usarlo de titulo anunciaria como presente algo que ya paso.
+  function ultimoIntento(run, chip) {
+    if (!run || !run.status) {
+      return '';
+    }
+    if (run.status === 'failed') {
+      // El intento fallo pero el servidor no esta en ese commit: se actualizo
+      // por otra via. Decir "el commit anterior sigue sirviendo" seria falso.
+      return 'El último intento falló; el servidor ya sirve ' + (chip || 'otro commit') + '.';
+    }
+    if (run.status === 'ok') {
+      var cuando = hace(run.finished_at || run.started_at);
+      return 'Último despliegue: ' + (chip || '—') + (cuando ? ' · ' + cuando : '') + '.';
+    }
+    return '';
+  }
+
   function render(state) {
     // Antes de cualquier pintado: si el estado dejo de ser `available`, la
     // lista vieja tiene que desaparecer, no quedarse pegada al desplegable.
@@ -278,38 +323,24 @@
       return;
     }
 
-    if (run.status === 'failed') {
-      // `state.state === 'failed'` es lo que responde el backend cuando el
-      // intento fallido fue sobre el commit que sigue pendiente: ahi el boton
-      // sirve para reintentar, que es lo que hace falta despues de arreglar la
-      // causa. En cualquier otro caso el fallo es historia (el servidor ya
-      // quedo al dia por otra via) y ofrecer el boton mandaria a desplegar lo
-      // que ya se esta sirviendo.
-      var retry = state.state === 'failed';
+    if (state.state === 'failed') {
+      // El backend solo responde `failed` cuando el intento fallido fue contra
+      // el commit que sigue pendiente: ahi el boton sirve para reintentar, que
+      // es lo que hace falta despues de arreglar la causa. Un fallo viejo sobre
+      // un commit que ya quedo atras no llega por aca: es contexto de
+      // `up_to_date`, y ofrecer el boton ahi mandaria a desplegar lo que ya se
+      // esta sirviendo.
       paint({
         badge: 'red',
         icon: 'ti ti-alert-triangle',
         title: 'El despliegue falló',
         message: run.message || 'El despliegue falló.',
-        detail: retry
-          ? 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo; puedes reintentar.'
-          : 'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo.',
-        action: retry,
+        detail:
+          'El detalle está en «Ver log del despliegue». El commit anterior sigue sirviendo; puedes reintentar.',
+        action: true,
         // El reintento vuelve a desplegar el mismo commit pendiente: con tag
         // exacto el boton nombra la version, igual que en `available`.
-        buttonLabel: retry && state.version ? 'Actualizar a ' + state.version : null,
-        versionText: chip,
-      });
-      return;
-    }
-
-    if (run.status === 'ok') {
-      // Sin detalle: el chip de arriba ya dice que version se sirve, y repetir
-      // "ahora se esta sirviendo vX.Y.Z" debajo del boton del log sobra.
-      paint({
-        icon: 'ti ti-check',
-        title: 'Despliegue completado',
-        message: run.message || 'Despliegue completado.',
+        buttonLabel: state.version ? 'Actualizar a ' + state.version : null,
         versionText: chip,
       });
       return;
@@ -323,6 +354,9 @@
       paint({
         icon: 'ti ti-check',
         message: 'El servidor está al día (' + (chip || '—') + ').',
+        // El estado manda; el ultimo intento va aca, como contexto, y no como
+        // titulo. Sin intento previo no hay nada que contar.
+        detail: ultimoIntento(run, chip),
         versionText: chip,
       });
       return;
