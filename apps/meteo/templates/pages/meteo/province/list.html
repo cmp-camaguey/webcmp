@@ -20,7 +20,7 @@
     {% if request.user.is_staff %}
       <a href="{% url 'meteo:provincia_update' object.uuid %}"
          type="button"
-         class="btn btn-icon btn-outline-warning btn-sm"
+         class="btn btn-icon bg-orange-lt btn-sm"
          data-bs-toggle="tooltip"
          data-bs-placement="bottom"
          aria-label="Editar"
@@ -30,7 +30,7 @@
     {% endif %}
     {% if is_superuser %}
       <button type="button"
-              class="btn btn-icon btn-outline-danger btn-sm action-btn"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
               data-uuid="{{ object.uuid }}"
               data-bs-toggle="tooltip"
               data-bs-placement="bottom"

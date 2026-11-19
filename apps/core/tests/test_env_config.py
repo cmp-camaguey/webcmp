@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -636,6 +637,36 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         self.assertEqual(self._column_of(html, 'UPDATE_CHECK_TTL'), 'col-md-6')
         self.assertEqual(self._column_of(html, 'LDAP_SERVER_URI'), 'col-md-6')
 
+    def test_editable_cards_share_the_same_width(self):
+        """Los dos cards de la zona 2 comparten ancho: el contenido manda."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertEqual(html.count('<div class="col-xl-6">'), 2)
+        self.assertNotIn('<div class="col-xl-8">', html)
+        self.assertNotIn('<div class="col-xl-4">', html)
+
+    def test_notification_card_has_its_own_eyebrow(self):
+        """El card que antes arrancaba con switches ahora identifica su sección."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertIn('<div class="environment-eyebrow mb-3">Notificaciones</div>', html)
+
+    def test_updates_move_beside_the_ftp_section(self):
+        """Actualizaciones comparte columna con FTP para equilibrar los cards."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertLess(html.index('Observaciones (FTP)'), html.index('Actualizaciones del panel'))
+
+    def test_runtime_values_break_long_lines(self):
+        """Los valores en ejecución no desbordan el campo en cards angostos."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        self.assertIn('En ejecución: <code class="text-break">', html)
+
     def test_email_fields_are_grouped_in_pairs(self):
         """Correo: servidor/puerto, usuario/clave, STARTTLS/TLS y remitente al final."""
         self.client.force_login(self.superuser)
@@ -671,13 +702,62 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
             self.assertNotIn('id="id_', html[start + 1 : end], msg=f'{first} / {second}')
         self.assertEqual(self._column_of(html, 'LDAP_SUPERUSER_GROUP'), 'col-12')
 
-    def test_notification_switches_are_stacked(self):
-        """La franja de emergencia y los avisos operativos ocupan cada uno su fila."""
+    def test_notification_switches_share_the_grid(self):
+        """Los dos switches van juntos y bajan a una columna si no cabe el par."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        self.assertEqual(self._column_of(html, 'EMERGENCY_BANNER_ENABLED'), 'col-12')
-        self.assertEqual(self._column_of(html, 'NOTIFICATIONS_ENABLED'), 'col-12')
+        for key in ('EMERGENCY_BANNER_ENABLED', 'NOTIFICATIONS_ENABLED'):
+            self.assertEqual(self._column_of(html, key), 'col-md-6', msg=key)
+        start = html.index('id="id_EMERGENCY_BANNER_ENABLED"')
+        end = html.index('id="id_NOTIFICATIONS_ENABLED"')
+        self.assertNotIn('id="id_', html[start + 1 : end])
+
+    def test_field_labels_fit_on_one_line(self):
+        """Etiquetas breves: sin contexto repetido ni unidades escritas."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        for old in (
+            'Franja de aviso de emergencia',
+            'Entradas visibles en el navbar',
+            'Antelación del aviso de vencimiento (horas)',
+            'Retención de avisos leídos (días)',
+            'Retención de avisos no leídos (días)',
+            'Recordatorio de factura pendiente (días)',
+            'Caché del chequeo (segundos)',
+            'Timeout del chequeo (segundos)',
+            'STARTTLS en LDAP',
+            'Base de búsqueda de usuarios',
+            'Base de búsqueda de grupos',
+            'Host FTP de observaciones',
+        ):
+            self.assertNotIn(old, html, msg=old)
+
+        for new in (
+            'Avisos de emergencia',
+            'Avisos visibles',
+            'Antelación vencimiento (h)',
+            'Retención leídos (días)',
+            'Retención no leídos (días)',
+            'Recordatorio factura (días)',
+            'Caché del chequeo (seg.)',
+            'Timeout del chequeo (seg.)',
+            'Base de usuarios',
+            'Base de grupos',
+            'Host FTP',
+        ):
+            self.assertIn(new, html, msg=new)
+
+    def test_env_preview_button_sits_in_the_page_header(self):
+        """El botón comparte posición con los de añadir en los listados."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        header = html.index('class="col-auto ms-auto d-print-none"')
+        button = html.index('</i> Ver .env')
+        self.assertLess(header, button)
+        self.assertLess(button, html.index('class="card environment-console'))
 
     def test_pending_invoice_reminder_closes_the_row(self):
         """El recordatorio de factura pendiente cierra la tarjeta de avisos."""
@@ -710,7 +790,7 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         response = self.client.get(self.url)
         html = response.content.decode()
 
-        self.assertContains(response, 'Ver como .env')
+        self.assertContains(response, 'Ver .env')
         self.assertIn('bg-dark text-white', html)
         self.assertIn('ti-terminal-2', html)
         self.assertIn('modal-dialog-scrollable', html)
@@ -768,6 +848,54 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
             self.assertIn(variant, html)
         for variant in ('bg-secondary-lt', 'bg-success-lt', 'bg-warning-lt'):
             self.assertNotIn(variant, html)
+
+    @override_settings(DEBUG=True, IS_PRODUCTION=False)
+    def test_status_icons_share_one_style_and_only_the_color_changes(self):
+        """Los iconos de estado van sin badge, con text-<color> según su significado."""
+        status_path = Path(self.tempdir) / 'apply-status.json'
+        request_path = Path(self.tempdir) / 'apply-request'
+        status_path.write_text(json.dumps({'status': 'ok'}), encoding='utf-8')
+        request_path.write_text(json.dumps({'requested_by': 'omar'}), encoding='utf-8')
+        old = time.time() - PENDING_GRACE_SECONDS - 10
+        os.utime(request_path, (old, old))
+        override = override_settings(
+            ENV_APPLY_STATUS_FILE=status_path,
+            ENV_APPLY_REQUEST_FILE=request_path,
+        )
+        override.enable()
+        self.addCleanup(override.disable)
+        site = SiteConfiguration.get_instance()
+        site.maintenance_mode = True
+        site.save(update_fields=['maintenance_mode'])
+
+        self.client.force_login(self.superuser)
+        with patch('apps.core.views.env_config.is_writable', return_value=False):
+            html = self.client.get(self.url).content.decode()
+
+        section = html[
+            html.index('Estado del entorno') : html.index('environment-eyebrow mb-3">Sitio')
+        ]
+        self.assertNotRegex(section, r'badge bg-[a-z]+-lt[^"]*"><i class="icon')
+        icons = re.findall(r'<i class="icon ti ti-([a-z0-9-]+) text-([a-z]+)', section)
+        self.assertTrue(icons)
+        for name, color in icons:
+            with self.subTest(name=name, color=color):
+                self.assertIn(color, ('green', 'red', 'orange', 'blue', 'azure'))
+        self.assertIn('ti-info-circle text-blue', section)
+        self.assertIn('ti-alert-triangle text-red', section)
+        self.assertIn('ti-circle-check text-green', section)
+        self.assertIn('ti-tool text-orange mt-1', html)
+
+    def test_pending_summary_sits_above_the_action_divider(self):
+        """El resumen de cambios pendientes va sobre la línea y los botones."""
+        self.client.force_login(self.superuser)
+        html = self.client.get(self.url).content.decode()
+
+        resumen = html.index('Sin cambios pendientes')
+        divisor = html.index('border-top', resumen)
+        aplicar = html.index('data-bs-target="#apply-changes-modal"')
+        self.assertLess(resumen, divisor)
+        self.assertLess(divisor, aplicar)
 
     def test_help_text_comes_before_the_running_value(self):
         """El orden es etiqueta, campo, ayuda y por último el valor en ejecución.
@@ -1022,6 +1150,20 @@ class EnvApplyStatusTests(SimpleTestCase):
         self._write({'status': 'running'})
         self.assertEqual(apply_status(self.path)['state'], 'stale')
 
+    def test_status_color_follows_the_badge_palette(self):
+        expected = {'ok': 'green', 'failed': 'red'}
+        for state, color in expected.items():
+            with self.subTest(state=state):
+                self._write({'status': state})
+                self.assertEqual(apply_status(self.path)['color'], color)
+
+        self._write({'status': 'running', 'started_at': datetime.now(UTC).isoformat()})
+        self.assertEqual(apply_status(self.path)['color'], 'blue')
+
+        started = datetime.now(UTC) - timedelta(seconds=RUN_STALE_SECONDS + 1)
+        self._write({'status': 'running', 'started_at': started.isoformat()})
+        self.assertEqual(apply_status(self.path)['color'], 'orange')
+
     def test_request_is_written_once(self):
         request_path = Path(self.tempdir) / 'apply-request'
         user = User(username='omar')
@@ -1077,6 +1219,10 @@ class EnvApplyPendingRequestTests(SimpleTestCase):
         self.assertIn('quedó sin recoger', pending['text'])
         self.assertIn('omar', pending['text'])
         self.assertIn('systemctl status webcmp-apply.path', pending['text'])
+
+    def test_pending_color_matches_the_warning_badge(self):
+        self._write({'requested_by': 'omar'}, age_seconds=PENDING_GRACE_SECONDS + 10)
+        self.assertEqual(pending_request(self.path)['color'], 'orange')
 
     def test_simulator_text_points_to_the_command_instead_of_systemd(self):
         self._write({'requested_by': 'omar'}, age_seconds=PENDING_GRACE_SECONDS + 10)
@@ -1209,6 +1355,21 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         self.assertContains(response, '</i> Aplicar')
         self.assertContains(response, f'formaction="{self.apply_url}"')
 
+    def test_apply_modal_uses_the_delete_modal_cancel_pattern(self):
+        self.client.force_login(self.superuser)
+
+        html = self.client.get(self.url).content.decode()
+        modal = html[html.index('id="apply-changes-modal"') :]
+
+        self.assertIn('aria-label="Cerrar"', modal)
+        self.assertIn('class="btn btn-link link-secondary me-auto"', modal)
+        self.assertIn('data-bs-dismiss="modal">Cancelar', modal)
+        self.assertIn('formaction="' + self.apply_url + '"', modal)
+        self.assertIn('class="btn bg-blue-lt"', modal)
+        self.assertIn('ti ti-check', modal)
+        self.assertIn('</i> Aceptar', modal)
+        self.assertNotIn('</i> Aplicar', modal)
+
     def test_page_disables_the_button_without_the_watcher(self):
         self.client.force_login(self.superuser)
         override = override_settings(
@@ -1306,10 +1467,10 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
 
         self.assertIn('</i> Aceptar', html)
         self.assertIn('</i> Aplicar', html)
-        self.assertRegex(html, r'class="btn btn-secondary"\s+data-bs-toggle="modal"')
+        self.assertRegex(html, r'class="btn bg-orange-lt"\s+data-bs-toggle="modal"')
         # El modal del navbar compartido tiene su propio "Cancelar"; lo que no
         # debe quedar es el botón de acción de esta página.
-        self.assertNotIn(f'href="{self.url}" class="btn btn-secondary"', html)
+        self.assertNotIn(f'href="{self.url}" class="btn bg-azure-lt"', html)
         self.assertNotIn('ti-x"></i> Cancelar', html)
         self.assertIn('data-bs-target="#apply-changes-modal"', html)
         self.assertNotIn('confirm(', html)

@@ -1707,6 +1707,7 @@ class DashboardUpdateScriptTest(TestCase):
                 'notification-delete-modal',
             ),
             ('apps/dashboard/templates/pages/dashboard/tasks.html', 'confirmTaskDeleteModal'),
+            ('apps/core/templates/pages/core/site/environment.html', 'apply-changes-modal'),
             ('apps/core/templates/pages/core/site/settings.html', 'reset-theme-modal'),
             (
                 'apps/commercial/templates/pages/commercial/certificate/list.html',
@@ -1737,6 +1738,24 @@ class DashboardUpdateScriptTest(TestCase):
             ),
         }
         self.assertEqual(con_cancelar, esperados)
+
+    def test_todos_los_cancelares_de_modales_usan_el_mismo_patron(self):
+        base = Path(settings.BASE_DIR)
+        raices = (base / 'templates', *(base / 'apps').glob('*/templates'))
+        ofensores = []
+        for raiz in raices:
+            for path in raiz.rglob('*.html'):
+                texto = path.read_text(encoding='utf-8')
+                for match in APERTURA_MODAL.finditer(texto):
+                    bloque = match.group(0)
+                    if '>Cancelar</button>' not in bloque:
+                        continue
+                    if 'class="btn btn-link link-secondary me-auto"' in bloque:
+                        continue
+                    ident = re.search(r'id="([^"]+)"', bloque.split('>', 1)[0])
+                    ofensores.append(f'{path.relative_to(base)}: {ident.group(1)}')
+
+        self.assertEqual(ofensores, [], '\n'.join(ofensores))
 
     def test_el_modal_de_suscripciones_no_tiene_footer(self):
         # El modal solo muestra la tabla de suscripciones: la X del header

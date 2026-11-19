@@ -69,7 +69,7 @@
           <div class="btn-list">
             {% if execution.status == 'ERROR' %}
               <button type="button"
-                      class="btn btn-icon btn-outline-primary btn-sm"
+                      class="btn btn-icon bg-blue-lt btn-sm"
                       data-bs-toggle="modal"
                       data-bs-target="#tb-{{ execution.uuid }}"
                       aria-label="Ver traceback"
@@ -78,7 +78,7 @@
               </button>
               {% if execution.func_name and execution.func_args %}
                 <button type="submit"
-                        class="btn btn-icon btn-outline-info btn-sm"
+                        class="btn btn-icon bg-azure-lt btn-sm"
                         form="retry-{{ execution.uuid }}"
                         data-bs-toggle="tooltip"
                         data-bs-placement="bottom"
@@ -89,7 +89,7 @@
               {% endif %}
             {% endif %}
             <button type="button"
-                    class="btn btn-icon btn-outline-danger btn-sm action-btn"
+                    class="btn btn-icon bg-red-lt btn-sm action-btn"
                     data-action="eliminar"
                     data-uuid="{{ execution.uuid }}"
                     data-name="{{ execution.task_name }}"

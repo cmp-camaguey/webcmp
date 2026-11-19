@@ -1,4 +1,14 @@
 {% extends 'layouts/form.html' %}
+{% block title_actions %}
+  <div class="col-auto ms-auto d-print-none">
+    <button type="button"
+            class="btn bg-blue-lt"
+            data-bs-toggle="modal"
+            data-bs-target="#env-preview-modal">
+      <i class="icon ti ti-file-code me-1" aria-hidden="true"></i> Ver .env
+    </button>
+  </div>
+{% endblock title_actions %}
 {% block content_before %}
   <style>
     .environment-console {
@@ -71,7 +81,7 @@
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
         <div class="environment-eyebrow">Estado del entorno</div>
         <div class="d-flex align-items-center gap-2">
-          <i class="icon ti ti-server text-muted" aria-hidden="true"></i>
+          <i class="icon ti ti-server text-blue" aria-hidden="true"></i>
           <span class="text-muted small">Entorno actual:</span>
           <span class="badge bg-blue-lt">{{ environment_name }}</span>
         </div>
@@ -98,7 +108,7 @@
       </div>
       <div class="row g-2 small">
         <div class="col-12">
-          <i class="icon ti ti-info-circle text-info me-1" aria-hidden="true"></i>
+          <i class="icon ti ti-info-circle text-blue me-1" aria-hidden="true"></i>
           <span class="text-muted">
             Este panel administra solo el archivo <code>.env</code> de este servidor. Cada
             entorno tiene el suyo. Aceptar escribe los valores; Aplicar activa el
@@ -107,7 +117,7 @@
         </div>
         {% if not can_write %}
           <div class="col-12">
-            <i class="icon ti ti-alert-triangle text-danger me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-alert-triangle text-red me-1" aria-hidden="true"></i>
             <span class="text-muted">
               El proceso web no puede guardar la configuración. Los parámetros quedan en solo
               lectura hasta que un operador revise los permisos del servidor.
@@ -116,19 +126,21 @@
         {% endif %}
         {% if apply_status %}
           <div class="col-12">
-            <i class="icon ti ti-{{ apply_status.icon }} me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-{{ apply_status.icon }} text-{{ apply_status.color }} me-1"
+               aria-hidden="true"></i>
             <span class="text-muted">{{ apply_status.text }}</span>
           </div>
         {% endif %}
         {% if apply_pending %}
           <div class="col-12">
-            <i class="icon ti ti-{{ apply_pending.icon }} me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-{{ apply_pending.icon }} text-{{ apply_pending.color }} me-1"
+               aria-hidden="true"></i>
             <span class="text-muted">{{ apply_pending.text }}</span>
           </div>
         {% endif %}
         {% if dev_simulator %}
           <div class="col-12">
-            <i class="icon ti ti-terminal-2 me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-terminal-2 text-azure me-1" aria-hidden="true"></i>
             <span class="text-muted">
               Sin servicio de reinicio: después de <strong>Aplicar</strong>, ejecute
               <code>python manage.py dev_apply_env</code> en la terminal y reinicie
@@ -138,7 +150,7 @@
         {% endif %}
         {% if can_write and not watcher_available %}
           <div class="col-12">
-            <i class="icon ti ti-plug-off me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-plug-off text-orange me-1" aria-hidden="true"></i>
             <span class="text-muted">
               El reinicio automático no está disponible en este servidor, así que el botón
               <strong>Aplicar</strong> queda deshabilitado. Guarde los cambios y reinicie
@@ -146,14 +158,6 @@
             </span>
           </div>
         {% endif %}
-        <div class="col-12 d-flex justify-content-end">
-          <button type="button"
-                  class="btn btn-sm btn-outline-secondary"
-                  data-bs-toggle="modal"
-                  data-bs-target="#env-preview-modal">
-            <i class="icon ti ti-file-code me-1" aria-hidden="true"></i> Ver como .env
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -161,7 +165,7 @@
     <div class="card border-warning mb-3">
       <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
         <div class="d-flex align-items-start gap-2">
-          <i class="icon ti ti-tool text-warning mt-1" aria-hidden="true"></i>
+          <i class="icon ti ti-tool text-orange mt-1" aria-hidden="true"></i>
           <div>
             <div class="fw-semibold">Sitio en mantenimiento</div>
             <div class="text-muted small">
@@ -174,7 +178,7 @@
               action="{% url 'core:environment_maintenance_disable' %}"
               class="m-0">
           {% csrf_token %}
-          <button type="submit" class="btn btn-success">
+          <button type="submit" class="btn bg-green-lt">
             <i class="icon ti ti-check" aria-hidden="true"></i> Desactivar mantenimiento
           </button>
         </form>
@@ -183,8 +187,8 @@
   {% endif %}
 {% endblock content_before %}
 {% block form %}
-  {# Zona 2: lo que se edita a diario, en dos anchos distintos. #}
-  <div class="col-xl-8">
+  {# Zona 2: lo que se edita a diario, con el mismo ancho para ambas tarjetas. #}
+  <div class="col-xl-6">
     <div class="card h-100">
       <div class="card-body">
         <div class="environment-eyebrow mb-3">Sitio</div>
@@ -195,17 +199,15 @@
       </div>
     </div>
   </div>
-  <div class="col-xl-4">
+  <div class="col-xl-6">
     <div class="card h-100">
       <div class="card-body">
+        <div class="environment-eyebrow mb-3">Notificaciones</div>
         {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.notifications %}
-        <hr class="my-3" />
-        <div class="environment-eyebrow mb-3">Actualizaciones del panel</div>
-        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.updates %}
       </div>
     </div>
   </div>
-  {# Zona 3: LDAP y FTP, visibles sin cabecera. #}
+  {# Zona 3: integraciones, con el mismo ancho para ambas columnas. #}
   <div class="col-12">
     <div class="card">
       <div class="card-body">
@@ -217,6 +219,9 @@
           <div class="col-lg-6">
             <div class="environment-eyebrow mb-3">Observaciones (FTP)</div>
             {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ftp %}
+            <hr class="my-4" />
+            <div class="environment-eyebrow mb-3">Actualizaciones del panel</div>
+            {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.updates %}
           </div>
         </div>
       </div>
@@ -276,25 +281,25 @@
 {% endblock %}
 {% block form_actions %}
   <div class="col-12">
-    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 pt-3 mt-3 border-top">
-      <span class="text-muted small me-auto">
-        {% if pending_count %}
-          <i class="icon ti ti-circle-dot text-orange me-1" aria-hidden="true"></i>
-          {{ pending_count }} {{ pending_count|pluralize:'cambio pendiente,cambios pendientes' }}
-          de reinicio
-        {% else %}
-          <i class="icon ti ti-circle-check text-green me-1" aria-hidden="true"></i>
-          Sin cambios pendientes
-        {% endif %}
-      </span>
+    <div class="text-muted small mb-3">
+      {% if pending_count %}
+        <i class="icon ti ti-circle-dot text-orange me-1" aria-hidden="true"></i>
+        {{ pending_count }} {{ pending_count|pluralize:'cambio pendiente,cambios pendientes' }}
+        de reinicio
+      {% else %}
+        <i class="icon ti ti-circle-check text-green me-1" aria-hidden="true"></i>
+        Sin cambios pendientes
+      {% endif %}
+    </div>
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 pt-3 border-top">
       <button type="submit"
-              class="btn btn-primary"
+              class="btn bg-blue-lt"
               {% if not can_write %}disabled{% endif %}>
         <i class="icon ti ti-check" aria-hidden="true"></i> Aceptar
       </button>
       {# El modal comparte el form: `formaction` evita duplicar todos los campos. #}
       <button type="button"
-              class="btn btn-secondary"
+              class="btn bg-orange-lt"
               data-bs-toggle="modal"
               data-bs-target="#apply-changes-modal"
               {% if not can_write or not can_apply %}disabled{% endif %}>
@@ -359,14 +364,14 @@ mantenimiento y dejará de responder unos segundos.
 <p class="text-muted mb-0">Al volver, desactive el mantenimiento desde el aviso del panel de entorno.</p>
 </div>
 <div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
 {% comment %}
             `formaction` y no un segundo formulario: los campos son los mismos y
             un POST aparte obligaría a duplicar el formulario completo, con el
             riesgo de que los dos se separen.
 {% endcomment %}
-<button type="submit" formaction="{% url 'core:environment_apply' %}" class="btn btn-secondary" {% if not can_write or not can_apply %}disabled{% endif %}>
-<i class="icon ti ti-refresh" aria-hidden="true"></i> Aplicar
+<button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancelar</button>
+<button type="submit" formaction="{% url 'core:environment_apply' %}" class="btn bg-blue-lt" {% if not can_write or not can_apply %}disabled{% endif %}>
+<i class="icon ti ti-check" aria-hidden="true"></i> Aceptar
 </button>
 </div>
 </div>

@@ -59,14 +59,14 @@
   <td class="text-end">
     {% if object.profile and object.profile.uuid %}
       <a href="{% url 'user_auth:group_update' object.profile.uuid %}"
-         class="btn btn-icon btn-outline-warning btn-sm"
+         class="btn btn-icon bg-orange-lt btn-sm"
          data-bs-toggle="tooltip"
          data-bs-placement="bottom"
          title="Editar">
         <i class="icon ti ti-edit"></i>
       </a>
       <button type="button"
-              class="btn btn-icon btn-outline-danger btn-sm action-btn"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
               data-uuid="{{ object.profile.uuid }}"
               data-bs-toggle="tooltip"
               data-bs-placement="bottom"

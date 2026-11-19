@@ -29,7 +29,7 @@
   <td class="text-end">
     <a href="{% url 'commercial:contrato_detail' object.uuid %}"
        type="button"
-       class="btn btn-icon btn-outline-info btn-sm"
+       class="btn btn-icon bg-azure-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        aria-label="Detalle"
@@ -38,7 +38,7 @@
     </a>
     {% if object.record_active and perms.commercial.delete_contract %}
       <button type="button"
-              class="btn btn-icon btn-outline-danger btn-sm action-btn"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
               data-action="desactivar"
               data-uuid="{{ object.uuid }}"
               data-name="{{ object.number }}"
@@ -51,7 +51,7 @@
     {% endif %}
     {% if is_superuser and not object.record_active %}
       <button type="button"
-              class="btn btn-icon btn-outline-danger btn-sm action-btn"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
               data-action="eliminar"
               data-uuid="{{ object.uuid }}"
               data-name="{{ object.number }}"
@@ -86,7 +86,7 @@
           <button type="button"
                   class="btn btn-link link-secondary me-auto"
                   data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Confirmar</button>
+          <button type="button" class="btn bg-red-lt" id="confirmDeleteBtn">Confirmar</button>
         </div>
         <form id="deleteForm" method="post" style="display: none;">
           {% csrf_token %}

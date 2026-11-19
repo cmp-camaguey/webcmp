@@ -214,8 +214,8 @@ class NotificationListTests(TestCase):
 
         response = self.client.get(reverse('dashboard:notifications'))
 
-        self.assertContains(response, 'btn btn-icon btn-outline-success btn-sm')
-        self.assertContains(response, 'btn btn-icon btn-outline-danger btn-sm')
+        self.assertContains(response, 'btn btn-icon bg-green-lt btn-sm')
+        self.assertContains(response, 'btn btn-icon bg-red-lt btn-sm')
         self.assertContains(response, 'ti ti-check')
         self.assertContains(
             response,
