@@ -78,19 +78,24 @@ detect-secrets scan --exclude-files "static/|staticfiles/|.*\.min\.js$|.*\.map$|
 2. PR a `dev` con **squash merge**. Sin aprobación: el gate son los status checks.
 3. Al fusionarse, `cleanup-branch.yml` borra la rama corta.
 4. Promoción por lote: PR `dev` → `main` con **merge commit**, nunca squash.
-5. La promoción necesita una aprobación de `@orl92` o `@yoelvismr` (`CODEOWNERS` + `require_code_owner_review`). Es una por release.
-6. Etiquetar el merge del release: `git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`.
-7. Publicar el release en GitHub con el cuerpo descrito en [Cuerpo del release](#cuerpo-del-release).
-8. **Después de cada release o hotfix, PR `main` → `dev`.** Sin ese paso la siguiente promoción sale `BEHIND` aunque el contenido sea idéntico.
-9. **Desplegar.** Pulsar «Actualizar» en el panel y confirmar que muestra el commit del release. Hasta ese momento producción sigue con la versión anterior, aunque el tag y el CI estén en verde.
+5. La promoción necesita una aprobación de `@orl92` o `@yoelvismr` (`CODEOWNERS` + `require_code_owner_review`). Es una por promoción a `main`.
+6. **Etiquetar siempre, en orden.** Cada merge a `main` genera un tag anotado y se pushea: `git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`. El patch sube de uno en uno desde el primero (`v0.0.1`, `v0.0.2`, …): no se saltan ni se reutilizan tags.
+7. **Release de GitHub sólo en versiones cerradas.** Se publica cuando cambia el minor o el major y el patch vuelve a `0`: `v0.1.0` cierra la serie `v0.0.1`…`v0.0.9`, y `v1.0.0` cierra una serie `v0.x.y`. Los tags con patch > `0` no llevan release: marcan el commit exacto de producción y permiten que el panel muestre la versión desplegada.
+8. El cuerpo del release cubre **todo el rango desde el release anterior**, no sólo el último tag: `vAnterior...vX.Y.0`, con una viñeta por PR incluidos los patches intermedios.
+9. **Después de cada tag** (con o sin release), PR `main` → `dev`. Sin ese paso la siguiente promoción sale `BEHIND` aunque el contenido sea idéntico.
+10. **Desplegar.** Pulsar «Actualizar» en el panel y confirmar que muestra el commit del tag. Hasta ese momento producción sigue con la versión anterior, aunque el tag y el CI estén en verde.
 
-Un hotfix sale de `main` y vuelve a `dev` igual que un release.
+Los ejemplos `v0.0.1`…`v0.1.0` son ilustrativos: la numeración real continúa desde el último tag publicado, sin reiniciarse.
+
+Un hotfix sale de `main` y vuelve a `dev` igual que un release: genera un tag de patch, no una release, y se documenta en el próximo release cerrado.
 
 ### Cuerpo del release
 
 ```bash
 gh release create vX.Y.Z --title vX.Y.Z --notes-file <archivo>
 ```
+
+`vAnterior` es el último **release publicado**, no el último tag: si entre ambos hubo tags de patch, sus PRs también entran en este cuerpo.
 
 Las secciones van en este orden: `## Features`, `## Fix`, `## Docs`, y el pie de comparación. Una viñeta por PR, con su número y el efecto para quien usa el panel o el portal:
 
