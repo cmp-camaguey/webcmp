@@ -219,16 +219,16 @@
   <div class="col-12">
     <div class="card">
       <div class="card-body">
-        <div class="row g-4">
-          <div class="col-lg-6">
-            <div class="environment-eyebrow mb-3">LDAP</div>
-            {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ldap %}
-          </div>
-          <div class="col-lg-6">
-            <div class="environment-eyebrow mb-3">Actualizaciones del panel</div>
-            {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.updates %}
-          </div>
-        </div>
+        <div class="environment-eyebrow mb-3">LDAP</div>
+        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ldap %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="environment-eyebrow mb-3">Actualizaciones del panel</div>
+        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.updates %}
       </div>
     </div>
   </div>
