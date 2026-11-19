@@ -653,8 +653,8 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
 
         self.assertIn('<div class="environment-eyebrow mb-3">Notificaciones</div>', html)
 
-    def test_integrations_use_full_width_cards_in_order(self):
-        """FTP, LDAP y Actualizaciones van en cards col-12 independientes, en ese orden."""
+    def test_integrations_layout_ftp_full_width_and_ldap_updates_side_by_side(self):
+        """FTP a lo ancho; LDAP y Actualizaciones en paralelo. Solo Referencia colapsa."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
@@ -663,6 +663,10 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         updates = html.index('Actualizaciones del panel')
         self.assertLess(ftp, ldap)
         self.assertLess(ldap, updates)
+
+        for section_id in ('env-section-ftp', 'env-section-ldap', 'env-section-updates'):
+            self.assertNotIn(f'id="{section_id}"', html, msg=section_id)
+
         self.assertIn('id="environment-reference"', html)
         self.assertIn('href="#environment-reference"', html)
         self.assertIn('data-bs-toggle="collapse"', html)
