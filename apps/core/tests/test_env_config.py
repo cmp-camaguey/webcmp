@@ -637,14 +637,14 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         self.assertEqual(self._column_of(html, 'UPDATE_CHECK_TTL'), 'col-md-6')
         self.assertEqual(self._column_of(html, 'LDAP_SERVER_URI'), 'col-md-6')
 
-    def test_editable_cards_share_the_same_width(self):
-        """Los dos cards de la zona 2 comparten ancho: el contenido manda."""
+    def test_zone_two_uses_eight_and_four_columns(self):
+        """Sitio/Correo ocupa 8 columnas y Notificaciones 4: los campos ya no compiten."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        self.assertEqual(html.count('<div class="col-xl-6">'), 2)
-        self.assertNotIn('<div class="col-xl-8">', html)
-        self.assertNotIn('<div class="col-xl-4">', html)
+        self.assertIn('<div class="col-xl-8">', html)
+        self.assertIn('<div class="col-xl-4">', html)
+        self.assertNotIn('<div class="col-xl-6">', html)
 
     def test_notification_card_has_its_own_eyebrow(self):
         """El card que antes arrancaba con switches ahora identifica su sección."""
@@ -727,6 +727,10 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
             'Recordatorio de factura pendiente (días)',
             'Caché del chequeo (segundos)',
             'Timeout del chequeo (segundos)',
+            'Repositorio de actualizaciones',
+            'API del repositorio',
+            'Caché del chequeo (seg.)',
+            'Timeout del chequeo (seg.)',
             'STARTTLS en LDAP',
             'Base de búsqueda de usuarios',
             'Base de búsqueda de grupos',
@@ -741,13 +745,19 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
             'Retención leídos (días)',
             'Retención no leídos (días)',
             'Recordatorio factura (días)',
-            'Caché del chequeo (seg.)',
-            'Timeout del chequeo (seg.)',
             'Base de usuarios',
             'Base de grupos',
             'Host FTP',
         ):
             self.assertIn(new, html, msg=new)
+
+        for key, label in (
+            ('UPDATE_REPO_URL', 'Repositorio'),
+            ('UPDATE_REPO_API', 'API'),
+            ('UPDATE_CHECK_TTL', 'Caché (seg.)'),
+            ('UPDATE_CHECK_TIMEOUT', 'Timeout (seg.)'),
+        ):
+            self.assertRegex(html, rf'for="id_{key}"[^>]*>{re.escape(label)}<', msg=key)
 
     def test_env_preview_button_sits_in_the_page_header(self):
         """El botón comparte posición con los de añadir en los listados."""
@@ -759,12 +769,19 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         self.assertLess(header, button)
         self.assertLess(button, html.index('class="card environment-console'))
 
-    def test_pending_invoice_reminder_closes_the_row(self):
-        """El recordatorio de factura pendiente cierra la tarjeta de avisos."""
+    def test_notification_number_fields_use_full_width(self):
+        """Los campos numéricos de avisos van en filas completas para no desalinearse."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        self.assertEqual(self._column_of(html, 'INVOICE_PENDING_REMINDER_DAYS'), 'col-12')
+        for key in (
+            'NOTIFICATIONS_MAX_VISIBLE',
+            'NOTIFICATIONS_WARNING_HORIZON_HOURS',
+            'NOTIFICATIONS_RETENTION_READ',
+            'NOTIFICATIONS_RETENTION_UNREAD',
+            'INVOICE_PENDING_REMINDER_DAYS',
+        ):
+            self.assertEqual(self._column_of(html, key), 'col-12', msg=key)
 
     def test_primary_button_is_labelled_aceptar(self):
         """Solo hay dos verbos en la página: "Aceptar" escribe y "Aplicar cambios" reinicia."""
