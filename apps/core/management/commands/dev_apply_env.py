@@ -7,9 +7,9 @@ queda en disco y el panel muestra «reinicio pendiente» para siempre.
 
 Este comando hace la parte que el panel puede observar: consume la petición y
 publica un desenlace `ok`. No reinicia nada. Cambiar el `.env` no modifica un
-proceso ya arrancado: hay que reiniciar `runserver`/gunicorn a mano, y además
-la variable no debe estar exportada en el entorno, porque `load_dotenv` no
-sobrescribe lo que ya existe.
+proceso ya arrancado: hay que reiniciar `runserver` a mano, y además la variable
+no debe estar exportada en el entorno, porque `load_dotenv` no sobrescribe lo
+que ya existe.
 """
 
 from __future__ import annotations
@@ -52,9 +52,9 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.WARNING(
                 'El .env ya está leído por el proceso en marcha: reinicie '
-                'runserver/gunicorn para que el cambio tenga efecto. Si la '
-                'variable está exportada en el entorno, load_dotenv no la '
-                'sobrescribe: quítela del entorno antes de reiniciar.'
+                'runserver para que el cambio tenga efecto. Si la variable '
+                'está exportada en el entorno, load_dotenv no la sobrescribe: '
+                'quítela del entorno antes de reiniciar.'
             )
         )
 

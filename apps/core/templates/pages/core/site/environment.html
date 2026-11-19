@@ -82,7 +82,9 @@
         {% else %}
           <span class="badge bg-red-lt">Solo lectura</span>
         {% endif %}
-        {% if watcher_available %}
+        {% if dev_simulator %}
+          <span class="badge bg-azure-lt">Simulador de reinicio</span>
+        {% elif watcher_available %}
           <span class="badge bg-blue-lt">Reinicio automático disponible</span>
         {% else %}
           <span class="badge bg-orange-lt">Reinicio automático sin servicio</span>
@@ -98,9 +100,9 @@
         <div class="col-12">
           <i class="icon ti ti-info-circle text-info me-1" aria-hidden="true"></i>
           <span class="text-muted">
-            Este panel administra solo el archivo <code>{{ env_file_path }}</code> de este
-            servidor. Cada entorno tiene el suyo. Aceptar escribe los valores; Aplicar
-            activa el mantenimiento, guarda y reinicia.
+            Este panel administra solo el archivo <code>.env</code> de este servidor. Cada
+            entorno tiene el suyo. Aceptar escribe los valores; Aplicar activa el
+            mantenimiento, guarda y reinicia.
           </span>
         </div>
         {% if not can_write %}
@@ -122,6 +124,16 @@
           <div class="col-12">
             <i class="icon ti ti-{{ apply_pending.icon }} me-1" aria-hidden="true"></i>
             <span class="text-muted">{{ apply_pending.text }}</span>
+          </div>
+        {% endif %}
+        {% if dev_simulator %}
+          <div class="col-12">
+            <i class="icon ti ti-terminal-2 me-1" aria-hidden="true"></i>
+            <span class="text-muted">
+              Sin servicio de reinicio: después de <strong>Aplicar</strong>, ejecute
+              <code>python manage.py dev_apply_env</code> en la terminal y reinicie
+              <code>runserver</code> para que los cambios tomen efecto.
+            </span>
           </div>
         {% endif %}
         {% if can_write and not watcher_available %}
@@ -304,7 +316,7 @@
       <div class="modal-content">
         <div class="card-header d-flex align-items-center p-2 bg-dark text-white">
           <i class="icon ti ti-terminal-2 me-2" aria-hidden="true"></i>
-          <span class="font-monospace" id="env-preview-title">{{ env_file_path }}</span>
+          <span class="font-monospace" id="env-preview-title">.env</span>
           <span class="ms-auto font-monospace small text-truncate">{{ environment_profile }}</span>
           <button type="button"
                   class="btn-close btn-close-white ms-2"

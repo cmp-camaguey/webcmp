@@ -798,6 +798,7 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         self.client.force_login(self.superuser)
         response = self.client.get(self.url)
         for value in (
+            getattr(settings, 'ENV_FILE_PATH', ''),
             getattr(settings, 'EMAIL_FILE_PATH', ''),
             getattr(settings, 'UPDATE_DEPLOYED_SHA_FILE', ''),
             getattr(settings, 'UPDATE_STATUS_FILE', ''),
@@ -808,6 +809,24 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         ):
             if value:
                 self.assertNotContains(response, str(value))
+
+    @override_settings(DEBUG=True, IS_PRODUCTION=False)
+    def test_development_page_shows_the_simulator_command(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'Simulador de reinicio')
+        self.assertContains(response, 'python manage.py dev_apply_env')
+
+    @override_settings(DEBUG=False, IS_PRODUCTION=True)
+    def test_production_page_does_not_show_the_simulator(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, 'python manage.py dev_apply_env')
+        self.assertNotContains(response, 'Simulador de reinicio')
 
     def test_post_writes_only_the_changed_key(self):
         self.client.force_login(self.superuser)
@@ -1058,6 +1077,15 @@ class EnvApplyPendingRequestTests(SimpleTestCase):
         self.assertIn('quedó sin recoger', pending['text'])
         self.assertIn('omar', pending['text'])
         self.assertIn('systemctl status webcmp-apply.path', pending['text'])
+
+    def test_simulator_text_points_to_the_command_instead_of_systemd(self):
+        self._write({'requested_by': 'omar'}, age_seconds=PENDING_GRACE_SECONDS + 10)
+
+        pending = pending_request(self.path, simulator=True)
+
+        self.assertIn('quedó sin recoger', pending['text'])
+        self.assertIn('python manage.py dev_apply_env', pending['text'])
+        self.assertNotIn('systemctl', pending['text'])
 
     def test_old_request_without_readable_content_still_reports(self):
         """Lo que se informa es el archivo, no su contenido: el JSON roto no lo borra."""

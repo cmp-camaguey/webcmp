@@ -76,6 +76,9 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         maintenance_mode = self._maintenance_mode()
         sections = self._sections(form, environment)
         profile, profile_name = self._profile()
+        # En desarrollo no hay unidad systemd: el panel debe nombrar el simulador
+        # en vez de anunciar un reinicio automático que no existe.
+        dev_simulator = profile == 'desarrollo'
 
         context.update(
             {
@@ -91,7 +94,9 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
                 'sections_by_key': {section['key']: section for section in sections},
                 'environment_profile': profile,
                 'environment_name': profile_name,
-                'env_file_path': str(env_path),
+                # La ruta absoluta del .env es dato sensible: el panel nombra el
+                # archivo, nunca dónde está en disco, en ningún perfil.
+                'dev_simulator': dev_simulator,
                 'env_preview': build_env_preview(
                     os.environ, file_values, environment['effective'], profile
                 ),
@@ -112,7 +117,9 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
                 # uno que nadie proceso (falta la unidad `systemd`, o esta
                 # detenida). Se muestra aparte porque es el unico estado en el
                 # que el panel, sin este aviso, no dice nada en absoluto.
-                'apply_pending': pending_request(settings.ENV_APPLY_REQUEST_FILE),
+                'apply_pending': pending_request(
+                    settings.ENV_APPLY_REQUEST_FILE, simulator=dev_simulator
+                ),
             }
         )
         return context
