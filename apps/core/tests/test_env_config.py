@@ -653,12 +653,20 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
 
         self.assertIn('<div class="environment-eyebrow mb-3">Notificaciones</div>', html)
 
-    def test_updates_move_beside_the_ftp_section(self):
-        """Actualizaciones comparte columna con FTP para equilibrar los cards."""
+    def test_ftp_uses_its_own_full_width_card(self):
+        """FTP ocupa un card completo; LDAP y Actualizaciones quedan juntos debajo."""
         self.client.force_login(self.superuser)
         html = self.client.get(self.url).content.decode()
 
-        self.assertLess(html.index('Observaciones (FTP)'), html.index('Actualizaciones del panel'))
+        ftp = html.index('Observaciones (FTP)')
+        ldap = html.index('LDAP</div>')
+        updates = html.index('Actualizaciones del panel')
+        self.assertLess(ftp, ldap)
+        self.assertLess(ftp, updates)
+        self.assertLess(ldap, updates)
+        self.assertIn('id="environment-reference"', html)
+        self.assertIn('href="#environment-reference"', html)
+        self.assertIn('data-bs-toggle="collapse"', html)
 
     def test_runtime_values_break_long_lines(self):
         """Los valores en ejecución no desbordan el campo en cards angostos."""

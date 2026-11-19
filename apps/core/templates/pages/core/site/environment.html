@@ -207,7 +207,15 @@
       </div>
     </div>
   </div>
-  {# Zona 3: integraciones, con el mismo ancho para ambas columnas. #}
+  {# Zona 3: integraciones. #}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="environment-eyebrow mb-3">Observaciones (FTP)</div>
+        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ftp %}
+      </div>
+    </div>
+  </div>
   <div class="col-12">
     <div class="card">
       <div class="card-body">
@@ -217,9 +225,6 @@
             {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ldap %}
           </div>
           <div class="col-lg-6">
-            <div class="environment-eyebrow mb-3">Observaciones (FTP)</div>
-            {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ftp %}
-            <hr class="my-4" />
             <div class="environment-eyebrow mb-3">Actualizaciones del panel</div>
             {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.updates %}
           </div>
@@ -227,54 +232,66 @@
       </div>
     </div>
   </div>
-  {# Zona 4: referencia de punta a punta en una sola tabla. #}
+  {# Zona 4: referencia de punta a punta, colapsable. #}
   <div class="col-12">
     <div class="card">
       <div class="card-header">
         <div class="environment-eyebrow mb-0">Referencia</div>
+        <div class="card-actions">
+          <a href="#environment-reference"
+             class="btn-action"
+             data-bs-toggle="collapse"
+             aria-expanded="false"
+             aria-controls="environment-reference"
+             aria-label="Mostrar u ocultar referencia">
+            <i class="icon ti ti-chevron-down" aria-hidden="true"></i>
+          </a>
+        </div>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm table-vcenter card-table mb-0">
-          <tbody>
-            {% if sections_by_key.app.readonly %}
+      <div id="environment-reference" class="collapse">
+        <div class="table-responsive">
+          <table class="table table-sm table-vcenter card-table mb-0">
+            <tbody>
+              {% if sections_by_key.app.readonly %}
+                <tr class="table-active">
+                  <th scope="rowgroup" colspan="2" class="environment-eyebrow">Sitio</th>
+                </tr>
+                {% for item in sections_by_key.app.readonly %}
+                  <tr>
+                    <td class="text-muted w-50">{{ item.label }}</td>
+                    <td><code class="text-break">{{ item.value }}</code></td>
+                  </tr>
+                {% endfor %}
+              {% endif %}
+              {% for group in groups %}
+                <tr class="table-active">
+                  <th scope="rowgroup" colspan="2" class="environment-eyebrow">{{ group.title }}</th>
+                </tr>
+                {% for item in group.items %}
+                  <tr>
+                    <td class="text-muted w-50">{{ item.label }}</td>
+                    <td><code class="text-break">{{ item.value }}</code></td>
+                  </tr>
+                {% endfor %}
+              {% endfor %}
               <tr class="table-active">
-                <th scope="rowgroup" colspan="2" class="environment-eyebrow">Sitio</th>
+                <th scope="rowgroup" colspan="2" class="environment-eyebrow">Secretos · no se administran acá</th>
               </tr>
-              {% for item in sections_by_key.app.readonly %}
+              {% for secret in secrets %}
                 <tr>
-                  <td class="text-muted w-50">{{ item.label }}</td>
-                  <td><code class="text-break">{{ item.value }}</code></td>
+                  <td class="text-muted">{{ secret.label }}</td>
+                  <td class="text-end">
+                    {% if secret.configured %}
+                      <span class="badge bg-green-lt">Configurada</span>
+                    {% else %}
+                      <span class="badge bg-orange-lt">Sin configurar</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% endfor %}
-            {% endif %}
-            {% for group in groups %}
-              <tr class="table-active">
-                <th scope="rowgroup" colspan="2" class="environment-eyebrow">{{ group.title }}</th>
-              </tr>
-              {% for item in group.items %}
-                <tr>
-                  <td class="text-muted w-50">{{ item.label }}</td>
-                  <td><code class="text-break">{{ item.value }}</code></td>
-                </tr>
-              {% endfor %}
-            {% endfor %}
-            <tr class="table-active">
-              <th scope="rowgroup" colspan="2" class="environment-eyebrow">Secretos · no se administran acá</th>
-            </tr>
-            {% for secret in secrets %}
-              <tr>
-                <td class="text-muted">{{ secret.label }}</td>
-                <td class="text-end">
-                  {% if secret.configured %}
-                    <span class="badge bg-green-lt">Configurada</span>
-                  {% else %}
-                    <span class="badge bg-orange-lt">Sin configurar</span>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
