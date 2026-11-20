@@ -95,6 +95,18 @@ class SiteConfigurationTemplateTests(TestCase):
         self.assertContains(response, 'reset-theme-modal')
         self.assertContains(response, 'reset_theme_defaults')
 
+    def test_reset_confirmation_matches_the_delete_modal_pattern(self):
+        response = self._get_edit_page()
+        modal = response.content.decode().split('id="reset-theme-modal"', 1)[1]
+
+        self.assertIn('aria-label="Cerrar"', modal)
+        self.assertIn('class="btn btn-link link-secondary me-auto"', modal)
+        self.assertIn('data-bs-dismiss="modal">Cancelar', modal)
+        self.assertIn('name="reset_theme_defaults"', modal)
+        self.assertIn('ti ti-check', modal)
+        self.assertIn('</i> Aceptar', modal)
+        self.assertIn('bg-red-lt', modal)
+
     def test_maintenance_card_present_for_superuser(self):
         response = self._get_edit_page()
         self.assertContains(response, 'Modo de mantenimiento')

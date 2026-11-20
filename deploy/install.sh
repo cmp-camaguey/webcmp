@@ -2678,29 +2678,29 @@ HEALTHCHECK_INSECURE_VALUE=
 TLS_CERT=
 TLS_KEY=
 
-# Pagina de error ESTATICA que sirve Nginx para 502/503/504. La del ejemplo
-# apunta a `root /var/www/webcmp-errors` con `internal;`: si el archivo no esta,
-# un Gunicorn caido produce un 404 DENTRO del manejo del error, que es el
-# sintoma mas imposible de diagnosticar que existe ("la pagina de error fallo").
+# Paginas de error ESTATICAS que sirve Nginx cuando Gunicorn no responde. La
+# del ejemplo apunta a `root /var/www/webcmp-errors` con `internal;`: si el
+# archivo no esta, un Gunicorn caido produce un 404 DENTRO del manejo del error,
+# que es el sintoma mas imposible de diagnosticar que existe ("la pagina de
+# error fallo").
+#
+# El HTML vive versionado en deploy/nginx/ y no embebido aca: el sync de
+# artefactos root instala esos mismos archivos en cada deploy
+# (deploy/root-bundle.manifest), porque el boton "Actualizar" corre deploy.sh y
+# NO este instalador. Con el HTML embebido, un servidor ya instalado se quedaba
+# sin pagina hasta la proxima corrida de install.sh.
+#
+# 50x.html cubre 502/503 (servicio caido o reiniciando). 504x.html cubre 504
+# (gateway timeout: la app sigue viva pero no respondio a tiempo).
 write_error_page() {
-    local tmp
-    tmp=$(mktemp)
-    cat > "$tmp" <<'EOF'
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Servicio temporalmente no disponible</title>
-</head>
-<body>
-    <h1>Servicio temporalmente no disponible</h1>
-    <p>El servicio del portal esta reiniciando o no responde en este momento.</p>
-    <p>Reintentese en unos minutos.</p>
-</body>
-</html>
-EOF
-    install_if_changed "$tmp" "$NGINX_ERROR_ROOT/50x.html" 0644 root root
-    rm -f "$tmp"
+    local name src
+    for name in 50x.html 504x.html; do
+        src=$APP_DIR/deploy/nginx/$name
+        if [ -f "$src" ] || need_checkout "la pagina $name se copiaria desde deploy/nginx/$name"; then
+            [ -f "$src" ] || die "No existe $src: el checkout no trae la pagina $name."
+            install_if_changed "$src" "$NGINX_ERROR_ROOT/$name" 0644 root root
+        fi
+    done
 }
 
 # El vhost del ejemplo, renderizado con los valores de esta instalacion.

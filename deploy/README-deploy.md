@@ -75,6 +75,24 @@ esquema nuevo, sin `--clean` el restore falla a mitad.
 `install.sh` (`postgresql-client`); si se saca a mano, el proximo deploy con
 migraciones se niega a correr.
 
+### Paginas de error durante reinicios y timeouts
+
+Nginx sirve respuestas estaticas cuando Gunicorn no puede atender la peticion:
+`/var/www/webcmp-errors/50x.html` para `502` y `503` (servicio caido o
+reiniciando) y `/var/www/webcmp-errors/504x.html` para `504` (gateway timeout:
+la app sigue viva pero no respondió a tiempo). Ambas reintentan la misma URL
+automáticamente, asi que durante un reinicio breve el usuario no queda en un
+error permanente. Los ejemplos versionados en
+`deploy/nginx/webcmp.conf.example` y `deploy/nginx/webcmp-http.conf.example` ya
+incluyen los `error_page` y las ubicaciones internas.
+
+El HTML esta versionado en `deploy/nginx/50x.html` y `deploy/nginx/504x.html`.
+`install.sh` los copia a `NGINX_ERROR_ROOT` en una instalacion nueva y el sync
+de artefactos root los mantiene al dia en cada deploy (estan en
+`deploy/root-bundle.manifest`), asi que el boton «Actualizar» alcanza para
+actualizarlos. Sin esos archivos, Nginx responde el 404 de su propio manejo de
+error y la caida se diagnostica mal.
+
 ### Respaldo diario
 
 El respaldo previo a migrar existe solo cuando hay algo que migrar: un mes sin

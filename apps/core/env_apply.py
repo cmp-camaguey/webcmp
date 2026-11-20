@@ -103,6 +103,7 @@ def pending_request(path, now=None, simulator=False) -> dict | None:
     raw = _read_json(path) or {}
     return {
         'tone': 'warning',
+        'color': _COLORS['warning'],
         'icon': 'plug-off',
         'text': _pending_text(
             str(raw.get('requested_by') or '').strip(), modified, simulator=simulator
@@ -134,6 +135,7 @@ def apply_status(path, now=None) -> dict | None:
     return {
         'state': state,
         'tone': _TONES[state],
+        'color': _COLORS[_TONES[state]],
         'icon': _ICONS[state],
         'text': _status_text(
             state,
@@ -152,6 +154,15 @@ _TONES = {
     'ok': 'success',
     'failed': 'danger',
     'stale': 'warning',
+}
+
+# Mismos nombres de color que los badges del panel (bg-*-lt). La plantilla no
+# elige colores: el estado ya trae el suyo para iconos y botones con esa clase.
+_COLORS = {
+    'info': 'blue',
+    'success': 'green',
+    'danger': 'red',
+    'warning': 'orange',
 }
 
 _ICONS = {

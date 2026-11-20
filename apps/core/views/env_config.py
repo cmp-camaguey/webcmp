@@ -20,6 +20,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, View
@@ -151,24 +152,42 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
 
     def post(self, request, *args, **kwargs):
         env_path = Path(settings.ENV_FILE_PATH)
+        wants_json = self.apply_changes and self._wants_json(request)
 
         if not is_writable(env_path):
-            messages.error(
-                request,
-                'El proceso web no puede guardar la configuración; queda en solo lectura.',
-            )
+            message = 'El proceso web no puede guardar la configuración; queda en solo lectura.'
+            if wants_json:
+                return JsonResponse({'ok': False, 'message': message}, status=403)
+            messages.error(request, message)
             return redirect(self.success_url)
 
         form = EnvironmentConfigForm(request.POST)
         if not form.is_valid():
+            if wants_json:
+                return JsonResponse(
+                    {
+                        'ok': False,
+                        'message': (
+                            'Corrija los errores del formulario antes de aplicar los cambios.'
+                        ),
+                        'errors': form.errors.get_json_data(),
+                    },
+                    status=400,
+                )
             return self.render_to_response(self.get_context_data(form=form))
 
         changed = self._save(request, form, env_path)
         if changed is None:
+            message = 'No se pudo guardar la configuración.'
+            if wants_json:
+                return JsonResponse(
+                    {'ok': False, 'message': message, 'redirect_url': str(self.success_url)},
+                    status=400,
+                )
             return redirect(self.success_url)
 
         if self.apply_changes:
-            return self._request_apply(request, changed)
+            return self._request_apply(request, changed, wants_json=wants_json)
 
         if changed:
             messages.success(
@@ -179,6 +198,14 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
             messages.info(request, 'No había cambios que guardar.')
 
         return redirect(self.success_url)
+
+    @staticmethod
+    def _wants_json(request) -> bool:
+        requested_with = request.headers.get('x-requested-with', '')
+        if requested_with.lower() == 'xmlhttprequest':
+            return True
+        accept = request.headers.get('accept', '')
+        return 'application/json' in accept
 
     def _save(self, request, form, env_path: Path) -> list[str] | None:
         """Escribe el archivo y devuelve las claves cambiadas, o `None` si falló."""
@@ -198,7 +225,7 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         self._log_change(request, changed)
         return changed
 
-    def _request_apply(self, request, changed: list[str]):
+    def _request_apply(self, request, changed: list[str], *, wants_json: bool = False):
         """Enciende el mantenimiento y deja la petición de reinicio.
 
         El encendido va ANTES de escribir el archivo: el ejecutor root baja los
@@ -218,26 +245,47 @@ class EnvironmentConfigView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
             request_apply(settings.ENV_APPLY_REQUEST_FILE, request.user)
         except ApplyRequestPendingError:
             self._set_maintenance(request, previous)
-            messages.warning(
-                request, 'Ya hay un reinicio en curso. Espere a que termine antes de repetirlo.'
-            )
+            message = 'Ya hay un reinicio en curso. Espere a que termine antes de repetirlo.'
+            if wants_json:
+                return JsonResponse(
+                    {'ok': False, 'message': message, 'redirect_url': str(self.success_url)},
+                    status=409,
+                )
+            messages.warning(request, message)
             return redirect(self.success_url)
         except OSError:
             self._set_maintenance(request, previous)
             logger.exception('No se pudo escribir la petición de reinicio')
-            messages.error(
-                request,
+            message = (
                 'Los cambios se guardaron, pero el servidor no aceptó la petición de '
-                'reinicio. Reinicie el servicio desde el servidor.',
+                'reinicio. Reinicie el servicio desde el servidor.'
             )
+            if wants_json:
+                return JsonResponse(
+                    {'ok': False, 'message': message, 'redirect_url': str(self.success_url)},
+                    status=500,
+                )
+            messages.error(request, message)
             return redirect(self.success_url)
 
         self._log_apply(request)
-        messages.success(
-            request,
+        message = (
             'Cambios guardados y reinicio solicitado. El sitio quedó en mantenimiento '
-            'mientras reinicia; al volver puede desactivarlo desde el aviso del panel.',
+            'mientras reinicia; al volver puede desactivarlo desde el aviso del panel.'
         )
+        if wants_json:
+            profile, _ = self._profile()
+            return JsonResponse(
+                {
+                    'ok': True,
+                    'restarting': True,
+                    'dev_simulator': profile == 'desarrollo',
+                    'redirect_url': str(self.success_url),
+                    'status_url': str(reverse_lazy('core:environment_apply_status')),
+                    'message': message,
+                }
+            )
+        messages.success(request, message)
         return redirect(self.success_url)
 
     @staticmethod
@@ -343,6 +391,37 @@ class EnvironmentConfigApplyView(EnvironmentConfigView):
     """
 
     apply_changes = True
+
+
+class EnvironmentApplyStatusView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Estado del reinicio para el polling del panel mientras aplica cambios.
+
+    Devuelve JSON ligero: el navegador lo consulta en bucle mientras el servidor
+    puede estar reiniciando (502/503/red en producción) o mientras el simulador
+    de desarrollo procesa la petición.
+    """
+
+    http_method_names = ['get']
+    raise_exception = True
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get(self, request, *args, **kwargs):
+        profile, _ = EnvironmentConfigView._profile()
+        dev_simulator = profile == 'desarrollo'
+        site = getattr(request, 'site_config', None) or SiteConfiguration.get_instance()
+        return JsonResponse(
+            {
+                'ok': True,
+                'apply_status': apply_status(settings.ENV_APPLY_STATUS_FILE),
+                'apply_pending': pending_request(
+                    settings.ENV_APPLY_REQUEST_FILE, simulator=dev_simulator
+                ),
+                'maintenance_mode': site.maintenance_mode,
+                'dev_simulator': dev_simulator,
+            }
+        )
 
 
 class EnvironmentMaintenanceDisableView(LoginRequiredMixin, UserPassesTestMixin, View):

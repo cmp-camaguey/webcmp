@@ -3,7 +3,7 @@
 {% block title_actions %}
   {% if can_create %}
     <div class="col-auto ms-auto d-print-none">
-      <a href="{{ url_create }}" class="btn btn-primary">
+      <a href="{{ url_create }}" class="btn bg-blue-lt">
         <i class="icon ti ti-plus"></i> {{ btn }}
       </a>
     </div>
@@ -66,7 +66,7 @@
   <td class="text-end">
     <a href="{% url 'meteo:observacion_detail' object.uuid %}"
        type="button"
-       class="btn btn-icon btn-outline-info btn-sm"
+       class="btn btn-icon bg-azure-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        aria-label="Ver detalle"
@@ -76,7 +76,7 @@
     {% if not automatic_mode and request.user|has_permission:'meteo.change_observation' %}
       <a href="{% url 'meteo:observacion_update' object.uuid %}"
          type="button"
-         class="btn btn-icon btn-outline-warning btn-sm"
+         class="btn btn-icon bg-orange-lt btn-sm"
          data-bs-toggle="tooltip"
          data-bs-placement="bottom"
          aria-label="Editar"
@@ -86,7 +86,7 @@
     {% endif %}
     {% if not automatic_mode and request.user|has_permission:'meteo.delete_observation' %}
       <button type="button"
-              class="btn btn-icon btn-outline-danger btn-sm action-btn"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
               data-uuid="{{ object.uuid }}"
               data-bs-toggle="tooltip"
               data-bs-placement="bottom"

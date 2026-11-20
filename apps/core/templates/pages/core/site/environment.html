@@ -1,4 +1,14 @@
 {% extends 'layouts/form.html' %}
+{% block title_actions %}
+  <div class="col-auto ms-auto d-print-none">
+    <button type="button"
+            class="btn bg-blue-lt"
+            data-bs-toggle="modal"
+            data-bs-target="#env-preview-modal">
+      <i class="icon ti ti-file-code me-1" aria-hidden="true"></i> Ver .env
+    </button>
+  </div>
+{% endblock title_actions %}
 {% block content_before %}
   <style>
     .environment-console {
@@ -71,7 +81,7 @@
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
         <div class="environment-eyebrow">Estado del entorno</div>
         <div class="d-flex align-items-center gap-2">
-          <i class="icon ti ti-server text-muted" aria-hidden="true"></i>
+          <i class="icon ti ti-server text-blue" aria-hidden="true"></i>
           <span class="text-muted small">Entorno actual:</span>
           <span class="badge bg-blue-lt">{{ environment_name }}</span>
         </div>
@@ -98,7 +108,7 @@
       </div>
       <div class="row g-2 small">
         <div class="col-12">
-          <i class="icon ti ti-info-circle text-info me-1" aria-hidden="true"></i>
+          <i class="icon ti ti-info-circle text-blue me-1" aria-hidden="true"></i>
           <span class="text-muted">
             Este panel administra solo el archivo <code>.env</code> de este servidor. Cada
             entorno tiene el suyo. Aceptar escribe los valores; Aplicar activa el
@@ -107,7 +117,7 @@
         </div>
         {% if not can_write %}
           <div class="col-12">
-            <i class="icon ti ti-alert-triangle text-danger me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-alert-triangle text-red me-1" aria-hidden="true"></i>
             <span class="text-muted">
               El proceso web no puede guardar la configuración. Los parámetros quedan en solo
               lectura hasta que un operador revise los permisos del servidor.
@@ -116,19 +126,21 @@
         {% endif %}
         {% if apply_status %}
           <div class="col-12">
-            <i class="icon ti ti-{{ apply_status.icon }} me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-{{ apply_status.icon }} text-{{ apply_status.color }} me-1"
+               aria-hidden="true"></i>
             <span class="text-muted">{{ apply_status.text }}</span>
           </div>
         {% endif %}
         {% if apply_pending %}
           <div class="col-12">
-            <i class="icon ti ti-{{ apply_pending.icon }} me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-{{ apply_pending.icon }} text-{{ apply_pending.color }} me-1"
+               aria-hidden="true"></i>
             <span class="text-muted">{{ apply_pending.text }}</span>
           </div>
         {% endif %}
         {% if dev_simulator %}
           <div class="col-12">
-            <i class="icon ti ti-terminal-2 me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-terminal-2 text-azure me-1" aria-hidden="true"></i>
             <span class="text-muted">
               Sin servicio de reinicio: después de <strong>Aplicar</strong>, ejecute
               <code>python manage.py dev_apply_env</code> en la terminal y reinicie
@@ -138,7 +150,7 @@
         {% endif %}
         {% if can_write and not watcher_available %}
           <div class="col-12">
-            <i class="icon ti ti-plug-off me-1" aria-hidden="true"></i>
+            <i class="icon ti ti-plug-off text-orange me-1" aria-hidden="true"></i>
             <span class="text-muted">
               El reinicio automático no está disponible en este servidor, así que el botón
               <strong>Aplicar</strong> queda deshabilitado. Guarde los cambios y reinicie
@@ -146,14 +158,6 @@
             </span>
           </div>
         {% endif %}
-        <div class="col-12 d-flex justify-content-end">
-          <button type="button"
-                  class="btn btn-sm btn-outline-secondary"
-                  data-bs-toggle="modal"
-                  data-bs-target="#env-preview-modal">
-            <i class="icon ti ti-file-code me-1" aria-hidden="true"></i> Ver como .env
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -161,7 +165,7 @@
     <div class="card border-warning mb-3">
       <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
         <div class="d-flex align-items-start gap-2">
-          <i class="icon ti ti-tool text-warning mt-1" aria-hidden="true"></i>
+          <i class="icon ti ti-tool text-orange mt-1" aria-hidden="true"></i>
           <div>
             <div class="fw-semibold">Sitio en mantenimiento</div>
             <div class="text-muted small">
@@ -174,7 +178,7 @@
               action="{% url 'core:environment_maintenance_disable' %}"
               class="m-0">
           {% csrf_token %}
-          <button type="submit" class="btn btn-success">
+          <button type="submit" class="btn bg-green-lt">
             <i class="icon ti ti-check" aria-hidden="true"></i> Desactivar mantenimiento
           </button>
         </form>
@@ -183,7 +187,7 @@
   {% endif %}
 {% endblock content_before %}
 {% block form %}
-  {# Zona 2: lo que se edita a diario, en dos anchos distintos. #}
+  {# Zona 2: lo que se edita a diario. #}
   <div class="col-xl-8">
     <div class="card h-100">
       <div class="card-body">
@@ -198,103 +202,121 @@
   <div class="col-xl-4">
     <div class="card h-100">
       <div class="card-body">
+        <div class="environment-eyebrow mb-3">Notificaciones</div>
         {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.notifications %}
-        <hr class="my-3" />
+      </div>
+    </div>
+  </div>
+  {# Zona 3: integraciones. FTP a lo ancho; LDAP y Actualizaciones en paralelo. #}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="environment-eyebrow mb-3">Observaciones (FTP)</div>
+        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ftp %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="environment-eyebrow mb-3">LDAP</div>
+        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ldap %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
         <div class="environment-eyebrow mb-3">Actualizaciones del panel</div>
         {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.updates %}
       </div>
     </div>
   </div>
-  {# Zona 3: LDAP y FTP, visibles sin cabecera. #}
-  <div class="col-12">
-    <div class="card">
-      <div class="card-body">
-        <div class="row g-4">
-          <div class="col-lg-6">
-            <div class="environment-eyebrow mb-3">LDAP</div>
-            {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ldap %}
-          </div>
-          <div class="col-lg-6">
-            <div class="environment-eyebrow mb-3">Observaciones (FTP)</div>
-            {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ftp %}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {# Zona 4: referencia de punta a punta en una sola tabla. #}
+  {# Zona 4: referencia de punta a punta, colapsable. #}
   <div class="col-12">
     <div class="card">
       <div class="card-header">
         <div class="environment-eyebrow mb-0">Referencia</div>
+        <div class="card-actions">
+          <a href="#environment-reference"
+             class="btn-action"
+             data-bs-toggle="collapse"
+             aria-expanded="false"
+             aria-controls="environment-reference"
+             aria-label="Mostrar u ocultar referencia">
+            <i class="icon ti ti-chevron-down" aria-hidden="true"></i>
+          </a>
+        </div>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm table-vcenter card-table mb-0">
-          <tbody>
-            {% if sections_by_key.app.readonly %}
+      <div id="environment-reference" class="collapse">
+        <div class="table-responsive">
+          <table class="table table-sm table-vcenter card-table mb-0">
+            <tbody>
+              {% if sections_by_key.app.readonly %}
+                <tr class="table-active">
+                  <th scope="rowgroup" colspan="2" class="environment-eyebrow">Sitio</th>
+                </tr>
+                {% for item in sections_by_key.app.readonly %}
+                  <tr>
+                    <td class="text-muted w-50">{{ item.label }}</td>
+                    <td><code class="text-break">{{ item.value }}</code></td>
+                  </tr>
+                {% endfor %}
+              {% endif %}
+              {% for group in groups %}
+                <tr class="table-active">
+                  <th scope="rowgroup" colspan="2" class="environment-eyebrow">{{ group.title }}</th>
+                </tr>
+                {% for item in group.items %}
+                  <tr>
+                    <td class="text-muted w-50">{{ item.label }}</td>
+                    <td><code class="text-break">{{ item.value }}</code></td>
+                  </tr>
+                {% endfor %}
+              {% endfor %}
               <tr class="table-active">
-                <th scope="rowgroup" colspan="2" class="environment-eyebrow">Sitio</th>
+                <th scope="rowgroup" colspan="2" class="environment-eyebrow">Secretos · no se administran acá</th>
               </tr>
-              {% for item in sections_by_key.app.readonly %}
+              {% for secret in secrets %}
                 <tr>
-                  <td class="text-muted w-50">{{ item.label }}</td>
-                  <td><code class="text-break">{{ item.value }}</code></td>
+                  <td class="text-muted">{{ secret.label }}</td>
+                  <td class="text-end">
+                    {% if secret.configured %}
+                      <span class="badge bg-green-lt">Configurada</span>
+                    {% else %}
+                      <span class="badge bg-orange-lt">Sin configurar</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% endfor %}
-            {% endif %}
-            {% for group in groups %}
-              <tr class="table-active">
-                <th scope="rowgroup" colspan="2" class="environment-eyebrow">{{ group.title }}</th>
-              </tr>
-              {% for item in group.items %}
-                <tr>
-                  <td class="text-muted w-50">{{ item.label }}</td>
-                  <td><code class="text-break">{{ item.value }}</code></td>
-                </tr>
-              {% endfor %}
-            {% endfor %}
-            <tr class="table-active">
-              <th scope="rowgroup" colspan="2" class="environment-eyebrow">Secretos · no se administran acá</th>
-            </tr>
-            {% for secret in secrets %}
-              <tr>
-                <td class="text-muted">{{ secret.label }}</td>
-                <td class="text-end">
-                  {% if secret.configured %}
-                    <span class="badge bg-green-lt">Configurada</span>
-                  {% else %}
-                    <span class="badge bg-orange-lt">Sin configurar</span>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 {% endblock %}
 {% block form_actions %}
   <div class="col-12">
-    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 pt-3 mt-3 border-top">
-      <span class="text-muted small me-auto">
-        {% if pending_count %}
-          <i class="icon ti ti-circle-dot text-orange me-1" aria-hidden="true"></i>
-          {{ pending_count }} {{ pending_count|pluralize:'cambio pendiente,cambios pendientes' }}
-          de reinicio
-        {% else %}
-          <i class="icon ti ti-circle-check text-green me-1" aria-hidden="true"></i>
-          Sin cambios pendientes
-        {% endif %}
-      </span>
+    <div class="text-muted small mb-3">
+      {% if pending_count %}
+        <i class="icon ti ti-circle-dot text-orange me-1" aria-hidden="true"></i>
+        {{ pending_count }} {{ pending_count|pluralize:'cambio pendiente,cambios pendientes' }}
+        de reinicio
+      {% else %}
+        <i class="icon ti ti-circle-check text-green me-1" aria-hidden="true"></i>
+        Sin cambios pendientes
+      {% endif %}
+    </div>
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 pt-3 border-top">
       <button type="submit"
-              class="btn btn-primary"
+              class="btn bg-blue-lt"
               {% if not can_write %}disabled{% endif %}>
         <i class="icon ti ti-check" aria-hidden="true"></i> Aceptar
       </button>
       {# El modal comparte el form: `formaction` evita duplicar todos los campos. #}
       <button type="button"
-              class="btn btn-secondary"
+              class="btn bg-orange-lt"
               data-bs-toggle="modal"
               data-bs-target="#apply-changes-modal"
               {% if not can_write or not can_apply %}disabled{% endif %}>
@@ -359,17 +381,262 @@ mantenimiento y dejará de responder unos segundos.
 <p class="text-muted mb-0">Al volver, desactive el mantenimiento desde el aviso del panel de entorno.</p>
 </div>
 <div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
 {% comment %}
             `formaction` y no un segundo formulario: los campos son los mismos y
             un POST aparte obligaría a duplicar el formulario completo, con el
             riesgo de que los dos se separen.
 {% endcomment %}
-<button type="submit" formaction="{% url 'core:environment_apply' %}" class="btn btn-secondary" {% if not can_write or not can_apply %}disabled{% endif %}>
-<i class="icon ti ti-refresh" aria-hidden="true"></i> Aplicar
+<button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancelar</button>
+<button type="submit" id="env-apply-submit" formaction="{% url 'core:environment_apply' %}" data-apply-url="{% url 'core:environment_apply' %}" data-status-url="{% url 'core:environment_apply_status' %}" data-return-url="{{ request.path }}" class="btn bg-blue-lt" {% if not can_write or not can_apply %}disabled{% endif %}>
+<i class="icon ti ti-check" aria-hidden="true"></i> Aceptar
 </button>
 </div>
 </div>
 </div>
 </div>
+<div id="env-apply-overlay" class="d-none position-fixed top-0 start-0 w-100 h-100" style="z-index: 2000; background: rgba(var(--tblr-body-bg-rgb, 255, 255, 255), 0.92);" aria-live="polite" aria-hidden="true">
+<div class="container-tight py-5 h-100 d-flex align-items-center justify-content-center">
+<div class="card shadow-sm w-100" style="max-width: 36rem;">
+<div class="card-body text-center p-4 p-md-5">
+<div id="env-apply-spinner" class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+<h2 id="env-apply-title" class="h3 mb-2">Aplicando cambios…</h2>
+<p id="env-apply-message" class="text-muted mb-3">
+Guardando la configuración y solicitando el reinicio. No cierre esta página.
+</p>
+{% if dev_simulator %}
+<div id="env-apply-dev" class="alert alert-info text-start d-none mb-3" role="status">
+<div class="fw-semibold mb-1">Entorno de desarrollo</div>
+<ol class="mb-0 ps-3">
+<li>Ejecute <code>python manage.py dev_apply_env</code> en la terminal del proyecto.</li>
+<li>Reinicie <code>runserver</code> para que los cambios tomen efecto.</li>
+<li>Cuando el simulador termine, esta pantalla lo indicará.</li>
+</ol>
+</div>
+{% endif %}
+<div id="env-apply-error" class="alert alert-danger text-start d-none mb-3" role="alert"></div>
+<div class="d-flex justify-content-center gap-2 flex-wrap">
+<a id="env-apply-reload" href="{{ request.path }}" class="btn bg-blue-lt d-none">
+<i class="icon ti ti-refresh" aria-hidden="true"></i> Volver al panel
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
 {% endblock form_actions %}
+{% block extrajs %}
+{{ block.super }}
+<script>
+    (function () {
+      var applyButton = document.getElementById('env-apply-submit');
+      var form = applyButton ? applyButton.closest('form') : null;
+      var overlay = document.getElementById('env-apply-overlay');
+      if (!applyButton || !form || !overlay) {
+        return;
+      }
+
+      var title = document.getElementById('env-apply-title');
+      var message = document.getElementById('env-apply-message');
+      var devBox = document.getElementById('env-apply-dev');
+      var errorBox = document.getElementById('env-apply-error');
+      var spinner = document.getElementById('env-apply-spinner');
+      var reload = document.getElementById('env-apply-reload');
+      var applying = false;
+
+      function showOverlay() {
+        overlay.classList.remove('d-none');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+
+      function showError(text) {
+        if (errorBox) {
+          errorBox.textContent = text;
+          errorBox.classList.remove('d-none');
+        }
+        if (spinner) {
+          spinner.classList.add('d-none');
+        }
+        if (reload) {
+          reload.classList.remove('d-none');
+        }
+      }
+
+      function hideModal() {
+        var modalEl = document.getElementById('apply-changes-modal');
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+          return;
+        }
+        var instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+        instance.hide();
+      }
+
+      function delay(ms) {
+        return new Promise(function (resolve) {
+          window.setTimeout(resolve, ms);
+        });
+      }
+
+      function parseStatus(payload) {
+        if (!payload) {
+          return { state: null, pending: false };
+        }
+        var status = payload.apply_status || null;
+        return {
+          state: status ? status.state : null,
+          pending: Boolean(payload.apply_pending),
+          message: status ? status.text : ''
+        };
+      }
+
+      async function pollUntilReady(statusUrl, returnUrl, devSimulator) {
+        var attempts = 0;
+        var maxAttempts = devSimulator ? 180 : 90;
+        while (attempts < maxAttempts) {
+          attempts += 1;
+          try {
+            var response = await fetch(statusUrl, {
+              method: 'GET',
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+              cache: 'no-store'
+            });
+            if (response.ok) {
+              var contentType = response.headers.get('content-type') || '';
+              if (contentType.indexOf('application/json') !== -1) {
+                var data = await response.json();
+                var info = parseStatus(data);
+                if (devSimulator) {
+                  if (info.state === 'ok' && !info.pending) {
+                    if (title) { title.textContent = 'Cambios aplicados'; }
+                    if (message) {
+                      message.textContent = 'El simulador completó el reinicio lógico. Reinicie runserver si aún no lo hizo y luego vuelva al panel.';
+                    }
+                    if (spinner) { spinner.classList.add('d-none'); }
+                    if (reload) { reload.classList.remove('d-none'); }
+                    return;
+                  }
+                  if (info.state === 'failed' || info.state === 'stale') {
+                    showError(info.message || 'El reinicio no pudo completarse. Revise el estado del servidor.');
+                    return;
+                  }
+                } else {
+                  if (info.state === 'ok' && !info.pending) {
+                    window.location.href = returnUrl;
+                    return;
+                  }
+                  if (info.state === 'failed' || info.state === 'stale') {
+                    showError(info.message || 'El reinicio no pudo completarse. Revise el estado del servidor.');
+                    return;
+                  }
+                }
+              }
+            } else if ([502, 503, 504].indexOf(response.status) !== -1) {
+              // Nginx o proxy: el servicio está reiniciando.
+            } else if (response.status === 401 || response.status === 403) {
+              window.location.href = returnUrl;
+              return;
+            }
+          } catch (err) {
+            // Error de red/conexión rechazada durante el reinicio: esperado.
+          }
+          await delay(2000);
+        }
+        if (devSimulator) {
+          if (title) { title.textContent = 'Esperando al simulador'; }
+          if (message) {
+            message.textContent = 'Aún no se detecta el reinicio simulado. Ejecute el comando indicado y reinicie runserver; luego vuelva al panel.';
+          }
+          if (spinner) { spinner.classList.add('d-none'); }
+          if (reload) { reload.classList.remove('d-none'); }
+        } else {
+          showError('El sitio tardó demasiado en responder. Espere unos momentos y vuelva al panel para comprobar el estado.');
+        }
+      }
+
+      function setRestartingState(devSimulator) {
+        if (devSimulator) {
+          if (title) { title.textContent = 'Cambios guardados'; }
+          if (message) {
+            message.textContent = 'Se solicitó el reinicio simulado. Complete los pasos siguientes para aplicar los cambios.';
+          }
+          if (devBox) { devBox.classList.remove('d-none'); }
+        } else {
+          if (title) { title.textContent = 'Reiniciando servicios…'; }
+          if (message) {
+            message.textContent = 'Se están aplicando los cambios. El sitio puede tardar unos segundos en volver a responder.';
+          }
+          if (devBox) { devBox.classList.add('d-none'); }
+        }
+      }
+
+      async function submitApply(event) {
+        if (applying) {
+          event.preventDefault();
+          return;
+        }
+        if (!window.fetch) {
+          return;
+        }
+        event.preventDefault();
+        applying = true;
+        hideModal();
+        showOverlay();
+        if (errorBox) {
+          errorBox.textContent = '';
+          errorBox.classList.add('d-none');
+        }
+        if (spinner) { spinner.classList.remove('d-none'); }
+        if (reload) { reload.classList.add('d-none'); }
+
+        var applyUrl = applyButton.getAttribute('data-apply-url') || applyButton.getAttribute('formaction');
+        var statusUrl = applyButton.getAttribute('data-status-url');
+        var returnUrl = applyButton.getAttribute('data-return-url') || window.location.pathname;
+        var formData = new FormData(form);
+
+        try {
+          var response = await fetch(applyUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: formData
+          });
+          var contentType = response.headers.get('content-type') || '';
+          var data = contentType.indexOf('application/json') !== -1 ? await response.json() : null;
+
+          if (!response.ok || !data || data.ok === false) {
+            if (data && data.errors) {
+              applying = false;
+              overlay.classList.add('d-none');
+              overlay.setAttribute('aria-hidden', 'true');
+              if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit(applyButton);
+              } else {
+                form.submit();
+              }
+              return;
+            }
+            var errMsg = (data && data.message) || 'No se pudo aplicar la configuración.';
+            showError(errMsg);
+            if (title) { title.textContent = 'No se aplicaron los cambios'; }
+            if (message) { message.textContent = 'Revise el mensaje y vuelva al panel para corregirlo.'; }
+            applying = false;
+            return;
+          }
+
+          var devSimulator = Boolean(data.dev_simulator);
+          setRestartingState(devSimulator);
+          await pollUntilReady(data.status_url || statusUrl, data.redirect_url || returnUrl, devSimulator);
+        } catch (err) {
+          // La petición pudo cortarse justo al iniciar el reinicio; pasar a polling.
+          if (title) { title.textContent = 'Reiniciando servicios…'; }
+          if (message) {
+            message.textContent = 'Se perdió la conexión al aplicar. Esperando a que el sitio vuelva a responder…';
+          }
+          await pollUntilReady(statusUrl, returnUrl, false);
+        }
+      }
+
+      applyButton.addEventListener('click', submitApply);
+    })();
+</script>
+{% endblock extrajs %}

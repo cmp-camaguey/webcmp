@@ -60,4 +60,6 @@ ignore = [
     "H037",
     "D018",
 ]
-extend_exclude = ["emails", "static", "media", "logs", "migrations", "spec"]
+# deploy/nginx es HTML estatico que sirve Nginx (la pagina 50x): no es una
+# plantilla de Django y no puede llevar {% static %} ni tags de plantilla.
+extend_exclude = ["emails", "static", "media", "logs", "migrations", "spec", "deploy/nginx"]

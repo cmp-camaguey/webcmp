@@ -1,4 +1,6 @@
-# Lista de archivos que el sync instala en /usr/local/sbin/ y /etc/systemd/system/
+# Lista de archivos que el sync instala fuera del checkout: scripts en
+# /usr/local/sbin/, unidades en /etc/systemd/system/ y artefactos servidos por
+# Nginx en /var/www/.
 
 # Cada entrada son 4 campos separados por espacios: origen (ruta en deploy/),
 # destino final, modo octal y dueno (usuario:grupo). Una linea con mas de 4
@@ -23,6 +25,12 @@ deploy/systemd/webcmp-autodeploy.service                                  /etc/s
 deploy/systemd/webcmp-autodeploy.path                                     /etc/systemd/system/webcmp-autodeploy.path                  0644    root:root
 deploy/systemd/webcmp-backup.service                                      /etc/systemd/system/webcmp-backup.service                   0644    root:root
 deploy/systemd/webcmp-backup.timer                                        /etc/systemd/system/webcmp-backup.timer                     0644    root:root
+
+# Paginas de error de Nginx (502/503/504)
+# Las sirve el vhost con error_page; install.sh las escribe en una instalacion
+# nueva y este sync las mantiene al dia en cada deploy.
+deploy/nginx/50x.html                                                    /var/www/webcmp-errors/50x.html                             0644    root:root
+deploy/nginx/504x.html                                                   /var/www/webcmp-errors/504x.html                            0644    root:root
 
 # Sync de artefactos root
 deploy/systemd/webcmp-sync.service                                        /etc/systemd/system/webcmp-sync.service                     0644    root:root

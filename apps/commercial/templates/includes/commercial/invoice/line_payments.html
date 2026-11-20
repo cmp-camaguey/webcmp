@@ -29,7 +29,7 @@ el polling reemplaza la celda.
           <span class="badge bg-orange-lt">por cobrar</span>
           {% if line.aprobable and perms.commercial.change_subscription and not invoice.is_cancelled and invoice.pdf_ready %}
             <a href="{% url 'commercial:suscripcion_approve' line.uuid %}"
-               class="btn btn-sm btn-outline-success"
+               class="btn btn-sm bg-green-lt"
                title="Aprobar pago"
                aria-label="Aprobar el pago de {{ line.servicio }}">Aprobar pago</a>
           {% endif %}

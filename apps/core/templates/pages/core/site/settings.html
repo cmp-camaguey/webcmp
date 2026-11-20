@@ -4,7 +4,7 @@
 {% block title_actions %}
   <div class="col-auto">
     <button type="button"
-            class="btn btn-outline-danger"
+            class="btn bg-red-lt"
             data-bs-toggle="modal"
             data-bs-target="#reset-theme-modal">
       <i class="icon ti ti-refresh"></i>
@@ -72,8 +72,12 @@
                   <p>¿Seguro que desea restablecer el tema a los valores por defecto? Se perderán los cambios previos en color primario, base, tipografía y radio de esquina.</p>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                  <button type="submit" name="reset_theme_defaults" class="btn btn-danger">Restablecer</button>
+                  <button type="button"
+                          class="btn btn-link link-secondary me-auto"
+                          data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" name="reset_theme_defaults" class="btn bg-red-lt">
+                    <i class="icon ti ti-check" aria-hidden="true"></i> Aceptar
+                  </button>
                 </div>
               </div>
             </div>
@@ -125,13 +129,13 @@
                   <div class="mt-2 d-flex gap-2">
                     <a data-fslightbox="site-brand-logo"
                        href="{{ object.brand_logo.url }}"
-                       class="btn btn-pill btn-outline-primary btn-sm">
+                       class="btn btn-pill bg-blue-lt btn-sm">
                       <i class="icon ti ti-photo"></i>
                       Ver imagen
                     </a>
                     <button type="submit"
                             name="delete_logo"
-                            class="btn btn-pill btn-outline-danger btn-sm">
+                            class="btn btn-pill bg-red-lt btn-sm">
                       <i class="icon ti ti-trash"></i>
                       Eliminar
                     </button>
@@ -178,13 +182,13 @@
                   <div class="mt-2 d-flex gap-2">
                     <a data-fslightbox="site-favicon"
                        href="{{ object.favicon.url }}"
-                       class="btn btn-pill btn-outline-primary btn-sm">
+                       class="btn btn-pill bg-blue-lt btn-sm">
                       <i class="icon ti ti-photo"></i>
                       Ver imagen
                     </a>
                     <button type="submit"
                             name="delete_favicon"
-                            class="btn btn-pill btn-outline-danger btn-sm">
+                            class="btn btn-pill bg-red-lt btn-sm">
                       <i class="icon ti ti-trash"></i>
                       Eliminar
                     </button>

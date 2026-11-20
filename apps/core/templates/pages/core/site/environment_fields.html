@@ -18,7 +18,7 @@
             {% endif %}
           </span>
         </div>
-        <small class="text-muted d-block mt-1">
+        <small class="text-muted d-block mt-1 text-break">
           Dejar en blanco para no cambiarla. El valor guardado nunca se muestra.
         </small>
       {% elif row.spec.kind == 'bool' %}
@@ -33,10 +33,10 @@
                for="{{ row.field.id_for_label }}">{{ row.field.label }}</label>
         {{ row.field }}
         {% if row.field.help_text %}
-          <small class="text-muted d-block mt-1">{{ row.field.help_text }}</small>
+          <small class="text-muted d-block mt-1 text-break">{{ row.field.help_text }}</small>
         {% endif %}
-        <small class="text-muted d-block mt-1">
-          En ejecución: <code>{{ row.display }}</code>
+        <small class="text-muted d-block mt-1 text-break">
+          En ejecución: <code class="text-break">{{ row.display }}</code>
           {% if row.pending %}
             <span class="badge bg-orange-lt ms-1">Pendiente de reinicio</span>
           {% endif %}

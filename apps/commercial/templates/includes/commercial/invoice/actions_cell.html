@@ -1,7 +1,7 @@
 <div class="d-flex flex-wrap justify-content-end gap-2 align-items-center">
   {% if invoice.pdf_ready %}
     <a href="{% url 'commercial:factura_download' invoice.uuid %}"
-       class="btn btn-icon btn-outline-success btn-sm"
+       class="btn btn-icon bg-green-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        aria-label="Descargar Factura"
@@ -15,7 +15,7 @@
       para estos disparadores, leyendo `aria-label`.
     {% endcomment %}
     <button type="button"
-            class="btn btn-icon btn-outline-primary btn-sm"
+            class="btn btn-icon bg-blue-lt btn-sm"
             data-bs-toggle="modal"
             data-bs-target="#documentPdfModal"
             data-pdf-url="{% url 'commercial:factura_download' invoice.uuid %}?inline=1"
@@ -51,7 +51,7 @@
           style="display:inline">
       {% csrf_token %}
       <button type="submit"
-              class="btn btn-icon btn-outline-primary btn-sm"
+              class="btn btn-icon bg-blue-lt btn-sm"
               data-bs-toggle="tooltip"
               data-bs-placement="bottom"
               aria-label="Generar PDF"
@@ -63,7 +63,7 @@
   {% with linea=invoice.linea_aprobable %}
     {% if linea and perms.commercial.change_subscription and not invoice.is_cancelled and invoice.pdf_ready %}
       <a href="{% url 'commercial:suscripcion_approve' linea.uuid %}"
-         class="btn btn-icon btn-outline-success btn-sm"
+         class="btn btn-icon bg-green-lt btn-sm"
          data-bs-toggle="tooltip"
          data-bs-placement="bottom"
          title="Aprobar Pago"
@@ -74,7 +74,7 @@
   {% endwith %}
   {% if invoice.email_status != 'sent' and not invoice.is_cancelled %}
     <a href="{% url 'commercial:factura_resend_email' invoice.uuid %}"
-       class="btn btn-icon btn-outline-warning btn-sm"
+       class="btn btn-icon bg-orange-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        title="{% if invoice.email_status == 'failed' %}Reenviar correo (el anterior falló){% else %}Reenviar correo{% endif %}">
@@ -83,7 +83,7 @@
   {% endif %}
   {% if not invoice.is_cancelled and perms.commercial.delete_invoice %}
     <button type="button"
-            class="btn btn-icon btn-outline-danger btn-sm action-btn"
+            class="btn btn-icon bg-red-lt btn-sm action-btn"
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"
             title="Anular factura"
@@ -95,7 +95,7 @@
   {% endif %}
   {% if is_superuser and invoice.is_cancelled %}
     <button type="button"
-            class="btn btn-icon btn-outline-danger btn-sm action-btn"
+            class="btn btn-icon bg-red-lt btn-sm action-btn"
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"
             title="Eliminar permanentemente"

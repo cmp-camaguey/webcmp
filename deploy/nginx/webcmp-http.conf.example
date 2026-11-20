@@ -105,11 +105,18 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
-    # Pagina de error estatica: 502/503/504 los genera este Nginx cuando
-    # Gunicorn no responde, momento en que Django tampoco puede dibujar nada.
-    error_page 502 503 504 /50x.html;
+    # Paginas de error ESTATICAS, servidas por Nginx, no por Django.
+    # 502/503 comparten pagina (servicio caido o reiniciando). 504 va aparte:
+    # la app sigue viva pero no respondió a tiempo.
+    error_page 502 503 /50x.html;
+    error_page 504 /504x.html;
 
     location = /50x.html {
+        internal;
+        root /var/www/webcmp-errors;
+    }
+
+    location = /504x.html {
         internal;
         root /var/www/webcmp-errors;
     }

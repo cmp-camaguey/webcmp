@@ -20,14 +20,14 @@
   </td>
   <td class="text-end">
     <a href="{% url 'user_auth:permission_profile_update' object.uuid %}"
-       class="btn btn-icon btn-outline-warning btn-sm"
+       class="btn btn-icon bg-orange-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        title="Editar">
       <i class="icon ti ti-edit"></i>
     </a>
     <button type="button"
-            class="btn btn-icon btn-outline-danger btn-sm action-btn"
+            class="btn btn-icon bg-red-lt btn-sm action-btn"
             data-uuid="{{ object.uuid }}"
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"

@@ -38,10 +38,10 @@
           </div>
         {% endif %}
         <div class="mt-3">
-          <button type="button" class="btn btn-danger me-2" id="actionBtn">
+          <button type="button" class="btn bg-red-lt me-2" id="actionBtn">
             {% if request.user.is_superuser %}Eliminar{% else %}Desactivar{% endif %}
           </button>
-          <a href="{{ url_list }}" class="btn btn-secondary">Cancelar</a>
+          <a href="{{ url_list }}" class="btn bg-azure-lt">Cancelar</a>
         </div>
       </form>
     </div>
@@ -74,10 +74,10 @@
         </div>
         <div class="modal-footer">
           <button type="button"
-                  class="btn btn-secondary"
+                  class="btn btn-link link-secondary me-auto"
                   id="cancelHardModalBtn"
                   data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-danger" id="confirmHardDeleteBtn">Sí, eliminar permanentemente</button>
+          <button type="button" class="btn bg-red-lt" id="confirmHardDeleteBtn">Sí, eliminar permanentemente</button>
         </div>
       </div>
     </div>
@@ -110,10 +110,10 @@
         </div>
         <div class="modal-footer">
           <button type="button"
-                  class="btn btn-secondary"
+                  class="btn btn-link link-secondary me-auto"
                   id="cancelSoftModalBtn"
                   data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-warning" id="confirmSoftDeleteBtn">Sí, desactivar</button>
+          <button type="button" class="btn bg-orange-lt" id="confirmSoftDeleteBtn">Sí, desactivar</button>
         </div>
       </div>
     </div>

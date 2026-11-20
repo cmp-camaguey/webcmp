@@ -9,8 +9,8 @@
     <div class="col-auto ms-auto d-print-none">
       <div class="btn-list">
         <a href="{% url 'dashboard:tasks' %}"
-           class="btn btn-icon btn-outline-secondary{% if not current_status %}
-                    active{% endif %}"
+           class="btn btn-icon
+                  {% if not current_status %}bg-blue-lt active{% else %}bg-azure-lt{% endif %}"
            data-tasks-filter
            data-bs-toggle="tooltip"
            data-bs-placement="bottom"
@@ -19,8 +19,8 @@
           <i class="icon ti ti-list"></i>
         </a>
         <a href="{% url 'dashboard:tasks' %}?status=ERROR"
-           class="btn btn-icon btn-outline-danger{% if current_status == 'ERROR' %}
-                    active{% endif %}"
+           class="btn btn-icon
+                  {% if current_status == 'ERROR' %}bg-blue-lt active{% else %}bg-red-lt{% endif %}"
            data-tasks-filter
            data-bs-toggle="tooltip"
            data-bs-placement="bottom"
@@ -29,8 +29,8 @@
           <i class="icon ti ti-alert-triangle"></i>
         </a>
         <a href="{% url 'dashboard:tasks' %}?status=ENQUEUED"
-           class="btn btn-icon btn-outline-info{% if current_status == 'ENQUEUED' %}
-                    active{% endif %}"
+           class="btn btn-icon
+                  {% if current_status == 'ENQUEUED' %}bg-blue-lt active{% else %}bg-azure-lt{% endif %}"
            data-tasks-filter
            data-bs-toggle="tooltip"
            data-bs-placement="bottom"
@@ -85,7 +85,7 @@
           <button type="button"
                   class="btn btn-link link-secondary me-auto"
                   data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-danger" id="confirmTaskDeleteBtn">Eliminar</button>
+          <button type="button" class="btn bg-red-lt" id="confirmTaskDeleteBtn">Eliminar</button>
         </div>
         <form id="confirmTaskDeleteForm" method="post" style="display: none;">
           {% csrf_token %}

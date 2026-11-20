@@ -104,22 +104,24 @@ server {
          proxy_set_header Connection "upgrade";
     }
 
-    # Pagina de error ESTATICA, servida por Nginx, no por Django.
+    # Paginas de error ESTATICAS, servidas por Nginx, no por Django.
     #
     # El 500 lo dibuja Django: config/urls.py declara handler500, que renderiza
-    # templates/layouts/500.html. Nginx no tiene que tocarlo. Y 502/503/504 solo
-    # los genera Nginx (Gunicorn caido), momento en que Django tampoco responde:
-    # pedirle a Django una pagina de error es pedirle al paciente que se atienda
-    # solo.
+    # templates/layouts/500.html. Nginx no tiene que tocarlo. Los 502/503/504 los
+    # genera Nginx cuando Gunicorn no responde o no llega a tiempo: Django no
+    # puede dibujar nada en ese momento.
     #
-    # Ojo con `/templates/500.html`, que fue la version anterior de esta linea: no
-    # existe ninguna ruta con ese nombre, asi que Nginx caia en un 404 dentro del
-    # manejo del 500. Traducido: una caida de Gunicorn le llegaba al usuario como
-    # "pagina no encontrada", que es exactamente el momento en que no querias que
-    # la pagina de error fallara.
-    error_page 502 503 504 /50x.html;
+    # 502/503 comparten pagina (servicio caido o reiniciando). 504 va aparte: la
+    # app sigue viva pero no respondió a tiempo, y el mensaje/imagen lo reflejan.
+    error_page 502 503 /50x.html;
+    error_page 504 /504x.html;
 
     location = /50x.html {
+        internal;
+        root /var/www/webcmp-errors;
+    }
+
+    location = /504x.html {
         internal;
         root /var/www/webcmp-errors;
     }
