@@ -26,10 +26,11 @@ deploy/systemd/webcmp-autodeploy.path                                     /etc/s
 deploy/systemd/webcmp-backup.service                                      /etc/systemd/system/webcmp-backup.service                   0644    root:root
 deploy/systemd/webcmp-backup.timer                                        /etc/systemd/system/webcmp-backup.timer                     0644    root:root
 
-# Pagina de error de Nginx (502/503/504)
-# La sirve el vhost con error_page; install.sh la escribe en una instalacion
-# nueva y este sync la mantiene al dia en cada deploy.
+# Paginas de error de Nginx (502/503/504)
+# Las sirve el vhost con error_page; install.sh las escribe en una instalacion
+# nueva y este sync las mantiene al dia en cada deploy.
 deploy/nginx/50x.html                                                    /var/www/webcmp-errors/50x.html                             0644    root:root
+deploy/nginx/504x.html                                                   /var/www/webcmp-errors/504x.html                            0644    root:root
 
 # Sync de artefactos root
 deploy/systemd/webcmp-sync.service                                        /etc/systemd/system/webcmp-sync.service                     0644    root:root

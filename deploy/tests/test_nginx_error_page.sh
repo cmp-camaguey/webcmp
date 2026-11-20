@@ -1,30 +1,36 @@
-# Pruebas de la pagina 50x que Nginx sirve mientras Gunicorn esta caido.
+# Pruebas de las paginas 50x que Nginx sirve mientras Gunicorn no responde.
 #
-# Por que existe este archivo: el vhost versionado apunta `error_page 502 503 504`
-# a `/50x.html` con `location = /50x.html { internal; root /var/www/webcmp-errors; }`.
-# Si ese archivo no esta, Nginx devuelve un 404 DENTRO del manejo del error: el
-# sintoma mas dificil de diagnosticar que existe.
+# Por que existe este archivo: el vhost versionado apunta `error_page 502 503`
+# a `/50x.html` y `error_page 504` a `/504x.html`, servidas con `internal` desde
+# `/var/www/webcmp-errors/`. Si esos archivos no estan, Nginx devuelve un 404
+# DENTRO del manejo del error: el sintoma mas dificil de diagnosticar que existe.
 #
-# La pagina tiene que llegar al servidor por dos caminos, y los dos se prueban:
-#   1. `install.sh` la escribe en una instalacion nueva.
-#   2. `webcmp-deploy-sync.sh` la mantiene al dia en cada deploy (el boton
+# 502/503 comparten pagina (servicio caido o reiniciando). 504 va aparte: la app
+# sigue viva pero no respondió a tiempo, asi que el mensaje y la ilustracion son
+# distintos.
+#
+# Las paginas tienen que llegar al servidor por dos caminos, y los dos se prueban:
+#   1. `install.sh` las escribe en una instalacion nueva.
+#   2. `webcmp-deploy-sync.sh` las mantiene al dia en cada deploy (el boton
 #      «Actualizar» corre deploy.sh -> sync, que instala lo que lista
 #      deploy/root-bundle.manifest; install.sh NO se ejecuta en un deploy).
 
 NGINX_ERROR_PAGE=$REPO_ROOT/deploy/nginx/50x.html
+NGINX_ERROR_PAGE_504=$REPO_ROOT/deploy/nginx/504x.html
 ERROR_PAGE_INSTALL=$REPO_ROOT/deploy/install.sh
 ERROR_PAGE_MANIFEST=$REPO_ROOT/deploy/root-bundle.manifest
 ERROR_PAGE_SYNC=$REPO_ROOT/deploy/webcmp-deploy-sync.sh
 
 # ---------------------------------------------------------------------------
-# La pagina versionada
+# Paginas versionadas
 # ---------------------------------------------------------------------------
 #
-# Es la unica fuente: install.sh la copia y el sync la instala desde el SHA. Si
-# el contrato de la pagina se rompe (deja de reintentar, pierde el tema o la
-# ilustracion), se rompe en los dos caminos a la vez.
+# Son la unica fuente: install.sh las copia y el sync las instala desde el SHA.
+# Si el contrato se rompe (deja de reintentar, pierde el tema, la ilustracion o
+# el logo), se rompe en los dos caminos a la vez.
 
 assert_file 'la pagina 50x esta versionada en deploy/nginx' "$NGINX_ERROR_PAGE"
+assert_file 'la pagina 504x esta versionada en deploy/nginx' "$NGINX_ERROR_PAGE_504"
 
 if [ -f "$NGINX_ERROR_PAGE" ]; then
     page_src=$(cat "$NGINX_ERROR_PAGE")
@@ -33,7 +39,11 @@ if [ -f "$NGINX_ERROR_PAGE" ]; then
     assert_contains 'la pagina 50x acepta ?theme=' "get('theme')" "$page_src"
     assert_contains 'la pagina 50x usa la ilustracion de mantenimiento' \
         'maintenance.webp' "$page_src"
-    assert_contains 'la pagina 50x muestra la imagen a 180px' 'height="180"' "$page_src"
+    assert_not_contains 'la pagina 50x no muestra el logo del sitio' 'logo.png' "$page_src"
+    assert_contains 'la pagina 50x comunica reinicio o actualizacion' \
+        'reiniciando' "$page_src"
+    # Mismo tamano que las paginas de error de Django cuando la app corre (128px).
+    assert_contains 'la pagina 50x muestra la imagen a 128px' 'height="128"' "$page_src"
     assert_contains 'la pagina 50x es HTML completo' '<!DOCTYPE html>' "$page_src"
     # El HTML va directo al servidor: un tag de plantilla o un placeholder sin
     # renderizar se sirve tal cual y nadie lo nota hasta que hay una caida.
@@ -41,8 +51,25 @@ if [ -f "$NGINX_ERROR_PAGE" ]; then
         '{{' "$page_src"
 fi
 
+if [ -f "$NGINX_ERROR_PAGE_504" ]; then
+    page_src=$(cat "$NGINX_ERROR_PAGE_504")
+    assert_contains 'la pagina 504x reintenta sola' 'location.reload' "$page_src"
+    assert_contains 'la pagina 504x respeta el tema del sitio' 'tabler-theme' "$page_src"
+    assert_contains 'la pagina 504x acepta ?theme=' "get('theme')" "$page_src"
+    assert_contains 'la pagina 504x usa la ilustracion 504' '504.webp' "$page_src"
+    assert_not_contains 'la pagina 504x no muestra el logo del sitio' 'logo.png' "$page_src"
+    assert_contains 'la pagina 504x comunica timeout' 'tardando en responder' "$page_src"
+    assert_not_contains 'la pagina 504x no usa la ilustracion de mantenimiento' \
+        'maintenance.webp' "$page_src"
+    # Mismo tamano que las paginas de error de Django cuando la app corre (128px).
+    assert_contains 'la pagina 504x muestra la imagen a 128px' 'height="128"' "$page_src"
+    assert_contains 'la pagina 504x es HTML completo' '<!DOCTYPE html>' "$page_src"
+    assert_not_contains 'la pagina 504x no tiene placeholders sin renderizar' \
+        '{{' "$page_src"
+fi
+
 # ---------------------------------------------------------------------------
-# install.sh: copia la versionada, no la embebe
+# install.sh: copia las versionadas, no las embebe
 # ---------------------------------------------------------------------------
 
 if [ -f "$ERROR_PAGE_INSTALL" ]; then
@@ -51,8 +78,10 @@ if [ -f "$ERROR_PAGE_INSTALL" ]; then
     write_error_fn=$(awk '/^write_error_page\(\) \{/{f=1} f{print} f && /^}$/{exit}' "$ERROR_PAGE_INSTALL")
 
     if [ -n "$write_error_fn" ]; then
-        assert_contains 'write_error_page toma la pagina versionada' \
-            'deploy/nginx/50x.html' "$write_error_fn"
+        assert_contains 'write_error_page recorre las paginas 50x y 504x' \
+            '50x.html 504x.html' "$write_error_fn"
+        assert_contains 'write_error_page toma las paginas desde deploy/nginx' \
+            'deploy/nginx/$name' "$write_error_fn"
         assert_not_contains 'write_error_page ya no embebe el HTML' \
             '<!doctype html>' "$write_error_fn"
         # Idempotencia: reinstalar sin cambios no debe reescribir el archivo (ni
@@ -65,7 +94,7 @@ if [ -f "$ERROR_PAGE_INSTALL" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Manifest: el sync instala la pagina en cada deploy
+# Manifest: el sync instala las paginas en cada deploy
 # ---------------------------------------------------------------------------
 
 if [ -f "$ERROR_PAGE_MANIFEST" ]; then
@@ -74,6 +103,10 @@ if [ -f "$ERROR_PAGE_MANIFEST" ]; then
         'deploy/nginx/50x.html' "$manifest_src"
     assert_contains 'la pagina 50x se instala en /var/www/webcmp-errors' \
         '/var/www/webcmp-errors/50x.html' "$manifest_src"
+    assert_contains 'el manifest incluye la pagina 504x' \
+        'deploy/nginx/504x.html' "$manifest_src"
+    assert_contains 'la pagina 504x se instala en /var/www/webcmp-errors' \
+        '/var/www/webcmp-errors/504x.html' "$manifest_src"
 
     # La linea tiene que tener los 4 campos exactos del parser del sync y el
     # dueno/modo que espera Nginx: root-owned 0644, servible por www-data.
@@ -84,6 +117,14 @@ if [ -f "$ERROR_PAGE_MANIFEST" ]; then
     assert_eq 'pagina 50x: modo del manifest' '0644' "${p_mode:-}"
     assert_eq 'pagina 50x: dueno del manifest' 'root:root' "${p_owner:-}"
     assert_eq 'pagina 50x: sin campo de mas' '' "${p_extra:-}"
+
+    page_line=$(awk '$1 == "deploy/nginx/504x.html" { print; exit }' "$ERROR_PAGE_MANIFEST")
+    read -r p_src p_dest p_mode p_owner p_extra <<< "${page_line:-}"
+    assert_eq 'pagina 504x: destino del manifest' \
+        '/var/www/webcmp-errors/504x.html' "${p_dest:-}"
+    assert_eq 'pagina 504x: modo del manifest' '0644' "${p_mode:-}"
+    assert_eq 'pagina 504x: dueno del manifest' 'root:root' "${p_owner:-}"
+    assert_eq 'pagina 504x: sin campo de mas' '' "${p_extra:-}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -91,7 +132,7 @@ fi
 # ---------------------------------------------------------------------------
 #
 # `/var/www/webcmp-errors` lo crea install.sh. En un servidor que ya estaba
-# instalado, el primer deploy que traiga la pagina corre el sync contra un
+# instalado, el primer deploy que traiga las paginas corre el sync contra un
 # directorio que no existe: `install` no crea padres y el sync moriria con un
 # error que no dice nada del 50x.
 
@@ -112,15 +153,24 @@ if [ -f "$ERROR_PAGE_SYNC" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Vhosts: siguen apuntando a la pagina
+# Vhosts: apuntan a las paginas diferenciadas
 # ---------------------------------------------------------------------------
 
 for vhost in "$REPO_ROOT"/deploy/nginx/webcmp.conf.example \
              "$REPO_ROOT"/deploy/nginx/webcmp-http.conf.example; do
     [ -f "$vhost" ] || continue
     vhost_src=$(cat "$vhost")
-    assert_contains "$(basename "$vhost") declara error_page 502/503/504" \
-        'error_page 502 503 504 /50x.html;' "$vhost_src"
+    assert_contains "$(basename "$vhost") declara error_page 502/503" \
+        'error_page 502 503 /50x.html;' "$vhost_src"
+    assert_contains "$(basename "$vhost") declara error_page 504" \
+        'error_page 504 /504x.html;' "$vhost_src"
     assert_contains "$(basename "$vhost") sirve /50x.html desde el root de errores" \
         'root /var/www/webcmp-errors;' "$vhost_src"
+    # Los dos location internos existen y comparten root.
+    has_50x_loc=no
+    has_504x_loc=no
+    case "$vhost_src" in *'location = /50x.html'*) has_50x_loc=si ;; esac
+    case "$vhost_src" in *'location = /504x.html'*) has_504x_loc=si ;; esac
+    assert_eq "$(basename "$vhost") tiene location /50x.html" 'si' "$has_50x_loc"
+    assert_eq "$(basename "$vhost") tiene location /504x.html" 'si' "$has_504x_loc"
 done
