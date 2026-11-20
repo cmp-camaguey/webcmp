@@ -2682,147 +2682,18 @@ TLS_KEY=
 # apunta a `root /var/www/webcmp-errors` con `internal;`: si el archivo no esta,
 # un Gunicorn caido produce un 404 DENTRO del manejo del error, que es el
 # sintoma mas imposible de diagnosticar que existe ("la pagina de error fallo").
+#
+# El HTML vive versionado en deploy/nginx/50x.html y no embebido aca: el sync de
+# artefactos root instala ese mismo archivo en cada deploy
+# (deploy/root-bundle.manifest), porque el boton "Actualizar" corre deploy.sh y
+# NO este instalador. Con el HTML embebido, un servidor ya instalado se quedaba
+# sin pagina hasta la proxima corrida de install.sh.
 write_error_page() {
-    local tmp
-    tmp=$(mktemp)
-    cat > "$tmp" <<'EOF'
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Servicio temporalmente no disponible</title>
-    <script>
-        (function () {
-            try {
-                var t = new URLSearchParams(window.location.search).get('theme') || localStorage.getItem('tabler-theme') || 'light';
-                document.documentElement.setAttribute('data-bs-theme', t === 'dark' ? 'dark' : 'light');
-            } catch (e) {
-                document.documentElement.setAttribute('data-bs-theme', 'light');
-            }
-        })();
-    </script>
-    <style>
-        :root { color-scheme: light; }
-        html[data-bs-theme="dark"] { color-scheme: dark; }
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f6f8fb;
-            color: #182433;
-        }
-        html[data-bs-theme="dark"] body {
-            background: #182433;
-            color: #f6f8fb;
-        }
-        .page-center {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container-tight {
-            width: 100%;
-            max-width: 32rem;
-            padding: 1rem;
-            box-sizing: border-box;
-        }
-        .empty {
-            text-align: center;
-            padding: 2rem 0;
-        }
-        .empty-img {
-            margin: 0 0 1rem;
-        }
-        .empty-img img {
-            height: 180px;
-            max-width: 100%;
-            width: auto;
-        }
-        .empty-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            line-height: 1.4;
-            margin: 0 0 0.5rem;
-        }
-        .empty-subtitle {
-            color: #667382;
-            margin: 0 auto 1rem;
-            line-height: 1.5;
-            max-width: 28rem;
-        }
-        html[data-bs-theme="dark"] .empty-subtitle {
-            color: #a8b1bd;
-        }
-        .retry {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            margin: 0;
-            font-size: 0.875rem;
-            color: #667382;
-        }
-        html[data-bs-theme="dark"] .retry {
-            color: #a8b1bd;
-        }
-        .spinner {
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid #dce1e7;
-            border-top-color: #2b4b9b;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            flex: 0 0 auto;
-        }
-        html[data-bs-theme="dark"] .spinner {
-            border-color: #304050;
-            border-top-color: #4299e1;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
-    <div class="page page-center">
-        <div class="container-tight">
-            <div class="empty">
-                <div class="empty-img">
-                    <img src="/static/dist/img/webp/maintenance.webp"
-                         height="180"
-                         alt="Servicio no disponible"
-                         onerror="this.style.display='none'" />
-                </div>
-                <p class="empty-title">Temporalmente no disponible</p>
-                <p class="empty-subtitle">
-                    El servicio del portal está reiniciando o no responde en este momento.
-                    Volverá a estar en línea en breve.
-                </p>
-                <p class="retry" aria-live="polite">
-                    <span class="spinner" aria-hidden="true"></span>
-                    Reintentando automáticamente…
-                </p>
-            </div>
-        </div>
-    </div>
-    <script>
-        (function () {
-            var attempts = 0;
-            var delays = [3000, 3000, 5000, 5000, 8000, 8000];
-            function retry() {
-                attempts += 1;
-                var delay = delays[Math.min(attempts - 1, delays.length - 1)];
-                setTimeout(function () {
-                    window.location.reload();
-                }, delay);
-            }
-            retry();
-        })();
-    </script>
-</body>
-</html>
-EOF
-    install_if_changed "$tmp" "$NGINX_ERROR_ROOT/50x.html" 0644 root root
-    rm -f "$tmp"
+    local src=$APP_DIR/deploy/nginx/50x.html
+    if [ -f "$src" ] || need_checkout 'la pagina 50x se copiaria desde deploy/nginx/50x.html'; then
+        [ -f "$src" ] || die "No existe $src: el checkout no trae la pagina 50x."
+        install_if_changed "$src" "$NGINX_ERROR_ROOT/50x.html" 0644 root root
+    fi
 }
 
 # El vhost del ejemplo, renderizado con los valores de esta instalacion.

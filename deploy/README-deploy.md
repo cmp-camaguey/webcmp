@@ -83,7 +83,13 @@ misma URL automaticamente, asi que durante un reinicio breve el usuario no queda
 en un error permanente: al volver el servicio, la recarga carga la pagina
 solicitada. Los ejemplos versionados en `deploy/nginx/webcmp.conf.example` y
 `deploy/nginx/webcmp-http.conf.example` ya incluyen el `error_page` y la
-ubicacion interna; `install.sh` genera el HTML en `NGINX_ERROR_ROOT`.
+ubicacion interna.
+
+El HTML esta versionado en `deploy/nginx/50x.html`. `install.sh` lo copia a
+`NGINX_ERROR_ROOT` en una instalacion nueva y el sync de artefactos root lo
+mantiene al dia en cada deploy (esta en `deploy/root-bundle.manifest`), asi que
+el boton «Actualizar» alcanza para actualizarlo. Sin ese archivo, Nginx
+responde el 404 de su propio manejo de error y la caida se diagnostica mal.
 
 ### Respaldo diario
 
