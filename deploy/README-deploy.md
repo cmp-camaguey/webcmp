@@ -75,6 +75,16 @@ esquema nuevo, sin `--clean` el restore falla a mitad.
 `install.sh` (`postgresql-client`); si se saca a mano, el proximo deploy con
 migraciones se niega a correr.
 
+### Pagina de error durante reinicios
+
+Nginx sirve `/var/www/webcmp-errors/50x.html` como respuesta estatica para
+`502`, `503` y `504` (Gunicorn caido o reiniciando). Esa pagina reintenta la
+misma URL automaticamente, asi que durante un reinicio breve el usuario no queda
+en un error permanente: al volver el servicio, la recarga carga la pagina
+solicitada. Los ejemplos versionados en `deploy/nginx/webcmp.conf.example` y
+`deploy/nginx/webcmp-http.conf.example` ya incluyen el `error_page` y la
+ubicacion interna; `install.sh` genera el HTML en `NGINX_ERROR_ROOT`.
+
 ### Respaldo diario
 
 El respaldo previo a migrar existe solo cuando hay algo que migrar: un mes sin

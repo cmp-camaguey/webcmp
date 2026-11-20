@@ -8,6 +8,7 @@ from apps.core.views import (
     EmailRecipientListDeleteView,
     EmailRecipientListListView,
     EmailRecipientListUpdateView,
+    EnvironmentApplyStatusView,
     EnvironmentConfigApplyView,
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
@@ -25,6 +26,11 @@ urlpatterns = [
         'entorno/aplicar/',
         EnvironmentConfigApplyView.as_view(),
         name='environment_apply',
+    ),
+    path(
+        'entorno/aplicar/estado/',
+        EnvironmentApplyStatusView.as_view(),
+        name='environment_apply_status',
     ),
     path(
         'entorno/mantenimiento/desactivar/',

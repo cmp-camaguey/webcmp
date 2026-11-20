@@ -387,11 +387,256 @@ mantenimiento y dejará de responder unos segundos.
             riesgo de que los dos se separen.
 {% endcomment %}
 <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancelar</button>
-<button type="submit" formaction="{% url 'core:environment_apply' %}" class="btn bg-blue-lt" {% if not can_write or not can_apply %}disabled{% endif %}>
+<button type="submit" id="env-apply-submit" formaction="{% url 'core:environment_apply' %}" data-apply-url="{% url 'core:environment_apply' %}" data-status-url="{% url 'core:environment_apply_status' %}" data-return-url="{{ request.path }}" class="btn bg-blue-lt" {% if not can_write or not can_apply %}disabled{% endif %}>
 <i class="icon ti ti-check" aria-hidden="true"></i> Aceptar
 </button>
 </div>
 </div>
 </div>
 </div>
+<div id="env-apply-overlay" class="d-none position-fixed top-0 start-0 w-100 h-100" style="z-index: 2000; background: rgba(var(--tblr-body-bg-rgb, 255, 255, 255), 0.92);" aria-live="polite" aria-hidden="true">
+<div class="container-tight py-5 h-100 d-flex align-items-center justify-content-center">
+<div class="card shadow-sm w-100" style="max-width: 36rem;">
+<div class="card-body text-center p-4 p-md-5">
+<div id="env-apply-spinner" class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+<h2 id="env-apply-title" class="h3 mb-2">Aplicando cambios…</h2>
+<p id="env-apply-message" class="text-muted mb-3">
+Guardando la configuración y solicitando el reinicio. No cierre esta página.
+</p>
+{% if dev_simulator %}
+<div id="env-apply-dev" class="alert alert-info text-start d-none mb-3" role="status">
+<div class="fw-semibold mb-1">Entorno de desarrollo</div>
+<ol class="mb-0 ps-3">
+<li>Ejecute <code>python manage.py dev_apply_env</code> en la terminal del proyecto.</li>
+<li>Reinicie <code>runserver</code> para que los cambios tomen efecto.</li>
+<li>Cuando el simulador termine, esta pantalla lo indicará.</li>
+</ol>
+</div>
+{% endif %}
+<div id="env-apply-error" class="alert alert-danger text-start d-none mb-3" role="alert"></div>
+<div class="d-flex justify-content-center gap-2 flex-wrap">
+<a id="env-apply-reload" href="{{ request.path }}" class="btn bg-blue-lt d-none">
+<i class="icon ti ti-refresh" aria-hidden="true"></i> Volver al panel
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
 {% endblock form_actions %}
+{% block extrajs %}
+{{ block.super }}
+<script>
+    (function () {
+      var applyButton = document.getElementById('env-apply-submit');
+      var form = applyButton ? applyButton.closest('form') : null;
+      var overlay = document.getElementById('env-apply-overlay');
+      if (!applyButton || !form || !overlay) {
+        return;
+      }
+
+      var title = document.getElementById('env-apply-title');
+      var message = document.getElementById('env-apply-message');
+      var devBox = document.getElementById('env-apply-dev');
+      var errorBox = document.getElementById('env-apply-error');
+      var spinner = document.getElementById('env-apply-spinner');
+      var reload = document.getElementById('env-apply-reload');
+      var applying = false;
+
+      function showOverlay() {
+        overlay.classList.remove('d-none');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+
+      function showError(text) {
+        if (errorBox) {
+          errorBox.textContent = text;
+          errorBox.classList.remove('d-none');
+        }
+        if (spinner) {
+          spinner.classList.add('d-none');
+        }
+        if (reload) {
+          reload.classList.remove('d-none');
+        }
+      }
+
+      function hideModal() {
+        var modalEl = document.getElementById('apply-changes-modal');
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+          return;
+        }
+        var instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+        instance.hide();
+      }
+
+      function delay(ms) {
+        return new Promise(function (resolve) {
+          window.setTimeout(resolve, ms);
+        });
+      }
+
+      function parseStatus(payload) {
+        if (!payload) {
+          return { state: null, pending: false };
+        }
+        var status = payload.apply_status || null;
+        return {
+          state: status ? status.state : null,
+          pending: Boolean(payload.apply_pending),
+          message: status ? status.text : ''
+        };
+      }
+
+      async function pollUntilReady(statusUrl, returnUrl, devSimulator) {
+        var attempts = 0;
+        var maxAttempts = devSimulator ? 180 : 90;
+        while (attempts < maxAttempts) {
+          attempts += 1;
+          try {
+            var response = await fetch(statusUrl, {
+              method: 'GET',
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+              cache: 'no-store'
+            });
+            if (response.ok) {
+              var contentType = response.headers.get('content-type') || '';
+              if (contentType.indexOf('application/json') !== -1) {
+                var data = await response.json();
+                var info = parseStatus(data);
+                if (devSimulator) {
+                  if (info.state === 'ok' && !info.pending) {
+                    if (title) { title.textContent = 'Cambios aplicados'; }
+                    if (message) {
+                      message.textContent = 'El simulador completó el reinicio lógico. Reinicie runserver si aún no lo hizo y luego vuelva al panel.';
+                    }
+                    if (spinner) { spinner.classList.add('d-none'); }
+                    if (reload) { reload.classList.remove('d-none'); }
+                    return;
+                  }
+                  if (info.state === 'failed' || info.state === 'stale') {
+                    showError(info.message || 'El reinicio no pudo completarse. Revise el estado del servidor.');
+                    return;
+                  }
+                } else {
+                  if (info.state === 'ok' && !info.pending) {
+                    window.location.href = returnUrl;
+                    return;
+                  }
+                  if (info.state === 'failed' || info.state === 'stale') {
+                    showError(info.message || 'El reinicio no pudo completarse. Revise el estado del servidor.');
+                    return;
+                  }
+                }
+              }
+            } else if ([502, 503, 504].indexOf(response.status) !== -1) {
+              // Nginx o proxy: el servicio está reiniciando.
+            } else if (response.status === 401 || response.status === 403) {
+              window.location.href = returnUrl;
+              return;
+            }
+          } catch (err) {
+            // Error de red/conexión rechazada durante el reinicio: esperado.
+          }
+          await delay(2000);
+        }
+        if (devSimulator) {
+          if (title) { title.textContent = 'Esperando al simulador'; }
+          if (message) {
+            message.textContent = 'Aún no se detecta el reinicio simulado. Ejecute el comando indicado y reinicie runserver; luego vuelva al panel.';
+          }
+          if (spinner) { spinner.classList.add('d-none'); }
+          if (reload) { reload.classList.remove('d-none'); }
+        } else {
+          showError('El sitio tardó demasiado en responder. Espere unos momentos y vuelva al panel para comprobar el estado.');
+        }
+      }
+
+      function setRestartingState(devSimulator) {
+        if (devSimulator) {
+          if (title) { title.textContent = 'Cambios guardados'; }
+          if (message) {
+            message.textContent = 'Se solicitó el reinicio simulado. Complete los pasos siguientes para aplicar los cambios.';
+          }
+          if (devBox) { devBox.classList.remove('d-none'); }
+        } else {
+          if (title) { title.textContent = 'Reiniciando servicios…'; }
+          if (message) {
+            message.textContent = 'Se están aplicando los cambios. El sitio puede tardar unos segundos en volver a responder.';
+          }
+          if (devBox) { devBox.classList.add('d-none'); }
+        }
+      }
+
+      async function submitApply(event) {
+        if (applying) {
+          event.preventDefault();
+          return;
+        }
+        if (!window.fetch) {
+          return;
+        }
+        event.preventDefault();
+        applying = true;
+        hideModal();
+        showOverlay();
+        if (errorBox) {
+          errorBox.textContent = '';
+          errorBox.classList.add('d-none');
+        }
+        if (spinner) { spinner.classList.remove('d-none'); }
+        if (reload) { reload.classList.add('d-none'); }
+
+        var applyUrl = applyButton.getAttribute('data-apply-url') || applyButton.getAttribute('formaction');
+        var statusUrl = applyButton.getAttribute('data-status-url');
+        var returnUrl = applyButton.getAttribute('data-return-url') || window.location.pathname;
+        var formData = new FormData(form);
+
+        try {
+          var response = await fetch(applyUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: formData
+          });
+          var contentType = response.headers.get('content-type') || '';
+          var data = contentType.indexOf('application/json') !== -1 ? await response.json() : null;
+
+          if (!response.ok || !data || data.ok === false) {
+            if (data && data.errors) {
+              applying = false;
+              overlay.classList.add('d-none');
+              overlay.setAttribute('aria-hidden', 'true');
+              if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit(applyButton);
+              } else {
+                form.submit();
+              }
+              return;
+            }
+            var errMsg = (data && data.message) || 'No se pudo aplicar la configuración.';
+            showError(errMsg);
+            if (title) { title.textContent = 'No se aplicaron los cambios'; }
+            if (message) { message.textContent = 'Revise el mensaje y vuelva al panel para corregirlo.'; }
+            applying = false;
+            return;
+          }
+
+          var devSimulator = Boolean(data.dev_simulator);
+          setRestartingState(devSimulator);
+          await pollUntilReady(data.status_url || statusUrl, data.redirect_url || returnUrl, devSimulator);
+        } catch (err) {
+          // La petición pudo cortarse justo al iniciar el reinicio; pasar a polling.
+          if (title) { title.textContent = 'Reiniciando servicios…'; }
+          if (message) {
+            message.textContent = 'Se perdió la conexión al aplicar. Esperando a que el sitio vuelva a responder…';
+          }
+          await pollUntilReady(statusUrl, returnUrl, false);
+        }
+      }
+
+      applyButton.addEventListener('click', submitApply);
+    })();
+</script>
+{% endblock extrajs %}

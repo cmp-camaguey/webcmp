@@ -1518,6 +1518,75 @@ class EnvironmentApplyViewTests(EnvironmentViewTestBase):
         self.assertFalse(self.request_path.exists())
         self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
 
+    def test_apply_ajax_saves_and_returns_restarting_payload(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            self.apply_url,
+            self._payload(NOTIFICATIONS_MAX_VISIBLE='25'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['restarting'])
+        self.assertEqual(data['redirect_url'], str(self.url))
+        self.assertIn('entorno/aplicar/estado', data['status_url'])
+        self.assertIn('NOTIFICATIONS_MAX_VISIBLE=25', self.env_path.read_text(encoding='utf-8'))
+        self.assertTrue(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_apply_ajax_with_invalid_form_returns_errors(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            self.apply_url,
+            self._payload(SITE_URL='ftp://cmp.cu/'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['ok'])
+        self.assertIn('errors', data)
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
+    def test_apply_ajax_with_pending_request_returns_conflict(self):
+        self.client.force_login(self.superuser)
+        self.request_path.write_text('{"requested_by": "previo"}', encoding='utf-8')
+
+        response = self.client.post(
+            self.apply_url,
+            self._payload(NOTIFICATIONS_MAX_VISIBLE='25'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 409)
+        data = response.json()
+        self.assertFalse(data['ok'])
+        self.assertIn('redirect_url', data)
+        self.assertIn('reinicio en curso', data['message'])
+
+    def test_apply_ajax_when_restart_request_fails_restores_maintenance(self):
+        self.client.force_login(self.superuser)
+        override = override_settings(
+            ENV_APPLY_REQUEST_FILE=Path(self.tempdir) / 'no-existe' / 'apply-request',
+            ENV_APPLY_STATUS_FILE=self.status_path,
+        )
+        override.enable()
+        self.addCleanup(override.disable)
+
+        response = self.client.post(
+            self.apply_url,
+            self._payload(NOTIFICATIONS_MAX_VISIBLE='25'),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertFalse(data['ok'])
+        self.assertFalse(SiteConfiguration.get_instance().maintenance_mode)
+
 
 class EnvironmentMaintenanceDisableViewTests(EnvironmentViewTestBase):
     """Salida directa del mantenimiento que enciende el propio panel."""
@@ -1580,3 +1649,71 @@ class EnvironmentMaintenanceDisableViewTests(EnvironmentViewTestBase):
         response = self.client.get(self.url)
 
         self.assertNotContains(response, self.disable_url)
+
+
+class EnvironmentApplyStatusViewTests(EnvironmentViewTestBase):
+    """Endpoint JSON usado por el panel para hacer polling del reinicio."""
+
+    def setUp(self):
+        super().setUp()
+        self.status_url = reverse('core:environment_apply_status')
+        self.request_path = Path(self.tempdir) / 'apply-request'
+        self.status_path = Path(self.tempdir) / 'apply-status.json'
+        override = override_settings(
+            ENV_APPLY_REQUEST_FILE=self.request_path,
+            ENV_APPLY_STATUS_FILE=self.status_path,
+        )
+        override.enable()
+        self.addCleanup(override.disable)
+
+    def _set_maintenance(self, enabled: bool):
+        site = SiteConfiguration.get_instance()
+        site.maintenance_mode = enabled
+        site.save()
+
+    def test_superuser_gets_apply_status_payload(self):
+        self.client.force_login(self.superuser)
+        self._set_maintenance(True)
+        self.status_path.write_text(
+            json.dumps({'status': 'ok', 'finished_at': '2026-11-10T12:00:05+00:00'}),
+            encoding='utf-8',
+        )
+
+        response = self.client.get(self.status_url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['apply_status']['state'], 'ok')
+        self.assertFalse(data['apply_pending'])
+        self.assertTrue(data['maintenance_mode'])
+        self.assertIn('dev_simulator', data)
+
+    def test_staff_cannot_access_apply_status(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(self.status_url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_cannot_access_apply_status(self):
+        response = self.client.get(self.status_url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_apply_status_rejects_post(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(self.status_url)
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_page_includes_restart_overlay_and_status_url(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, 'id="env-apply-overlay"')
+        self.assertContains(response, 'id="env-apply-submit"')
+        self.assertContains(response, 'data-status-url="' + self.status_url + '"')
+        self.assertContains(response, 'Aplicando cambios')
