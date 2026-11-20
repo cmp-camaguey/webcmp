@@ -37,7 +37,7 @@
       <div class="mt-2">
         {% url 'meteo:reporte_download' object.uuid as weather_report_pdf_url %}
         <button type="button"
-                class="btn btn-pill btn-outline-primary btn-sm"
+                class="btn btn-pill bg-blue-lt btn-sm"
                 data-bs-toggle="modal"
                 data-bs-target="#documentPdfModal"
                 data-pdf-url="{{ weather_report_pdf_url }}?inline=1"

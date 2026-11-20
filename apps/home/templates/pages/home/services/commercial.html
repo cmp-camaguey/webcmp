@@ -57,7 +57,7 @@
                     <div class="d-flex flex-wrap justify-content-end gap-2">
                       {% if subscription.latest_invoice_uuid %}
                         <button type="button"
-                                class="btn btn-pill btn-outline-secondary"
+                                class="btn btn-pill bg-azure-lt"
                                 data-bs-toggle="modal"
                                 data-bs-target="#documentPdfModal"
                                 data-pdf-url="{% url 'commercial:factura_download' subscription.latest_invoice_uuid %}?inline=1"
@@ -69,7 +69,7 @@
                         {% if certificate and certificate.pdf %}
                           {% url 'commercial:certificado_pdf' certificate.uuid as cert_pdf_url %}
                           <button type="button"
-                                  class="btn btn-pill btn-outline-primary"
+                                  class="btn btn-pill bg-blue-lt"
                                   data-bs-toggle="modal"
                                   data-bs-target="#documentPdfModal"
                                   data-pdf-url="{{ cert_pdf_url }}?inline=1"
@@ -82,8 +82,7 @@
                         {% endif %}
                       {% endwith %}
                       {% if subscription.payment_status == 'pending' and subscription.payment_method == 'qr' %}
-                        <a href="{% url 'home:payment' %}"
-                           class="btn btn-pill btn-outline-primary">
+                        <a href="{% url 'home:payment' %}" class="btn btn-pill bg-blue-lt">
                           <i class="icon ti ti-qrcode"></i> Pagar con QR
                         </a>
                       {% elif subscription.payment_status == 'requested' %}

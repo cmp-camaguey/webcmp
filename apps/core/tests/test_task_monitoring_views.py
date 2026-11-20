@@ -107,7 +107,7 @@ class TaskMonitoringViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         # Botones de acción con clase btn-icon y tooltip.
-        self.assertIn('btn-icon btn-outline-danger btn-sm', content)
+        self.assertIn('btn-icon bg-red-lt btn-sm', content)
         self.assertIn('data-bs-toggle="tooltip"', content)
         # Iconos de las acciones (traceback / reintentar / eliminar).
         self.assertIn('ti-code', content)
@@ -403,12 +403,16 @@ class TaskMonitoringViewTests(TestCase):
             content = self.client.get(self.url, params).content.decode()
             self.assertEqual(content.count('data-tasks-filter'), 3)
             # Solo uno de los tres lleva la clase active, y el marcado depende
-            # del filtro pedido, no de un valor fijo.
-            activos = sum(
-                len(re.findall(rf'btn-outline-{variante}\s+active', content))
-                for variante in ('secondary', 'danger', 'info')
-            )
+            # del filtro pedido, no de un valor fijo ni de un color concreto.
+            botones = re.findall(r'<a[^>]*data-tasks-filter[^>]*>', content, re.S)
+            activos = sum(bool(re.search(r'\bactive\b', b)) for b in botones)
             self.assertEqual(activos, 1, f'activos={activos} para status={status!r}')
+            # El resaltado no depende de la clase `active` de Tabler: bg-*-lt
+            # la anula. El botón seleccionado se distingue por su color -lt.
+            seleccionados = sum('bg-blue-lt' in b for b in botones)
+            self.assertEqual(
+                seleccionados, 1, f'seleccionados={seleccionados} para status={status!r}'
+            )
 
     def test_active_filter_is_exposed_to_the_template(self):
         """La vista expone current_status para pintar el filtro aplicado."""

@@ -72,10 +72,10 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='EMERGENCY_BANNER_ENABLED',
-        label='Franja de aviso de emergencia',
+        label='Avisos de emergencia',
         kind='bool',
         group='notifications',
-        width='full',
+        width='half',
         help_text=('Muestra el aviso vigente en el portal público, sin sesión y sin JavaScript.'),
     ),
     EnvField(
@@ -83,14 +83,15 @@ EDITABLE_FIELDS = (
         label='Avisos operativos',
         kind='bool',
         group='notifications',
-        width='full',
+        width='half',
         help_text='Apagado no crea avisos nuevos. La poda de los viejos sigue corriendo.',
     ),
     EnvField(
         key='NOTIFICATIONS_MAX_VISIBLE',
-        label='Entradas visibles en el navbar',
+        label='Avisos visibles',
         kind='int',
         group='notifications',
+        width='full',
         placeholder='Ej.: 10',
         min_value=1,
         max_value=100,
@@ -98,9 +99,10 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='NOTIFICATIONS_WARNING_HORIZON_HOURS',
-        label='Antelación del aviso de vencimiento (horas)',
+        label='Antelación vencimiento (h)',
         kind='int',
         group='notifications',
+        width='full',
         placeholder='Ej.: 48',
         min_value=1,
         max_value=720,
@@ -108,9 +110,10 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='NOTIFICATIONS_RETENTION_READ',
-        label='Retención de avisos leídos (días)',
+        label='Retención leídos (días)',
         kind='int',
         group='notifications',
+        width='full',
         placeholder='Ej.: 30',
         min_value=1,
         max_value=3650,
@@ -118,9 +121,10 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='NOTIFICATIONS_RETENTION_UNREAD',
-        label='Retención de avisos no leídos (días)',
+        label='Retención no leídos (días)',
         kind='int',
         group='notifications',
+        width='full',
         placeholder='Ej.: 90',
         min_value=1,
         max_value=3650,
@@ -128,7 +132,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='INVOICE_PENDING_REMINDER_DAYS',
-        label='Recordatorio de factura pendiente (días)',
+        label='Recordatorio factura (días)',
         kind='int',
         group='notifications',
         width='full',
@@ -211,7 +215,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='LDAP_START_TLS',
-        label='STARTTLS en LDAP',
+        label='STARTTLS',
         kind='bool',
         group='ldap',
         source='environ',
@@ -250,7 +254,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='LDAP_USER_SEARCH_BASE',
-        label='Base de búsqueda de usuarios',
+        label='Base de usuarios',
         kind='text',
         group='ldap',
         placeholder='Ej.: ou=users,dc=cmp,dc=cu',
@@ -259,7 +263,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='LDAP_GROUP_SEARCH_BASE',
-        label='Base de búsqueda de grupos',
+        label='Base de grupos',
         kind='text',
         group='ldap',
         placeholder='Ej.: ou=groups,dc=cmp,dc=cu',
@@ -287,7 +291,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='UPDATE_REPO_URL',
-        label='Repositorio de actualizaciones',
+        label='Repositorio',
         kind='text',
         group='updates',
         width='full',
@@ -296,7 +300,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='UPDATE_REPO_API',
-        label='API del repositorio',
+        label='API',
         kind='url',
         group='updates',
         width='full',
@@ -305,7 +309,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='UPDATE_CHECK_TTL',
-        label='Caché del chequeo (segundos)',
+        label='Caché (seg.)',
         kind='int',
         group='updates',
         placeholder='Ej.: 300',
@@ -315,7 +319,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='UPDATE_CHECK_TIMEOUT',
-        label='Timeout del chequeo (segundos)',
+        label='Timeout (seg.)',
         kind='int',
         group='updates',
         placeholder='Ej.: 15',
@@ -334,7 +338,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='OBS_AUTOMATIC',
-        label='Observaciones automáticas por FTP',
+        label='Observaciones automáticas',
         kind='bool',
         group='ftp',
         width='full',
@@ -346,7 +350,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='FTP_OBS_HOST',
-        label='Host FTP de observaciones',
+        label='Host FTP',
         kind='text',
         group='ftp',
         placeholder='Ej.: ftp.cmp.cu',
@@ -354,7 +358,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='FTP_OBS_PORT',
-        label='Puerto FTP de observaciones',
+        label='Puerto FTP',
         kind='int',
         group='ftp',
         placeholder='Ej.: 990',
@@ -364,7 +368,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='FTP_OBS_USER',
-        label='Usuario FTP de observaciones',
+        label='Usuario FTP',
         kind='text',
         group='ftp',
         placeholder='Ej.: observaciones',
@@ -372,7 +376,7 @@ EDITABLE_FIELDS = (
     ),
     EnvField(
         key='FTP_OBS_PASS',
-        label='Contraseña FTP de observaciones',
+        label='Contraseña FTP',
         kind='password',
         group='ftp',
         placeholder='Ej.: contraseña nueva',

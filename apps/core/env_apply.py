@@ -78,7 +78,7 @@ def request_apply(path, user) -> dict:
     return payload
 
 
-def pending_request(path, now=None) -> dict | None:
+def pending_request(path, now=None, simulator=False) -> dict | None:
     """Petición de reinicio que nadie recogió, o `None` si no hay ninguna.
 
     El ejecutor borra el archivo ANTES de hacer nada, así que una petición que
@@ -86,6 +86,9 @@ def pending_request(path, now=None) -> dict | None:
     Sin esta comprobación el panel no distingue "nadie la recogió" de "nunca se
     pidió", y las dos se ven igual: ningún aviso. Es el estado en el que queda un
     servidor al que le falta la unidad `systemd` que vigila el archivo.
+
+    En desarrollo (`simulator=True`) el aviso señala el comando que hace de
+    ejecutor en vez de remitir a `systemctl`, que no existe en ese perfil.
     """
     try:
         modified = os.stat(path).st_mtime
@@ -100,8 +103,11 @@ def pending_request(path, now=None) -> dict | None:
     raw = _read_json(path) or {}
     return {
         'tone': 'warning',
+        'color': _COLORS['warning'],
         'icon': 'plug-off',
-        'text': _pending_text(str(raw.get('requested_by') or '').strip(), modified),
+        'text': _pending_text(
+            str(raw.get('requested_by') or '').strip(), modified, simulator=simulator
+        ),
     }
 
 
@@ -129,6 +135,7 @@ def apply_status(path, now=None) -> dict | None:
     return {
         'state': state,
         'tone': _TONES[state],
+        'color': _COLORS[_TONES[state]],
         'icon': _ICONS[state],
         'text': _status_text(
             state,
@@ -147,6 +154,15 @@ _TONES = {
     'ok': 'success',
     'failed': 'danger',
     'stale': 'warning',
+}
+
+# Mismos nombres de color que los badges del panel (bg-*-lt). La plantilla no
+# elige colores: el estado ya trae el suyo para iconos y botones con esa clase.
+_COLORS = {
+    'info': 'blue',
+    'success': 'green',
+    'danger': 'red',
+    'warning': 'orange',
 }
 
 _ICONS = {
@@ -211,11 +227,17 @@ def _status_text(state, *, requested_by, started, finished, error) -> str:
     )
 
 
-def _pending_text(requested_by: str, modified: float) -> str:
+def _pending_text(requested_by: str, modified: float, *, simulator: bool = False) -> str:
     who = f' (solicitada por {requested_by})' if requested_by else ''
     clock = _clock(datetime.fromtimestamp(modified, tz=UTC))
-    return (
-        f'La petición de reinicio de las {clock} quedó sin recoger{who}. '
+    head = f'La petición de reinicio de las {clock} quedó sin recoger{who}. '
+    if simulator:
+        return head + (
+            'En desarrollo no hay servicio que la recoja: ejecute '
+            '`python manage.py dev_apply_env` para simular el reinicio y reinicie '
+            '`runserver` para que los cambios tomen efecto.'
+        )
+    return head + (
         'Ningún proceso la procesó: la unidad que la vigila no está instalada o no está '
         'activa en el servidor, así que los cambios guardados siguen sin aplicarse. '
         'Revise systemctl status webcmp-apply.path en el servidor.'

@@ -36,7 +36,7 @@
     <!-- Botón para editar -->
     <a href="{% url 'core:email_recipient_update' object.uuid %}"
        type="button"
-       class="btn btn-icon btn-outline-warning btn-sm"
+       class="btn btn-icon bg-orange-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        aria-label="Editar"
@@ -45,7 +45,7 @@
     </a>
     <!-- Botón para eliminar -->
     <button type="button"
-            class="btn btn-icon btn-outline-danger btn-sm action-btn"
+            class="btn btn-icon bg-red-lt btn-sm action-btn"
             data-uuid="{{ object.uuid }}"
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"

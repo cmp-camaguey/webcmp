@@ -14,7 +14,7 @@
   <td class="text-end">
     <a href="{% url 'meteo:reporte_download' object.uuid %}"
        type="button"
-       class="btn btn-icon btn-outline-success btn-sm"
+       class="btn btn-icon bg-green-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        aria-label="Descargar Reporte"
@@ -22,7 +22,7 @@
       <i class="icon ti ti-download"></i>
     </a>
     <button type="button"
-            class="btn btn-icon btn-outline-primary btn-sm"
+            class="btn btn-icon bg-blue-lt btn-sm"
             data-bs-toggle="modal"
             data-bs-target="#documentPdfModal"
             data-pdf-url="{% url 'meteo:reporte_download' object.uuid %}?inline=1"
@@ -33,7 +33,7 @@
     </button>
     <a href="{% url 'meteo:tiempo_manana_update' object.uuid %}"
        type="button"
-       class="btn btn-icon btn-outline-warning btn-sm"
+       class="btn btn-icon bg-orange-lt btn-sm"
        data-bs-toggle="tooltip"
        data-bs-placement="bottom"
        aria-label="Editar"
@@ -41,7 +41,7 @@
       <i class="icon ti ti-edit"></i>
     </a>
     <button type="button"
-            class="btn btn-icon btn-outline-danger btn-sm action-btn"
+            class="btn btn-icon bg-red-lt btn-sm action-btn"
             data-uuid="{{ object.uuid }}"
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"

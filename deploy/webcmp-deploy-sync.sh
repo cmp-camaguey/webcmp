@@ -165,6 +165,17 @@ manifest_tmp="$TMP_DIR/manifest"
 git -C "$SYNC_MIRROR" show "$current_sha:deploy/root-bundle.manifest" > "$manifest_tmp" 2>/dev/null \
     || die "No se pudo extraer root-bundle.manifest del SHA $current_sha."
 
+# Crea el directorio destino si falta. `install` no crea los padres, y hay
+# destinos que solo existian despues de correr install.sh:
+# /var/www/webcmp-errors es el caso real (la pagina 50x). En un servidor ya
+# instalado, el primer deploy que traiga un archivo nuevo moriria con un
+# "No such file or directory" que no dice que falta el directorio.
+ensure_dest_dir() {
+    local dest_dir
+    dest_dir=$(dirname "$1")
+    [ -d "$dest_dir" ] || install -d -m 0755 -o root -g root "$dest_dir"
+}
+
 # --- Instalar archivos ---
 
 installed=0
@@ -201,6 +212,7 @@ while read -r src_path dest_path mode owner_group extra; do
     fi
 
     # Instalar atomicamente
+    ensure_dest_dir "$dest_path"
     install -m "$mode" -o "${owner_group%%:*}" -g "${owner_group##*:}" \
         "$tmp_file" "$dest_path.tmp.$$"
     mv -T "$dest_path.tmp.$$" "$dest_path"

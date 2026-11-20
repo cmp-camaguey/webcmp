@@ -46,7 +46,7 @@
                value="{{ form.commercial_registry.value|default:'' }}" />
         {% if perms.core.change_companysettings %}
           <button type="button"
-                  class="btn btn-outline-secondary"
+                  class="btn bg-azure-lt"
                   id="btn-open-modal"
                   data-bs-toggle="modal"
                   data-bs-target="#modal-company-settings"
@@ -76,7 +76,7 @@
             <h3 class="subheader text-muted fw-medium mb-0">Añadir servicios</h3>
             <button type="button"
                     id="add-item"
-                    class="btn btn-sm btn-icon btn-outline-primary"
+                    class="btn btn-sm btn-icon bg-blue-lt"
                     data-bs-toggle="tooltip"
                     data-bs-placement="bottom"
                     title="Añadir servicio">
@@ -121,7 +121,7 @@
                     </div>
                     <div class="ms-2">
                       <button type="button"
-                              class="btn btn-sm btn-icon btn-outline-danger remove-row"
+                              class="btn btn-sm btn-icon bg-red-lt remove-row"
                               data-bs-toggle="tooltip"
                               data-bs-placement="bottom"
                               title="Eliminar servicio">
@@ -141,7 +141,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3 class="subheader text-muted fw-medium mb-0">Imputación a centros de costo</h3>
           <button type="button"
-                  class="btn btn-sm btn-icon btn-outline-primary add-cost-row"
+                  class="btn btn-sm btn-icon bg-blue-lt add-cost-row"
                   data-bs-toggle="tooltip"
                   data-bs-placement="bottom"
                   title="Añadir centro de costo">
@@ -198,7 +198,7 @@
                 <div class="d-none">{{ cost_form.DELETE }}</div>
                 <div class="ms-2">
                   <button type="button"
-                          class="btn btn-sm btn-icon btn-outline-danger remove-cost-row"
+                          class="btn btn-sm btn-icon bg-red-lt remove-cost-row"
                           data-bs-toggle="tooltip"
                           data-bs-placement="bottom"
                           title="Eliminar centro de costo">
@@ -332,7 +332,7 @@
               <button type="button"
                       class="btn btn-link link-secondary me-auto"
                       data-bs-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary ms-auto">Guardar</button>
+              <button type="submit" class="btn bg-blue-lt ms-auto">Guardar</button>
             </div>
           </form>
         </div>
@@ -702,7 +702,7 @@
         let htmlResult = `
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Solicitudes por facturar</h5>
-            <button type="button" class="btn btn-outline-secondary" id="switch-to-manual-btn">
+            <button type="button" class="btn bg-azure-lt" id="switch-to-manual-btn">
               <i class="icon me-1 ti ti-plus"></i>
               Facturación manual
             </button>

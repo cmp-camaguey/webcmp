@@ -39,7 +39,7 @@
                         {% if service.pdf %}
                           {% url 'home:service_pdf' service.uuid as service_pdf_url %}
                           <button type="button"
-                                  class="btn btn-pill btn-outline-primary"
+                                  class="btn btn-pill bg-blue-lt"
                                   data-bs-toggle="modal"
                                   data-bs-target="#documentPdfModal"
                                   data-pdf-url="{{ service_pdf_url }}?inline=1"

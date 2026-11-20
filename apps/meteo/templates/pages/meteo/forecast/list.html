@@ -8,7 +8,7 @@
         {% for forecast in forecasts %}
           <a href="{% url 'meteo:pronostico_update' forecast.uuid %}"
              type="button"
-             class="btn btn-icon btn-outline-warning btn-sm"
+             class="btn btn-icon bg-orange-lt btn-sm"
              data-bs-toggle="tooltip"
              data-bs-placement="bottom"
              title="Editar"
@@ -16,7 +16,7 @@
             <i class="icon ti ti-edit"></i>
           </a>
           <button type="button"
-                  class="btn btn-icon btn-outline-danger btn-sm action-btn"
+                  class="btn btn-icon bg-red-lt btn-sm action-btn"
                   data-uuid="{{ forecast.uuid }}"
                   data-bs-toggle="tooltip"
                   data-bs-placement="bottom"
@@ -26,7 +26,7 @@
           </button>
         {% endfor %}
       {% else %}
-        <a href="{{ url_create }}" class="btn btn-primary">{{ btn }}</a>
+        <a href="{{ url_create }}" class="btn bg-blue-lt">{{ btn }}</a>
       {% endif %}
     </div>
   </div>
@@ -49,7 +49,7 @@
                        value="{{ date }}"
                        data-tempus="date"
                        autocomplete="off" />
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn bg-blue-lt">
                   <i class="icon ti ti-refresh"></i>
                   Actualizar
                 </button>

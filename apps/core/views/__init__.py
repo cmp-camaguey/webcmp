@@ -10,6 +10,7 @@ from apps.core.views.email_recipients import (
     EmailRecipientListUpdateView,
 )
 from apps.core.views.env_config import (
+    EnvironmentApplyStatusView,
     EnvironmentConfigApplyView,
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
@@ -27,6 +28,7 @@ __all__ = [
     'EmailRecipientListDeleteView',
     'EmailRecipientListListView',
     'EmailRecipientListUpdateView',
+    'EnvironmentApplyStatusView',
     'EnvironmentConfigApplyView',
     'EnvironmentConfigView',
     'EnvironmentMaintenanceDisableView',

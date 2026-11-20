@@ -199,7 +199,7 @@
               <td class="align-middle text-center">
                 <input type="checkbox" name="{{ form.DELETE.html_name }}" value="on" hidden>
                 <button type="button"
-                        class="btn btn-icon btn-outline-danger btn-sm delete-coauthor"
+                        class="btn btn-icon bg-red-lt btn-sm delete-coauthor"
                         title="Eliminar coautor">
                   <i class="icon ti ti-trash"></i>
                 </button>
@@ -268,8 +268,7 @@
             <div class="row">
               <div class="col-12 text-end">
                 <input type="checkbox" name="{{ form.DELETE.html_name }}" value="on" hidden>
-                <button type="button"
-                        class="btn btn-outline-danger btn-sm delete-coauthor-mobile">Eliminar Coautor</button>
+                <button type="button" class="btn bg-red-lt btn-sm delete-coauthor-mobile">Eliminar Coautor</button>
               </div>
             </div>
           </div>
@@ -279,7 +278,7 @@
   </div>
   <button type="button"
           id="add-coauthor"
-          class="btn btn-pill btn-outline-success btn-sm mt-3">Añadir Coautor</button>
+          class="btn btn-pill bg-green-lt btn-sm mt-3">Añadir Coautor</button>
   </div>
   </div>
   </div>
@@ -319,7 +318,7 @@
           <td><input type="text" class="form-control" name="coauthors-${index}-orcid_id" placeholder="ORCID ID"></td>
           <td class="align-middle text-center">
             <input type="checkbox" name="coauthors-${index}-DELETE" value="on" hidden>
-            <button type="button" class="btn btn-icon btn-outline-danger btn-sm delete-coauthor" title="Eliminar coautor">
+            <button type="button" class="btn btn-icon bg-red-lt btn-sm delete-coauthor" title="Eliminar coautor">
               <i class="icon ti ti-trash"></i>
             </button>
           </td>
@@ -338,7 +337,7 @@
             <div class="row">
               <div class="col-12 text-end">
                 <input type="checkbox" name="coauthors-${index}-DELETE" value="on" hidden>
-                <button type="button" class="btn btn-outline-danger btn-sm delete-coauthor-mobile">Eliminar Coautor</button>
+                <button type="button" class="btn bg-red-lt btn-sm delete-coauthor-mobile">Eliminar Coautor</button>
               </div>
             </div>
           </div>
