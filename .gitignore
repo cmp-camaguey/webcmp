@@ -274,6 +274,28 @@ odd/
 # Export del contrato OpenAPI: se genera en /api/schema/ y no se versiona.
 /schema.yml
 
+### Guías de usuario por rol (administrador, editor, cliente) ###
+# Material de entrega, no parte del proyecto: las fuentes HTML y los PDF se
+# regeneran con `python guias-usuario/generar.py` y no se versionan.
+/guias-usuario/
+
+### Documentación de ingeniería (arc42, UML, ER) ###
+# Set de documentación y diagramas de ingeniería del sistema: material de
+# entrega, no parte del proyecto; se escribe en Markdown + Mermaid y no se
+# versiona.
+/docs/ingenieria/
+
+### Informes legales y normativos ###
+# Análisis del marco legal aplicable al portal: material de entrega, no parte
+# del proyecto; el PDF se regenera con `python docs/legal/generar.py` y no se
+# versiona.
+/docs/legal/
+
+### Gacetas oficiales de consulta ###
+# Ejemplares de la Gaceta Oficial de Cuba utilizados como fuente para el análisis
+# legal. Material de consulta externa, no parte del proyecto; no se versionan.
+/docs/GOf/
+
 ### Estado local de herramientas ###
 # Hook personal por máquina, encadenado desde `.githooks/pre-commit`. Nunca se
 # versiona: el proyecto no depende del revisor que corre en tu equipo.
