@@ -182,3 +182,15 @@ class DataSubjectRightsView(TermsChangeNoticeMixin, FormView):
             'según la normativa vigente.',
         )
         return super().form_valid(form)
+
+
+class InstitutionalInformationView(TemplateView):
+    template_name = 'pages/home/institution/institutional_information.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Información institucional'
+        context['parent'] = 'institucion'
+        context['segment'] = 'institutional_information'
+        context['company'] = CompanySettings.get_instance()
+        return context

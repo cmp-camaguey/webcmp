@@ -200,15 +200,6 @@
                   <a class="link-secondary"
                      href="{% url 'home:institution_cookie_policy' %}">Política de cookies</a>
                 </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes somos</a>
-                </li>
               </ul>
             </div>
           </div>
@@ -218,7 +209,7 @@
               <p class="small mb-1">
                 <strong>Delegado de Protección de Datos:</strong>
                 <br>
-                <a href="mailto:direccion@cmw.insmet.cu" class="link-primary">direccion@cmw.insmet.cu</a>
+                <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
               </p>
               <p class="small mb-0">
                 <strong>Teléfono:</strong> {{ company.telefonos }}
@@ -234,8 +225,8 @@
                 <li><strong>Prórroga:</strong> Excepcionalmente 30 días hábiles adicionales, notificándole la causa.</li>
                 <li><strong>Verificación de identidad:</strong> Podremos solicitar documento acreditativo si es necesario.</li>
                 <li><strong>Gratuidad:</strong> El ejercicio de estos derechos es gratuito.</li>
-                <li><strong>Contacto DPD:</strong> <a href="mailto:direccion@cmw.insmet.cu"
-                                                      class="link-primary">direccion@cmw.insmet.cu</a></li>
+                <li><strong>Contacto DPD:</strong> <a href="mailto:{{ contact_email }}"
+                                                      class="link-primary">{{ contact_email }}</a></li>
               </ul>
             </div>
           </div>

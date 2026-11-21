@@ -69,10 +69,12 @@
             <div class="card-body">
               <h3 class="subheader text-muted fw-medium mb-3">1. Responsable del tratamiento</h3>
               <p class="mb-1"><strong>Titular:</strong> {{ company.nombre }}</p>
-              <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
-              <p class="mb-1"><strong>Correo electrónico:</strong> <a href="mailto:direccion@cmw.insmet.cu"
-                                                                      class="link-primary">direccion@cmw.insmet.cu</a></p>
-              <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
+              <p class="mb-0">
+                <strong>Contacto:</strong>
+                <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
+                ·
+                <a href="{% url 'home:institution_legal_notice' %}" class="link-primary">Ver aviso legal</a>
+              </p>
               <h3 class="subheader text-muted fw-medium mt-4 mb-3">2. Datos que tratamos y finalidad</h3>
               <p class="mb-2">El portal trata las siguientes categorías de datos personales:</p>
               <ul class="list-unstyled list-separated gap-2 mb-3">
@@ -121,7 +123,7 @@
               </ul>
               <p class="mb-3">
                 Para ejercer tus derechos, envía una solicitud a
-                <a href="mailto:direccion@cmw.insmet.cu" class="link-primary">direccion@cmw.insmet.cu</a>
+                <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
                 indicando el derecho que ejercitas y adjuntando copia de tu documento de identidad.
               </p>
               <h3 class="subheader text-muted fw-medium mt-4 mb-3">7. Medidas de seguridad</h3>
@@ -149,15 +151,6 @@
                 <li>
                   <a class="link-secondary"
                      href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes somos</a>
                 </li>
               </ul>
             </div>

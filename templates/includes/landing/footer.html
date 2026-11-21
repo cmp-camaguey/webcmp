@@ -26,13 +26,14 @@
               <div class="subheader mb-3">Contacto</div>
               <ul class="list-unstyled list-separated gap-2">
                 <li>
-                  <a class="link-secondary" href="tel:+5332261284">
-                    <i class="icon ti ti-phone me-1"></i>+53 32 261284
+                  <a class="link-secondary"
+                     href="tel:+53{{ company.telefonos|default:'32261284' }}">
+                    <i class="icon ti ti-phone me-1"></i>+53 {{ company.telefonos|default:'32 261284' }}
                   </a>
                 </li>
                 <li>
-                  <a class="link-secondary" href="mailto:direccion@cmw.insmet.cu">
-                    <i class="icon ti ti-mail me-1"></i>direccion@cmw.insmet.cu
+                  <a class="link-secondary" href="mailto:{{ contact_email }}">
+                    <i class="icon ti ti-mail me-1"></i>{{ contact_email }}
                   </a>
                 </li>
               </ul>
@@ -42,6 +43,10 @@
               <ul class="list-unstyled list-separated gap-2">
                 <li>
                   <a class="link-secondary" href="{% url 'home:publications' %}">Publicaciones</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_information' %}">Información institucional</a>
                 </li>
                 <li>
                   <a class="link-secondary"
@@ -64,11 +69,13 @@
           </div>
         </div>
         <div class="col-lg-4 ml-auto">
-          <div class="text-secondary">
-            <h4>Centro Meteorológico Provincial de Camagüey</h4>
-            <p class="text-justify fs-5">El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera.</p>
-            <p class="text-justify fs-5">Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible.</p>
-          </div>
+          <div class="subheader mb-3">Centro Meteorológico Provincial de Camagüey</div>
+          <p class="text-secondary mb-2">
+            El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera.
+          </p>
+          <p class="text-secondary mb-0">
+            Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible.
+          </p>
         </div>
       </div>
       <hr class="my-3" />
