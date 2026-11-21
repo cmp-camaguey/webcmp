@@ -9,6 +9,7 @@ from apps.home.views.home.views import IndexView
 from apps.home.views.institucion.institucional.views import (
     AboutView,
     CookiePolicyView,
+    DataSubjectRightsView,
     LegalNoticeView,
     MissionView,
     PrivacyPolicyView,
@@ -164,6 +165,11 @@ urlpatterns = [
         'institucion/politica-cookies/',
         CookiePolicyView.as_view(),
         name='institution_cookie_policy',
+    ),
+    path(
+        'institucion/derechos-titular/',
+        DataSubjectRightsView.as_view(),
+        name='institution_data_subject_rights',
     ),
     # Otros
     path('proxy_image_modelo/', ImageProxyModeloView.as_view(), name='proxy_image_modelo'),

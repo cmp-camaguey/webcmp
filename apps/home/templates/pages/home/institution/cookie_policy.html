@@ -1,36 +1,108 @@
 {% extends 'layouts/landing.html' %}
 {% load static %}
-{% block hero_content %}
-  <div class="pb-10">
-    <h1 class="hero-title">{{ title }}</h1>
-    <p class="hero-description mt-4">
-      Qué son las cookies, qué categorías usamos, para qué sirven y cómo gestionar tu consentimiento.
-    </p>
-  </div>
+{% block extrahead %}
+  <style>
+    [data-bs-theme="light"] .section-institutional { background-color: #2b4b9b !important; }
+    [data-bs-theme="light"] .hero-curve { fill: #2b4b9b; }
+    [data-bs-theme="light"] .section-institutional .card {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card:hover {
+      background-color: rgba(255, 255, 255, 0.15) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card h2,
+    [data-bs-theme="light"] .section-institutional .card h3,
+    [data-bs-theme="light"] .section-institutional .card h4,
+    [data-bs-theme="light"] .section-institutional .card h5,
+    [data-bs-theme="light"] .section-institutional .card strong {
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card p,
+    [data-bs-theme="light"] .section-institutional .card li,
+    [data-bs-theme="light"] .section-institutional .card td,
+    [data-bs-theme="light"] .section-institutional .card th,
+    [data-bs-theme="light"] .section-institutional .card .text-secondary,
+    [data-bs-theme="light"] .section-institutional .card .text-muted,
+    [data-bs-theme="light"] .section-institutional .card .small,
+    [data-bs-theme="light"] .section-institutional .card .form-text {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary {
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary:hover,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary:hover {
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card .table {
+      --tblr-table-color: rgba(255, 255, 255, 0.75);
+      --tblr-table-bg: transparent;
+      --tblr-table-border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-bs-theme="light"] .section-institutional .card .table-light,
+    [data-bs-theme="light"] .section-institutional .card .table-light th,
+    [data-bs-theme="light"] .section-institutional .card .table-light td,
+    [data-bs-theme="light"] .section-institutional .card thead th {
+      --tblr-table-bg: rgba(255, 255, 255, 0.1);
+      --tblr-table-color: #ffffff;
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card code {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    [data-bs-theme="dark"] .section-institutional { background-color: var(--tblr-bg-surface-secondary) !important; }
+    [data-bs-theme="dark"] .hero-curve { fill: var(--tblr-bg-surface-secondary); }
+  </style>
+{% endblock %}
+{% block hero %}
+  <header class="hero" style="padding-bottom: 0;">
+    <div class="container">
+      <div class="pb-4 pb-lg-5">
+        <h1 class="hero-title">{{ title }}</h1>
+        <p class="hero-description mt-4">
+          Qué son las cookies, qué categorías usamos, para qué sirven y cómo gestionar tu consentimiento.
+        </p>
+      </div>
+    </div>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         viewBox="0 0 1920 120"
+         preserveAspectRatio="none"
+         style="display: block;
+                width: 100%;
+                height: 80px;
+                margin-bottom: -1px">
+      <path class="hero-curve" d="M1920 120H0V0s387 120 960 120 960-120 960-120v120Z"></path>
+    </svg>
+  </header>
 {% endblock %}
 {% block content %}
-  <section class="section">
+  <section class="section section-institutional pt-4 pt-lg-5">
     <div class="container">
       <div class="row g-4">
         <div class="col-lg-8">
           <div class="card">
             <div class="card-body">
-              <h2 class="h4 mb-3">1. ¿Qué son las cookies?</h2>
+              <h3 class="subheader text-muted fw-medium mb-3">1. ¿Qué son las cookies?</h3>
               <p class="mb-3">
                 Las cookies son pequeños archivos de texto que el sitio web almacena en tu navegador cuando lo visitas.
                 Permiten recordar información sobre tu visita (como preferencias, sesión, o métricas de uso) para que el
                 sitio funcione correctamente y ofrezca una mejor experiencia.
               </p>
-              <h2 class="h4 mt-4 mb-3">2. Categorías de cookies que usamos</h2>
+              <h3 class="subheader text-muted fw-medium mt-4 mb-3">2. Categorías de cookies que usamos</h3>
               <p class="mb-2">Este portal clasifica las cookies en tres categorías:</p>
-              <h3 class="h5 mb-2">Necesarias (siempre activas)</h3>
+              <h4 class="subheader text-muted fw-medium mb-2">Necesarias (siempre activas)</h4>
               <p class="mb-3">
                 Son indispensables para que el sitio funcione: mantienen tu sesión, protegen contra CSRF, y permiten
                 la navegación segura. No almacenan datos de identificación personal más allá de lo estrictamente
                 necesario para la sesión técnica. <strong>No se pueden desactivar</strong>, porque el sitio no
                 funcionaría sin ellas.
               </p>
-              <h3 class="h5 mb-2">Analítica / Rendimiento (requieren consentimiento)</h3>
+              <h4 class="subheader text-muted fw-medium mb-2">Analítica / Rendimiento (requieren consentimiento)</h4>
               <p class="mb-3">
                 Usamos <strong>RUM (Real User Monitoring)</strong> para medir el rendimiento real que experimentan los
                 visitantes: tiempos de carga (LCP, FCP), interactividad (INP), estabilidad visual (CLS), peso de
@@ -38,12 +110,12 @@
                 identificadores personales) y sirven exclusivamente para mejorar la calidad y disponibilidad del
                 servicio. <strong>Solo se activan si das tu consentimiento</strong>.
               </p>
-              <h3 class="h5 mb-2">Funcionales (requieren consentimiento, futuras)</h3>
+              <h4 class="subheader text-muted fw-medium mb-2">Funcionales (requieren consentimiento, futuras)</h4>
               <p class="mb-3">
                 Reservadas para futuras mejoras: recordar preferencias de visualización (tema, idioma), mapas
                 interactivos, contenidos incrustados de terceros. Actualmente no hay cookies funcionales activas.
               </p>
-              <h2 class="h4 mt-4 mb-3">3. Detalle de cookies utilizadas</h2>
+              <h3 class="subheader text-muted fw-medium mt-4 mb-3">3. Detalle de cookies utilizadas</h3>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered">
                   <thead class="table-light">
@@ -82,7 +154,7 @@
                   </tbody>
                 </table>
               </div>
-              <h2 class="h4 mt-4 mb-3">4. Cómo gestionar tu consentimiento</h2>
+              <h3 class="subheader text-muted fw-medium mt-4 mb-3">4. Cómo gestionar tu consentimiento</h3>
               <p class="mb-2">
                 Al visitar el sitio por primera vez, verás un <strong>banner de consentimiento</strong> en la parte
                 inferior con tres opciones:
@@ -97,7 +169,7 @@
                 respaldo) durante <strong>1 año</strong>. Puedes cambiarla en cualquier momento desde el enlace
                 <strong>«Configurar cookies»</strong> en el pie de página, que vuelve a abrir el modal.
               </p>
-              <h2 class="h4 mt-4 mb-3">5. Cómo desactivar o borrar cookies desde el navegador</h2>
+              <h3 class="subheader text-muted fw-medium mt-4 mb-3">5. Cómo desactivar o borrar cookies desde el navegador</h3>
               <p class="mb-3">
                 Además del control interno, puedes bloquear o eliminar cookies desde la configuración de tu navegador:
               </p>
@@ -123,13 +195,13 @@
                 Ten en cuenta que bloquear las cookies necesarias impedirá que el panel de administración funcione
                 correctamente.
               </p>
-              <h2 class="h4 mt-4 mb-3">6. Responsable y contacto</h2>
+              <h3 class="subheader text-muted fw-medium mt-4 mb-3">6. Responsable y contacto</h3>
               <p class="mb-1"><strong>Titular:</strong> {{ company.nombre }}</p>
               <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
               <p class="mb-1"><strong>Correo electrónico:</strong> <a href="mailto:direccion@cmw.insmet.cu"
                                                                       class="link-primary">direccion@cmw.insmet.cu</a></p>
               <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
-              <h2 class="h4 mt-4 mb-3">7. Actualizaciones</h2>
+              <h3 class="subheader text-muted fw-medium mt-4 mb-3">7. Actualizaciones</h3>
               <p class="mb-0">
                 Esta política se revisa periódicamente. La versión vigente siempre está accesible en esta misma URL.
                 Los cambios sustanciales se comunican por el boletín y en el panel de administración.
@@ -140,7 +212,7 @@
         <div class="col-lg-4">
           <div class="card">
             <div class="card-body">
-              <h2 class="h4 mb-3">Enlaces relacionados</h2>
+              <h3 class="subheader text-muted fw-medium mb-3">Enlaces relacionados</h3>
               <ul class="list-unstyled list-separated gap-2 mb-0">
                 <li>
                   <a class="link-secondary"
@@ -149,6 +221,10 @@
                 <li>
                   <a class="link-secondary"
                      href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
                 </li>
                 <li>
                   <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión institucional</a>

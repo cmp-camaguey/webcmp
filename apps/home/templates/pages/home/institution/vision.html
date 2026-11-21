@@ -8,9 +8,13 @@
     /* Textos del encabezado y de los items en blanco */
     [data-bs-theme="light"] .section-tarjetas .section-title,
     [data-bs-theme="light"] .section-tarjetas .section-description,
-    [data-bs-theme="light"] .section-tarjetas h4,
-    [data-bs-theme="light"] .section-tarjetas p {
+    [data-bs-theme="light"] .section-tarjetas h3,
+    [data-bs-theme="light"] .section-tarjetas h4 {
       color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-tarjetas p,
+    [data-bs-theme="light"] .section-tarjetas .text-muted {
+      color: rgba(255, 255, 255, 0.75) !important;
     }
 
     /* ─── OLAS ANIMADAS MODO CLARO ─── */
@@ -26,7 +30,7 @@
   </style>
 {% endblock %}
 {% block hero_content %}
-  <div class="pb-10">
+  <div class="pb-4 pb-lg-6">
     <h1 class="hero-title">{{ title }}</h1>
     <p class="hero-description mt-4">
       Somos el sistema integral rector de la actividad meteorológica en la provincia que mediante la aplicación de nuestra producción científica logra impactos positivos en la economía, la sociedad y el medio ambiente cubano.
@@ -56,7 +60,7 @@
               <i class="icon ti ti-briefcase" aria-hidden="true"></i>
             </div>
             <div>
-              <h4 class="h4 mb-1">Rigor científico</h4>
+              <h3 class="subheader text-muted fw-medium mb-1">Rigor científico</h3>
               <p class="mb-0">Fundamentamos cada pronóstico y aviso en la observación sistemática y el análisis técnico de los fenómenos atmosféricos.</p>
             </div>
           </div>
@@ -67,7 +71,7 @@
               <i class="icon ti ti-users" aria-hidden="true"></i>
             </div>
             <div>
-              <h4 class="h4 mb-1">Servicio a la comunidad</h4>
+              <h3 class="subheader text-muted fw-medium mb-1">Servicio a la comunidad</h3>
               <p class="mb-0">Ponemos la información meteorológica al alcance de todos, con lenguaje claro y orientación oportuna para la toma de decisiones.</p>
             </div>
           </div>
@@ -78,7 +82,7 @@
               <i class="icon ti ti-tools" aria-hidden="true"></i>
             </div>
             <div>
-              <h4 class="h4 mb-1">Trabajo en equipo</h4>
+              <h3 class="subheader text-muted fw-medium mb-1">Trabajo en equipo</h3>
               <p class="mb-0">Integramos especialistas de la vigilancia, el pronóstico y la investigación para ofrecer un servicio único y consistente.</p>
             </div>
           </div>
@@ -89,7 +93,7 @@
               <i class="icon ti ti-heart" aria-hidden="true"></i>
             </div>
             <div>
-              <h4 class="h4 mb-1">Compromiso social</h4>
+              <h3 class="subheader text-muted fw-medium mb-1">Compromiso social</h3>
               <p class="mb-0">Velamos por reducir las pérdidas de bienes y proteger la vida ante desastres naturales de origen meteorológico.</p>
             </div>
           </div>

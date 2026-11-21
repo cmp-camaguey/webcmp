@@ -1,0 +1,42 @@
+{% extends 'layouts/list.html' %}
+{% load my_filters %}
+{% block columns %}
+  <th>Tipo</th>
+  <th>Solicitante</th>
+  <th>Correo</th>
+  <th>Estado</th>
+  <th>Fecha</th>
+  <th class="text-end">Acciones</th>
+{% endblock %}
+{% block row %}
+  <td>{{ object.get_request_type_display }}</td>
+  <td>{{ object.subject_name }}</td>
+  <td>{{ object.subject_email }}</td>
+  <td>
+    {% if object.status == 'pendiente' %}
+      <span class="badge bg-yellow-lt">Pendiente</span>
+    {% elif object.status == 'en_proceso' %}
+      <span class="badge bg-blue-lt">En proceso</span>
+    {% elif object.status == 'completada' %}
+      <span class="badge bg-green-lt">Completada</span>
+    {% elif object.status == 'rechazada' %}
+      <span class="badge bg-red-lt">Rechazada</span>
+    {% else %}
+      <span class="badge bg-secondary-lt">{{ object.get_status_display }}</span>
+    {% endif %}
+  </td>
+  <td>{{ object.created_at|date:"d/m/Y H:i" }}</td>
+  <td class="text-end">
+    {% if request.user|has_permission:'core.change_datasubjectrequest' %}
+      <a href="{% url 'core:data_subject_request_update' object.pk %}"
+         type="button"
+         class="btn btn-icon bg-orange-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Gestionar"
+         data-bs-original-title="Gestionar">
+        <i class="icon ti ti-edit"></i>
+      </a>
+    {% endif %}
+  </td>
+{% endblock %}

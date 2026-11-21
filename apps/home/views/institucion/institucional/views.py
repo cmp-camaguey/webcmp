@@ -1,6 +1,8 @@
-from django.views.generic import TemplateView
+from django import forms
+from django.contrib import messages
+from django.views.generic import FormView, TemplateView
 
-from apps.core.models import CompanySettings
+from apps.core.models import CompanySettings, DataSubjectRequest
 
 
 class VisionView(TemplateView):
@@ -70,3 +72,91 @@ class CookiePolicyView(TemplateView):
         context['segment'] = 'cookie_policy'
         context['company'] = CompanySettings.get_instance()
         return context
+
+
+class DataSubjectRightsForm(forms.Form):
+    """Formulario público para ejercer derechos ARCO/ARCOP."""
+
+    REQUEST_TYPE_CHOICES = DataSubjectRequest.RequestType.choices
+
+    request_type = forms.ChoiceField(
+        choices=REQUEST_TYPE_CHOICES,
+        label='Derecho que desea ejercer',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text=(
+            'Seleccione el derecho que desea ejercer: Acceso (saber qué datos tenemos), '
+            'Rectificación (corregir datos inexactos), Cancelación (suprimir datos), '
+            'Oposición (no tratar sus datos para fines específicos), '
+            'Portabilidad (recibir sus datos en formato estructurado).'
+        ),
+    )
+    subject_name = forms.CharField(
+        max_length=255,
+        label='Nombre completo',
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+    )
+    subject_email = forms.EmailField(
+        label='Correo electrónico',
+        widget=forms.EmailInput(attrs={'class': 'form-control'}),
+        help_text='Recibirá confirmación y actualizaciones en este correo.',
+    )
+    subject_document = forms.CharField(
+        max_length=50,
+        required=False,
+        label='Documento de identidad (opcional)',
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        help_text='Para verificar su identidad (CI, pasaporte, etc.).',
+    )
+    description = forms.CharField(
+        label='Descripción de la solicitud',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 8}),
+        help_text=(
+            'Describa detalladamente su solicitud: qué datos, qué tratamiento, '
+            'qué rectificación o supresión solicita, etc.'
+        ),
+        min_length=20,
+    )
+
+    def clean_subject_email(self):
+        """Normalizar email a minúsculas."""
+        email = self.cleaned_data['subject_email']
+        return email.strip().lower()
+
+    def save(self):
+        """Crea la solicitud de derechos y la devuelve."""
+        return DataSubjectRequest.objects.create(
+            request_type=self.cleaned_data['request_type'],
+            subject_email=self.cleaned_data['subject_email'].lower().strip(),
+            subject_name=self.cleaned_data['subject_name'].strip(),
+            subject_document=self.cleaned_data['subject_document'].strip()
+            if self.cleaned_data['subject_document']
+            else '',
+            description=self.cleaned_data['description'].strip(),
+        )
+
+
+class DataSubjectRightsView(FormView):
+    """Vista pública para ejercer derechos ARCO/ARCOP."""
+
+    template_name = 'pages/home/institution/data_subject_rights.html'
+    form_class = DataSubjectRightsForm
+    success_url = '.'  # Recarga la misma página con mensaje de éxito
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Ejercicio de derechos ARCO/ARCOP'
+        context['parent'] = 'institucion'
+        context['segment'] = 'data_subject_rights'
+        context['company'] = CompanySettings.get_instance()
+        return context
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(
+            self.request,
+            'Su solicitud ha sido recibida correctamente. '
+            'Le enviaremos un correo de confirmación y le notificaremos '
+            'cuando se tramite. El plazo de respuesta es de 30 días hábiles '
+            'según la normativa vigente.',
+        )
+        return super().form_valid(form)

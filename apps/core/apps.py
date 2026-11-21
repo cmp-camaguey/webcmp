@@ -319,6 +319,10 @@ class CoreConfig(AppConfig):
         # explota con `HueyException: <tarea> not found in TaskRegistry`: el worker
         # queda vivo, pero jamás procesa nada. El proceso del consumer no importa
         # vistas, así que nadie más lo hace por él.
-        from apps.core import tasks  # noqa: F401
+        # Importar señales para notificaciones automáticas de solicitudes ARCO/ARCOP
+        from apps.core import (
+            signals,  # noqa: F401
+            tasks,  # noqa: F401
+        )
 
         self.register_task_signals()

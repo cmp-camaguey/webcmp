@@ -5,6 +5,8 @@ from apps.core.views import (
     CompanySettingsAjaxUpdateView,
     CompanySettingsUpdateView,
     CookieConsentView,
+    DataSubjectRequestListView,
+    DataSubjectRequestUpdateView,
     EmailRecipientListCreateView,
     EmailRecipientListDeleteView,
     EmailRecipientListListView,
@@ -55,5 +57,15 @@ urlpatterns = [
         name='email_recipient_delete',
     ),
     path('auditoria/', ActivityLogListView.as_view(), name='activity_log'),
+    path(
+        'solicitudes-derechos/',
+        DataSubjectRequestListView.as_view(),
+        name='data_subject_request_list',
+    ),
+    path(
+        'solicitudes-derechos/<int:pk>/editar/',
+        DataSubjectRequestUpdateView.as_view(),
+        name='data_subject_request_update',
+    ),
     path('cookies/consentimiento/', CookieConsentView.as_view(), name='cookie_consent'),
 ]

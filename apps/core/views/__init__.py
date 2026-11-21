@@ -4,6 +4,10 @@ from apps.core.views.company_settings import (
     CompanySettingsUpdateView,
 )
 from apps.core.views.cookie_consent import CookieConsentView
+from apps.core.views.data_subject_requests import (
+    DataSubjectRequestListView,
+    DataSubjectRequestUpdateView,
+)
 from apps.core.views.email_recipients import (
     EmailRecipientListCreateView,
     EmailRecipientListDeleteView,
@@ -26,6 +30,8 @@ __all__ = [
     'CompanySettingsAjaxUpdateView',
     'CompanySettingsUpdateView',
     'CookieConsentView',
+    'DataSubjectRequestListView',
+    'DataSubjectRequestUpdateView',
     'EmailRecipientListCreateView',
     'EmailRecipientListDeleteView',
     'EmailRecipientListListView',
