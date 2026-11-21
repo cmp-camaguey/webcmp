@@ -69,7 +69,7 @@ def site_branding(request):
     site_config = getattr(request, 'site_config', None)
     if site_config is None:
         site_config = SiteConfiguration.get_instance()
-    company = CompanySettings.get_instance()
+    company = CompanySettings.objects.first()
     return {
         'site_branding': site_config,
         'company_settings': company,
