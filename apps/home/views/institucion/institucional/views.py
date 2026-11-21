@@ -58,3 +58,15 @@ class PrivacyPolicyView(TemplateView):
         context['segment'] = 'privacy_policy'
         context['company'] = CompanySettings.get_instance()
         return context
+
+
+class CookiePolicyView(TemplateView):
+    template_name = 'pages/home/institution/cookie_policy.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Política de cookies'
+        context['parent'] = 'institucion'
+        context['segment'] = 'cookie_policy'
+        context['company'] = CompanySettings.get_instance()
+        return context

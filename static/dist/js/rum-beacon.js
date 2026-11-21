@@ -14,6 +14,10 @@
  * - INP se aproxima con la interacción más lenta observada en la página; el
  *   INP oficial es un percentil de la sesión completa, que un sitio
  *   multipágina no puede calcular sin otro almacenamiento.
+ *
+ * Consentimiento: el beacon solo se activa si `cookieConsent.has('analytics')`
+ * es true. Si no hay consentimiento al cargar, queda en espera hasta que se
+ * dispare el evento `cookieConsentChange` con `analytics: true`.
  */
 ;(function () {
   'use strict'
@@ -35,6 +39,8 @@
   var cls = 0
   var inp = null
   var fcp = null
+  var started = false
+  var consentChecked = false
 
   function now() {
     return Date.now()
@@ -156,29 +162,31 @@
     }
   }
 
-  observe('largest-contentful-paint', function (entry) {
-    lcp = entry.startTime + (entry.duration || 0)
-  })
+  function startObservers() {
+    observe('largest-contentful-paint', function (entry) {
+      lcp = entry.startTime + (entry.duration || 0)
+    })
 
-  observe('layout-shift', function (entry) {
-    if (!entry.hadRecentInput) cls += entry.value
-  })
+    observe('layout-shift', function (entry) {
+      if (!entry.hadRecentInput) cls += entry.value
+    })
 
-  observe('paint', function (entry) {
-    if (entry.name === 'first-contentful-paint') fcp = entry.startTime
-  })
+    observe('paint', function (entry) {
+      if (entry.name === 'first-contentful-paint') fcp = entry.startTime
+    })
 
-  observe(
-    'event',
-    function (entry) {
-      if (entry.interactionId && entry.duration > (inp || 0)) inp = entry.duration
-    },
-    { durationThreshold: 40 }
-  )
+    observe(
+      'event',
+      function (entry) {
+        if (entry.interactionId && entry.duration > (inp || 0)) inp = entry.duration
+      },
+      { durationThreshold: 40 }
+    )
 
-  observe('navigation', function (entry) {
-    if (fcp === null && entry.responseStart) fcp = entry.responseStart
-  })
+    observe('navigation', function (entry) {
+      if (fcp === null && entry.responseStart) fcp = entry.responseStart
+    })
+  }
 
   function reportError(event) {
     if (errorsSent >= MAX_ERRORS) return
@@ -205,29 +213,86 @@
     })
   }
 
-  window.addEventListener('error', reportError)
-  window.addEventListener('unhandledrejection', reportError)
+  function start() {
+    if (started) return
+    started = true
+    startObservers()
+    window.addEventListener('error', reportError)
+    window.addEventListener('unhandledrejection', reportError)
 
-  window.addEventListener('pagehide', function (event) {
-    if (event.persisted) return
-    sendVitals()
-  })
+    window.addEventListener('pagehide', function (event) {
+      if (event.persisted) return
+      sendVitals()
+    })
 
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') sendVitals()
-  })
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') sendVitals()
+    })
 
-  // El pageview espera a `load` para poder pesar la página con todos sus
-  // recursos; si `load` ya pasó (script inyectado tarde), sale enseguida.
-  // Los vitals se cierran a los 20 s o al ocultarse la pestaña, lo que ocurra
-  // primero: una muestra por carga, sin duplicados.
-  if (document.readyState === 'complete') {
-    sendPageview()
-    window.setTimeout(sendVitals, 20000)
-  } else {
-    window.addEventListener('load', function () {
+    // El pageview espera a `load` para poder pesar la página con todos sus
+    // recursos; si `load` ya pasó (script inyectado tarde), sale enseguida.
+    // Los vitals se cierran a los 20 s o al ocultarse la pestaña, lo que ocurra
+    // primero: una muestra por carga, sin duplicados.
+    if (document.readyState === 'complete') {
       sendPageview()
       window.setTimeout(sendVitals, 20000)
-    })
+    } else {
+      window.addEventListener('load', function () {
+        sendPageview()
+        window.setTimeout(sendVitals, 20000)
+      })
+    }
+  }
+
+  function checkConsentAndStart() {
+    if (consentChecked) return
+    consentChecked = true
+
+    function hasAnalyticsConsent() {
+      try {
+        if (window.cookieConsent && typeof window.cookieConsent.has === 'function') {
+          return window.cookieConsent.has('analytics')
+        }
+        var stored = window.localStorage.getItem('cookie_consent')
+        if (stored) {
+          var parsed = JSON.parse(stored)
+          return !!parsed.analytics
+        }
+        var cookie = document.cookie.split('; ').find(function (c) {
+          return c.startsWith('cookie_consent=')
+        })
+        if (cookie) {
+          var value = decodeURIComponent(cookie.split('=')[1])
+          var parsed = JSON.parse(value)
+          return !!parsed.analytics
+        }
+      } catch (e) {
+        /* ignorar */
+      }
+      return false
+    }
+
+    if (hasAnalyticsConsent()) {
+      start()
+    } else {
+      // Esperar al evento de cambio de consentimiento
+      window.addEventListener('cookieConsentChange', function (e) {
+        if (e.detail && e.detail.analytics) {
+          start()
+        }
+      })
+    }
+  }
+
+  // API pública
+  window.rumBeacon = {
+    init: checkConsentAndStart
+  }
+
+  // Auto-iniciar si ya hay consentimiento al cargar
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkConsentAndStart)
+  } else {
+    checkConsentAndStart()
   }
 })()

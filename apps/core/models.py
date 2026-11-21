@@ -733,3 +733,97 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f'{self.user} · {self.source}'
+
+
+def hash_ip(ip: str) -> str:
+    """Devuelve un hash SHA-256 truncado a 16 caracteres de la IP.
+    Usado para anonimizar la IP en logs de consentimiento sin guardar el valor crudo.
+    """
+    import hashlib
+
+    return hashlib.sha256(ip.encode()).hexdigest()[:16]
+
+
+def get_client_ip(request):
+    """Obtiene la IP del cliente considerando proxies."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
+
+
+class CookieConsent(models.Model):
+    """Registro de consentimiento de cookies (cambio 040).
+
+    Guarda la decisión del visitante: qué categorías aceptó/rechazó, cuándo,
+    y una huella de sesión/IP anonimizada para auditoría. No vincula a usuario
+    autenticado porque el consentimiento es previo al login y aplica a
+    navegadores/anónimos.
+    """
+
+    class ConsentChoice(models.TextChoices):
+        ACCEPT_ALL = 'accept_all', 'Aceptar todo'
+        REJECT_ANALYTICS = 'reject_analytics', 'Rechazar analítica'
+        CUSTOM = 'custom', 'Configuración personalizada'
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    consent_choice = models.CharField(
+        max_length=20,
+        choices=ConsentChoice.choices,
+        verbose_name='Elección de consentimiento',
+    )
+    analytics = models.BooleanField(default=False, verbose_name='Analítica consentida')
+    functional = models.BooleanField(default=False, verbose_name='Funcionales consentidas')
+    session_hash = models.CharField(max_length=64, verbose_name='Hash de sesión/navegador')
+    ip_hash = models.CharField(max_length=16, verbose_name='Hash de IP anonimizada')
+    user_agent = models.TextField(blank=True, verbose_name='User-Agent')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado en')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado en')
+
+    class Meta:
+        verbose_name = 'Consentimiento de cookies'
+        verbose_name_plural = 'Consentimientos de cookies'
+        default_permissions = ()
+        permissions = [
+            ('view_cookieconsent', 'Ver'),
+            ('add_cookieconsent', 'Añadir'),
+            ('change_cookieconsent', 'Editar'),
+            ('delete_cookieconsent', 'Eliminar'),
+        ]
+        indexes = [
+            models.Index(fields=['session_hash'], name='idx_cookieconsent_session'),
+            models.Index(fields=['created_at'], name='idx_cookieconsent_created'),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        choice = self.consent_choice
+        session_short = self.session_hash[:12]
+        date_str = self.created_at.strftime('%Y-%m-%d %H:%M')
+        return f'{choice} · {session_short} · {date_str}'
+
+    @classmethod
+    def record_consent(cls, request, choice: str, analytics: bool, functional: bool):
+        """Crea o actualiza un registro de consentimiento a partir de la petición."""
+        session_hash = request.session.session_key or ''
+        if not session_hash:
+            request.session.create()
+            session_hash = request.session.session_key or ''
+        # Hash de la sesión para no guardar el valor crudo
+        import hashlib
+
+        session_hash = hashlib.sha256(session_hash.encode()).hexdigest()[:64]
+
+        ip = get_client_ip(request)
+        ip_hash = hash_ip(ip) if ip else ''
+
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+
+        return cls.objects.create(
+            consent_choice=choice,
+            analytics=analytics,
+            functional=functional,
+            session_hash=session_hash,
+            ip_hash=ip_hash,
+            user_agent=user_agent,
+        )

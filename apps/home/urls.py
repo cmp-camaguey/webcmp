@@ -8,6 +8,7 @@ from apps.home.views.avisos.tormentas.views import StormListView
 from apps.home.views.home.views import IndexView
 from apps.home.views.institucion.institucional.views import (
     AboutView,
+    CookiePolicyView,
     LegalNoticeView,
     MissionView,
     PrivacyPolicyView,
@@ -158,6 +159,11 @@ urlpatterns = [
         'institucion/politica-privacidad/',
         PrivacyPolicyView.as_view(),
         name='institution_privacy_policy',
+    ),
+    path(
+        'institucion/politica-cookies/',
+        CookiePolicyView.as_view(),
+        name='institution_cookie_policy',
     ),
     # Otros
     path('proxy_image_modelo/', ImageProxyModeloView.as_view(), name='proxy_image_modelo'),
