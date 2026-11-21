@@ -48,3 +48,7 @@ OBS_LOCAL_ONLY = resolve_obs_local_only(OBS_LOCAL_ONLY_DEFAULT)
 # INSERT por peticion descuadraria los `assertNumQueries` de la suite. Los tests
 # del propio monitoreo lo activan con `override_settings(MONITORING_ENABLED=True)`.
 MONITORING_ENABLED = False
+
+# Permitir testserver para Django test client
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
