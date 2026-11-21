@@ -928,3 +928,79 @@ class DataSubjectRequest(models.Model):
         from django.urls import reverse
 
         return reverse('core:data_subject_request_update', args=[self.pk])
+
+
+class TermsChangeNotice(models.Model):
+    """Aviso previo de cambios en términos/condiciones o políticas legales.
+
+    Cumple Res. 58/2022 art. 8.d: comunicar cambios con al menos 3 meses de
+    antelación. Solo se muestra en sitio cuando está publicado.
+    """
+
+    class AffectedDocument(models.TextChoices):
+        LEGAL_NOTICE = 'legal_notice', 'Aviso legal'
+        PRIVACY_POLICY = 'privacy_policy', 'Política de privacidad'
+        COOKIE_POLICY = 'cookie_policy', 'Política de cookies'
+        DATA_SUBJECT_RIGHTS = 'data_subject_rights', 'Derechos del titular'
+        TERMS = 'terms', 'Términos y condiciones'
+        ALL = 'all', 'Todos los documentos legales'
+
+    tracker = FieldTracker()
+
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200, verbose_name='Título')
+    description = models.TextField(verbose_name='Descripción del cambio')
+    affected_document = models.CharField(
+        max_length=30,
+        choices=AffectedDocument.choices,
+        default=AffectedDocument.ALL,
+        verbose_name='Documento afectado',
+    )
+    effective_date = models.DateField(verbose_name='Fecha efectiva')
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Aviso de cambio legal'
+        verbose_name_plural = 'Avisos de cambios legales'
+        ordering = ['-effective_date', '-created_at']
+        default_permissions = ()
+        permissions = (
+            ('view_termschangenotice', 'Ver aviso de cambio legal'),
+            ('add_termschangenotice', 'Agregar aviso de cambio legal'),
+            ('change_termschangenotice', 'Editar aviso de cambio legal'),
+            ('delete_termschangenotice', 'Eliminar aviso de cambio legal'),
+        )
+
+    def __str__(self):
+        return f'{self.title} ({self.effective_date})'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if not self.is_published or not self.effective_date:
+            return
+
+        requires_notice = self._state.adding
+        if not self._state.adding:
+            became_published = self.tracker.has_changed('is_published') and self.is_published
+            effective_date_changed = self.tracker.has_changed('effective_date')
+            requires_notice = became_published or effective_date_changed
+
+        if requires_notice:
+            min_date = timezone.localdate() + datetime.timedelta(days=90)
+            if self.effective_date < min_date:
+                raise ValidationError(
+                    {
+                        'effective_date': (
+                            'La fecha efectiva debe ser al menos 90 días posterior '
+                            'a la fecha actual para cumplir el aviso con 3 meses de antelación.'
+                        )
+                    }
+                )
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:terms_change_notice_update', args=[self.pk])

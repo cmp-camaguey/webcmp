@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib import messages
+from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 
-from apps.core.models import CompanySettings, DataSubjectRequest
+from apps.core.models import CompanySettings, DataSubjectRequest, TermsChangeNotice
 
 
 class VisionView(TemplateView):
@@ -38,8 +39,26 @@ class AboutView(TemplateView):
         return context
 
 
-class LegalNoticeView(TemplateView):
+class TermsChangeNoticeMixin:
+    terms_notice_segment = None
+
+    def get_terms_change_notices(self):
+        today = timezone.localdate()
+        qs = TermsChangeNotice.objects.filter(is_published=True, effective_date__gte=today)
+        segment = self.terms_notice_segment or getattr(self, 'segment', None)
+        if segment:
+            qs = qs.filter(affected_document__in=[segment, TermsChangeNotice.AffectedDocument.ALL])
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['terms_change_notices'] = self.get_terms_change_notices()
+        return context
+
+
+class LegalNoticeView(TermsChangeNoticeMixin, TemplateView):
     template_name = 'pages/home/institution/legal_notice.html'
+    terms_notice_segment = 'legal_notice'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -50,8 +69,9 @@ class LegalNoticeView(TemplateView):
         return context
 
 
-class PrivacyPolicyView(TemplateView):
+class PrivacyPolicyView(TermsChangeNoticeMixin, TemplateView):
     template_name = 'pages/home/institution/privacy_policy.html'
+    terms_notice_segment = 'privacy_policy'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -62,8 +82,9 @@ class PrivacyPolicyView(TemplateView):
         return context
 
 
-class CookiePolicyView(TemplateView):
+class CookiePolicyView(TermsChangeNoticeMixin, TemplateView):
     template_name = 'pages/home/institution/cookie_policy.html'
+    terms_notice_segment = 'cookie_policy'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -135,11 +156,12 @@ class DataSubjectRightsForm(forms.Form):
         )
 
 
-class DataSubjectRightsView(FormView):
+class DataSubjectRightsView(TermsChangeNoticeMixin, FormView):
     """Vista pública para ejercer derechos ARCO/ARCOP."""
 
     template_name = 'pages/home/institution/data_subject_rights.html'
     form_class = DataSubjectRightsForm
+    terms_notice_segment = 'data_subject_rights'
     success_url = '.'  # Recarga la misma página con mensaje de éxito
 
     def get_context_data(self, **kwargs):

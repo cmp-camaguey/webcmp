@@ -1,0 +1,21 @@
+{% if terms_change_notices %}
+  <div class="mb-4">
+    {% for notice in terms_change_notices %}
+      <div class="alert alert-important alert-info mb-3" role="status">
+        <div class="d-flex">
+          <div class="me-2">
+            <i class="icon ti ti-calendar-event"></i>
+          </div>
+          <div>
+            <h4 class="alert-heading mb-1">{{ notice.title }}</h4>
+            <p class="mb-1">{{ notice.description }}</p>
+            <p class="mb-0 small">
+              <strong>Documento afectado:</strong> {{ notice.get_affected_document_display }}
+              · <strong>Fecha efectiva:</strong> {{ notice.effective_date|date:"d/m/Y" }}
+            </p>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
