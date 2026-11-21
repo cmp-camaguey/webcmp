@@ -10,6 +10,7 @@ from apps.home.views.institucion.institucional.views import (
     AboutView,
     LegalNoticeView,
     MissionView,
+    PrivacyPolicyView,
     VisionView,
 )
 from apps.home.views.institucion.publicaciones.views import ScientificPublicationListView
@@ -152,6 +153,11 @@ urlpatterns = [
         'institucion/aviso-legal/',
         LegalNoticeView.as_view(),
         name='institution_legal_notice',
+    ),
+    path(
+        'institucion/politica-privacidad/',
+        PrivacyPolicyView.as_view(),
+        name='institution_privacy_policy',
     ),
     # Otros
     path('proxy_image_modelo/', ImageProxyModeloView.as_view(), name='proxy_image_modelo'),

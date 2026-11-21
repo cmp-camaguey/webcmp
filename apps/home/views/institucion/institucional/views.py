@@ -46,3 +46,15 @@ class LegalNoticeView(TemplateView):
         context['segment'] = 'legal_notice'
         context['company'] = CompanySettings.get_instance()
         return context
+
+
+class PrivacyPolicyView(TemplateView):
+    template_name = 'pages/home/institution/privacy_policy.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Política de privacidad'
+        context['parent'] = 'institucion'
+        context['segment'] = 'privacy_policy'
+        context['company'] = CompanySettings.get_instance()
+        return context
