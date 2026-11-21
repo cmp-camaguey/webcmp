@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
+from model_utils import FieldTracker
 
 from apps.core.validators import (
     validate_account,
@@ -827,3 +828,103 @@ class CookieConsent(models.Model):
             ip_hash=ip_hash,
             user_agent=user_agent,
         )
+
+
+class DataSubjectRequest(models.Model):
+    """Solicitud de ejercicio de derechos ARCO/ARCOP.
+
+    Cubre Acceso, Rectificación, Cancelación, Oposición y Portabilidad.
+    Canal público para que los titulares de datos ejerzan sus derechos según
+    Resolución 58/2022 y normativa cubana de protección de datos personales.
+    """
+
+    class RequestType(models.TextChoices):
+        ACCESO = 'acceso', 'Acceso'
+        RECTIFICACION = 'rectificacion', 'Rectificación'
+        CANCELACION = 'cancelacion', 'Cancelación (Supresión)'
+        OPOSICION = 'oposicion', 'Oposición'
+        PORTABILIDAD = 'portabilidad', 'Portabilidad'
+
+    class Status(models.TextChoices):
+        PENDIENTE = 'pendiente', 'Pendiente'
+        EN_PROCESO = 'en_proceso', 'En proceso'
+        COMPLETADA = 'completada', 'Completada'
+        RECHAZADA = 'rechazada', 'Rechazada'
+
+    tracker = FieldTracker()
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    request_type = models.CharField(
+        max_length=20,
+        choices=RequestType.choices,
+        verbose_name='Tipo de solicitud',
+    )
+    subject_email = models.EmailField(verbose_name='Correo del titular')
+    subject_name = models.CharField(max_length=255, verbose_name='Nombre del titular')
+    subject_document = models.CharField(
+        max_length=50, blank=True, verbose_name='Documento de identidad'
+    )
+    description = models.TextField(verbose_name='Descripción de la solicitud')
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDIENTE,
+        verbose_name='Estado',
+        db_index=True,
+    )
+    admin_notes = models.TextField(blank=True, verbose_name='Notas administrativas')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creada', db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizada')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Completada')
+
+    class Meta:
+        verbose_name = 'Solicitud de derechos ARCO/ARCOP'
+        verbose_name_plural = 'Solicitudes de derechos ARCO/ARCOP'
+        ordering = ['-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_datasubjectrequest', 'Ver'),
+            ('add_datasubjectrequest', 'Añadir'),
+            ('change_datasubjectrequest', 'Editar'),
+            ('delete_datasubjectrequest', 'Eliminar'),
+        ]
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['subject_email', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.request_type} - {self.subject_email} ({self.status})'
+
+    def save(self, *args, **kwargs):
+        from django.utils import timezone
+
+        terminal_statuses = {self.Status.COMPLETADA, self.Status.RECHAZADA}
+        update_fields = kwargs.get('update_fields')
+        if self.status in terminal_statuses and not self.completed_at:
+            self.completed_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        elif self.status not in terminal_statuses and self.completed_at:
+            self.completed_at = None
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        super().save(*args, **kwargs)
+
+    def mark_completed(self):
+        """Marca la solicitud como completada con la fecha actual."""
+        from django.utils import timezone
+
+        self.status = self.Status.COMPLETADA
+        self.completed_at = timezone.now()
+        self.save(update_fields=['status', 'completed_at', 'updated_at'])
+
+    def mark_in_progress(self):
+        """Marca la solicitud como en proceso."""
+        self.status = self.Status.EN_PROCESO
+        self.save(update_fields=['status', 'updated_at'])
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:data_subject_request_update', args=[self.pk])

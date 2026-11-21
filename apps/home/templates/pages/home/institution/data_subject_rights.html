@@ -1,0 +1,294 @@
+{% extends 'layouts/landing.html' %}
+{% load static %}
+{% block extrahead %}
+  <style>
+    [data-bs-theme="light"] .section-institutional { background-color: #2b4b9b !important; }
+    [data-bs-theme="light"] .hero-curve { fill: #2b4b9b; }
+    [data-bs-theme="light"] .section-institutional .card {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card:hover {
+      background-color: rgba(255, 255, 255, 0.15) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card h2,
+    [data-bs-theme="light"] .section-institutional .card h3,
+    [data-bs-theme="light"] .section-institutional .card h4,
+    [data-bs-theme="light"] .section-institutional .card h5,
+    [data-bs-theme="light"] .section-institutional .card h6,
+    [data-bs-theme="light"] .section-institutional .card strong,
+    [data-bs-theme="light"] .section-institutional .card .form-label {
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card p,
+    [data-bs-theme="light"] .section-institutional .card li,
+    [data-bs-theme="light"] .section-institutional .card .text-secondary,
+    [data-bs-theme="light"] .section-institutional .card .text-muted,
+    [data-bs-theme="light"] .section-institutional .card .small,
+    [data-bs-theme="light"] .section-institutional .card .form-text {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary {
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary:hover,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary:hover {
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card .form-control,
+    [data-bs-theme="light"] .section-institutional .card .form-select {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+    [data-bs-theme="light"] .section-institutional .card .form-select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 16px 12px;
+    }
+    [data-bs-theme="light"] .section-institutional .card .form-control:focus,
+    [data-bs-theme="light"] .section-institutional .card .form-select:focus {
+      background-color: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.15);
+    }
+    [data-bs-theme="light"] .section-institutional .card .form-control::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    [data-bs-theme="light"] .section-institutional .card .form-select option {
+      color: #1e293b;
+    }
+    [data-bs-theme="light"] .section-institutional .card .text-danger {
+      color: #fecaca !important;
+    }
+    [data-bs-theme="dark"] .section-institutional { background-color: var(--tblr-bg-surface-secondary) !important; }
+    [data-bs-theme="dark"] .hero-curve { fill: var(--tblr-bg-surface-secondary); }
+  </style>
+{% endblock %}
+{% block hero %}
+  <header class="hero" style="padding-bottom: 0;">
+    <div class="container">
+      <div class="pb-4 pb-lg-5">
+        <h1 class="hero-title">{{ title }}</h1>
+        <p class="hero-description mt-4">
+          Canal para ejercer sus derechos de Acceso, Rectificación, Cancelación, Oposición y Portabilidad (ARCO/ARCOP)
+          sobre sus datos personales según la Resolución 58/2022 y normativa cubana vigente.
+        </p>
+      </div>
+    </div>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         viewBox="0 0 1920 120"
+         preserveAspectRatio="none"
+         style="display: block;
+                width: 100%;
+                height: 80px;
+                margin-bottom: -1px">
+      <path class="hero-curve" d="M1920 120H0V0s387 120 960 120 960-120 960-120v120Z"></path>
+    </svg>
+  </header>
+{% endblock %}
+{% block content %}
+  <section class="section section-institutional pt-4 pt-lg-5">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+              <h3 class="subheader text-muted fw-medium mb-3">Formulario de solicitud</h3>
+              <p class="text-secondary mb-4">
+                Complete el formulario a continuación para ejercer sus derechos. Recibirá un correo de confirmación
+                y le notificaremos el resultado en un plazo máximo de 30 días hábiles.
+              </p>
+              <form method="post" novalidate class="d-flex flex-column flex-fill">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="{{ form.request_type.id_for_label }}"
+                         class="form-label fw-semibold">{{ form.request_type.label }}</label>
+                  {{ form.request_type }}
+                  {% if form.request_type.help_text %}
+                    <div class="form-text">{{ form.request_type.help_text }}</div>
+                  {% endif %}
+                  {% if form.request_type.errors %}
+                    <div class="text-danger small mt-1">{{ form.request_type.errors }}</div>
+                  {% endif %}
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="{{ form.subject_name.id_for_label }}"
+                             class="form-label fw-semibold">
+                        {{ form.subject_name.label }} <span class="text-danger">*</span>
+                      </label>
+                      {{ form.subject_name }}
+                      {% if form.subject_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.subject_name.errors }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="{{ form.subject_email.id_for_label }}"
+                             class="form-label fw-semibold">
+                        {{ form.subject_email.label }} <span class="text-danger">*</span>
+                      </label>
+                      {{ form.subject_email }}
+                      {% if form.subject_email.help_text %}
+                        <div class="form-text">{{ form.subject_email.help_text }}</div>
+                      {% endif %}
+                      {% if form.subject_email.errors %}
+                        <div class="text-danger small mt-1">{{ form.subject_email.errors }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label for="{{ form.subject_document.id_for_label }}"
+                         class="form-label fw-semibold">{{ form.subject_document.label }}</label>
+                  {{ form.subject_document }}
+                  {% if form.subject_document.help_text %}
+                    <div class="form-text">{{ form.subject_document.help_text }}</div>
+                  {% endif %}
+                  {% if form.subject_document.errors %}
+                    <div class="text-danger small mt-1">{{ form.subject_document.errors }}</div>
+                  {% endif %}
+                </div>
+                <div class="mb-3">
+                  <label for="{{ form.description.id_for_label }}"
+                         class="form-label fw-semibold">
+                    {{ form.description.label }} <span class="text-danger">*</span>
+                  </label>
+                  {{ form.description }}
+                  {% if form.description.help_text %}
+                    <div class="form-text">{{ form.description.help_text }}</div>
+                  {% endif %}
+                  {% if form.description.errors %}
+                    <div class="text-danger small mt-1">{{ form.description.errors }}</div>
+                  {% endif %}
+                </div>
+                <div class="d-grid d-sm-flex gap-2 justify-content-sm-end mt-auto pt-3">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-send me-2"></i> Enviar solicitud
+                  </button>
+                  <a href="{% url 'home:institution_privacy_policy' %}"
+                     class="btn btn-outline-light">
+                    <i class="ti ti-shield me-2"></i> Ver política de privacidad
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Enlaces relacionados</h3>
+              <ul class="list-unstyled list-separated gap-2 mb-0">
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_legal_notice' %}">Aviso legal</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_cookie_policy' %}">Política de cookies</a>
+                </li>
+                <li>
+                  <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión institucional</a>
+                </li>
+                <li>
+                  <a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión institucional</a>
+                </li>
+                <li>
+                  <a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes somos</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="card mt-3 bg-primary bg-opacity-10 border-primary">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-2">Contacto directo</h3>
+              <p class="small mb-1">
+                <strong>Delegado de Protección de Datos:</strong>
+                <br>
+                <a href="mailto:direccion@cmw.insmet.cu" class="link-primary">direccion@cmw.insmet.cu</a>
+              </p>
+              <p class="small mb-0">
+                <strong>Teléfono:</strong> {{ company.telefonos }}
+              </p>
+            </div>
+          </div>
+          <div class="card mt-3">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Plazos y proceso</h3>
+              <ul class="list-unstyled list-separated gap-2 mb-0">
+                <li><strong>Confirmación de recibo:</strong> Inmediata (correo automático).</li>
+                <li><strong>Respuesta sustantiva:</strong> Máximo 30 días hábiles desde la recepción.</li>
+                <li><strong>Prórroga:</strong> Excepcionalmente 30 días hábiles adicionales, notificándole la causa.</li>
+                <li><strong>Verificación de identidad:</strong> Podremos solicitar documento acreditativo si es necesario.</li>
+                <li><strong>Gratuidad:</strong> El ejercicio de estos derechos es gratuito.</li>
+                <li><strong>Contacto DPD:</strong> <a href="mailto:direccion@cmw.insmet.cu"
+                                                      class="link-primary">direccion@cmw.insmet.cu</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Información sobre sus derechos</h3>
+              <div class="row g-3">
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-light">
+                    <div class="card-body">
+                      <h3 class="subheader text-muted fw-medium mb-2">Acceso</h3>
+                      <p class="small mb-0">Derecho a obtener confirmación de si se tratan sus datos y acceder a ellos.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-light">
+                    <div class="card-body">
+                      <h3 class="subheader text-muted fw-medium mb-2">Rectificación</h3>
+                      <p class="small mb-0">Derecho a solicitar la corrección de datos inexactos o incompletos.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-light">
+                    <div class="card-body">
+                      <h3 class="subheader text-muted fw-medium mb-2">Cancelación</h3>
+                      <p class="small mb-0">Derecho a solicitar la supresión de sus datos cuando ya no sean necesarios.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-light">
+                    <div class="card-body">
+                      <h3 class="subheader text-muted fw-medium mb-2">Oposición</h3>
+                      <p class="small mb-0">Derecho a oponerse al tratamiento de sus datos para fines específicos.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 border-light">
+                    <div class="card-body">
+                      <h3 class="subheader text-muted fw-medium mb-2">Portabilidad</h3>
+                      <p class="small mb-0">Derecho a recibir sus datos en formato estructurado y de uso común.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
