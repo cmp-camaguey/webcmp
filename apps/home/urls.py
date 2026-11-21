@@ -6,7 +6,12 @@ from apps.home.views.avisos.alertas_tempranas.views import EarlyWarningListView
 from apps.home.views.avisos.ciclones_tropicales.views import TropicalCycloneListView
 from apps.home.views.avisos.tormentas.views import StormListView
 from apps.home.views.home.views import IndexView
-from apps.home.views.institucion.institucional.views import AboutView, MissionView, VisionView
+from apps.home.views.institucion.institucional.views import (
+    AboutView,
+    LegalNoticeView,
+    MissionView,
+    VisionView,
+)
 from apps.home.views.institucion.publicaciones.views import ScientificPublicationListView
 from apps.home.views.landing.views import LandingView
 from apps.home.views.modelos.views import (
@@ -143,6 +148,11 @@ urlpatterns = [
     path('institucion/vision/', VisionView.as_view(), name='institution_vision'),
     path('institucion/mision/', MissionView.as_view(), name='institution_mission'),
     path('institucion/quienes-somos/', AboutView.as_view(), name='institution_about'),
+    path(
+        'institucion/aviso-legal/',
+        LegalNoticeView.as_view(),
+        name='institution_legal_notice',
+    ),
     # Otros
     path('proxy_image_modelo/', ImageProxyModeloView.as_view(), name='proxy_image_modelo'),
     # '/modelo/' desactivado entero (034-sondeo-api-externa).

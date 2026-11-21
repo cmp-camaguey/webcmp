@@ -1,0 +1,57 @@
+{% extends 'layouts/landing.html' %}
+{% load static %}
+{% block hero_content %}
+  <div class="pb-10">
+    <h1 class="hero-title">{{ title }}</h1>
+    <p class="hero-description mt-4">
+      Identidad y datos de contacto del titular del sitio web del Centro Meteorológico Provincial de Camagüey.
+    </p>
+  </div>
+{% endblock %}
+{% block content %}
+  <section class="section">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-body">
+              <h2 class="h4 mb-3">Titular del sitio web</h2>
+              <p class="mb-1"><strong>Denominación:</strong> {{ company.nombre }}</p>
+              <p class="mb-1"><strong>Condición institucional:</strong> Centro Meteorológico Provincial de Camagüey, organismo del Estado encargado de la información meteorológica y climática en la provincia.</p>
+              <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
+              <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
+              <p class="mb-1"><strong>Correo institucional:</strong> <a href="mailto:direccion@cmw.insmet.cu"
+                                                                        class="link-primary">direccion@cmw.insmet.cu</a></p>
+              <p class="mb-1"><strong>Código REEUP:</strong> {{ company.codigo_reeup }}</p>
+              <p class="mb-1"><strong>NIT:</strong> {{ company.nit }}</p>
+              <p class="mb-1"><strong>Registro Comercial:</strong> {{ company.registro_comercial }}</p>
+              <p class="mb-1"><strong>Cuenta bancaria:</strong> {{ company.cuenta_bancaria }}</p>
+              <p class="mb-1"><strong>Agencia bancaria:</strong> {{ company.agencia_bancaria }}</p>
+              <p class="text-secondary small">
+                Este aviso legal se publica en cumplimiento de la Resolución 58/2022, artículo 6.c, que exige identificar la titularidad del sitio web institucional.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h2 class="h4 mb-3">Enlaces relacionados</h2>
+              <ul class="list-unstyled list-separated gap-2 mb-0">
+                <li>
+                  <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión institucional</a>
+                </li>
+                <li>
+                  <a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión institucional</a>
+                </li>
+                <li>
+                  <a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes somos</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
