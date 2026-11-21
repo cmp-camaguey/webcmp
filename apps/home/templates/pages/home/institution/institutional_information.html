@@ -1,0 +1,153 @@
+{% extends 'layouts/landing.html' %}
+{% load static %}
+{% block extrahead %}
+  <style>
+    [data-bs-theme="light"] .section-institutional { background-color: #2b4b9b !important; }
+    [data-bs-theme="light"] .section-institutional .section-title,
+    [data-bs-theme="light"] .section-institutional .section-description,
+    [data-bs-theme="light"] .section-institutional h3,
+    [data-bs-theme="light"] .section-institutional h4,
+    [data-bs-theme="light"] .section-institutional p,
+    [data-bs-theme="light"] .section-institutional li,
+    [data-bs-theme="light"] .section-institutional td,
+    [data-bs-theme="light"] .section-institutional th { color: #ffffff; }
+    [data-bs-theme="light"] .section-institutional .text-secondary,
+    [data-bs-theme="light"] .section-institutional .text-muted { color: rgba(255,255,255,.75) !important; }
+    [data-bs-theme="light"] .section-institutional .card {
+      background-color: rgba(255,255,255,.1) !important;
+      border: 1px solid rgba(255,255,255,.15) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary,
+    [data-bs-theme="light"] .section-institutional .card a.text-reset {
+      color: rgba(255,255,255,.9) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary:hover,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary:hover,
+    [data-bs-theme="light"] .section-institutional .card a.text-reset:hover {
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card .table {
+      --tblr-table-color: rgba(255,255,255,.75);
+      --tblr-table-bg: transparent;
+      --tblr-table-striped-bg: rgba(255,255,255,.05);
+      --tblr-table-border-color: rgba(255,255,255,.15);
+    }
+    [data-bs-theme="light"] .section-institutional .card .table thead th,
+    [data-bs-theme="light"] .section-institutional .card .table-light,
+    [data-bs-theme="light"] .section-institutional .card .table-light th,
+    [data-bs-theme="light"] .section-institutional .card .table-light td {
+      --tblr-table-bg: rgba(255,255,255,.1);
+      --tblr-table-color: #ffffff;
+      background-color: rgba(255,255,255,.1) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .wave-1 { fill: var(--tblr-bg-surface) !important; opacity: 1 !important; }
+    [data-bs-theme="light"] .section-institutional .wave-2 { fill: #e5201e !important; opacity: 1 !important; }
+    [data-bs-theme="light"] .section-institutional .wave-3 { fill: #2b4b9b !important; opacity: 1 !important; }
+    [data-bs-theme="dark"] .section-institutional { background-color: var(--tblr-bg-surface-secondary) !important; }
+    [data-bs-theme="dark"] .section-institutional .wave-1 { fill: var(--tblr-bg-surface) !important; opacity: 1 !important; }
+    [data-bs-theme="dark"] .section-institutional .wave-2 { fill: var(--tblr-border-color) !important; opacity: 1 !important; }
+    [data-bs-theme="dark"] .section-institutional .wave-3 { fill: var(--tblr-bg-surface-secondary) !important; opacity: 1 !important; }
+  </style>
+{% endblock %}
+{% block hero_content %}
+  <div class="pb-4 pb-lg-6">
+    <h1 class="hero-title">{{ title }}</h1>
+    <p class="hero-description mt-4">
+      Información pública sobre la organización, dirección y estrategia de desarrollo del Centro Meteorológico Provincial de Camagüey.
+    </p>
+  </div>
+{% endblock %}
+{% block content %}
+  <section class="section section-institutional">
+    <svg class="section-divider"
+         xmlns="http://www.w3.org/2000/svg"
+         viewBox="0 24 150 28"
+         preserveAspectRatio="none">
+      <path class="wave-1" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+      <path class="wave-2" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+      <path class="wave-3" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+    </svg>
+    <div class="container position-relative">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card mb-4">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Estructura organizativa</h3>
+              <p class="mb-3">
+                La estructura organizativa del Centro responde a las funciones de dirección, vigilancia meteorológica, pronósticos, servicios, investigación y apoyo técnico-administrativo, en correspondencia con el sistema del INSMET.
+              </p>
+              <ul class="mb-0 ps-3">
+                <li><strong>Dirección:</strong> conducción estratégica, representación institucional y toma de decisiones.</li>
+                <li><strong>Grupo de Pronósticos:</strong> elaboración de pronósticos, avisos y vigilancias meteorológicas.</li>
+                <li><strong>Red de Estaciones:</strong> observación meteorológica y mantenimiento de la red provincial.</li>
+                <li><strong>Servicios Científico-Técnicos:</strong> servicios comerciales, asesoría y productos especializados.</li>
+                <li><strong>Apoyo administrativo y técnico:</strong> gestión administrativa, informática y aseguramiento operativo.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card mb-4">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Directivos</h3>
+              <p class="text-secondary mb-3">
+                Información de la dirección institucional según lo dispuesto en la Ley 168/2024. Para asuntos oficiales, utilice el correo institucional de contacto.
+              </p>
+              <div class="table-responsive">
+                <table class="table table-vcenter">
+                  <thead>
+                    <tr>
+                      <th>Cargo</th>
+                      <th>Funciones principales</th>
+                      <th>Correo institucional</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Dirección del Centro</td>
+                      <td>Dirección, representación y gestión institucional del Centro Meteorológico Provincial de Camagüey.</td>
+                      <td><a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Estrategia de desarrollo</h3>
+              <p class="mb-0">
+                La estrategia de desarrollo del Centro se orienta a fortalecer la vigilancia meteorológica continua, modernizar los servicios de información y avisos a la población, elevar la calidad de los productos científicos y comerciales, y consolidar la transformación digital institucional para contribuir al desarrollo sostenible y la reducción de riesgos ante desastres meteorológicos en la provincia de Camagüey.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card mb-4">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Enlaces relacionados</h3>
+              <ul class="list-unstyled list-separated gap-2 mb-0">
+                <li><a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión</a></li>
+                <li><a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión</a></li>
+                <li><a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes Somos</a></li>
+                <li><a class="link-secondary" href="{% url 'home:publications' %}">Publicaciones científicas</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Contacto institucional</h3>
+              <p class="mb-1"><strong>Centro Meteorológico Provincial de Camagüey</strong></p>
+              <p class="mb-1">{{ company.direccion|default:'Avenida Finlay Km 7 1/2, Camagüey, Cuba' }}</p>
+              <p class="mb-1">+53 {{ company.telefonos|default:'32261284' }}</p>
+              <p class="mb-0">
+                <a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

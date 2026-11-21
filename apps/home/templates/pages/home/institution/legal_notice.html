@@ -76,8 +76,8 @@
               <p class="mb-1"><strong>Condición institucional:</strong> Centro Meteorológico Provincial de Camagüey, organismo del Estado encargado de la información meteorológica y climática en la provincia.</p>
               <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
               <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
-              <p class="mb-1"><strong>Correo institucional:</strong> <a href="mailto:direccion@cmw.insmet.cu"
-                                                                        class="link-primary">direccion@cmw.insmet.cu</a></p>
+              <p class="mb-1"><strong>Correo institucional:</strong> <a href="mailto:{{ contact_email }}"
+                                                                        class="link-primary">{{ contact_email }}</a></p>
               <p class="mb-1"><strong>Código REEUP:</strong> {{ company.codigo_reeup }}</p>
               <p class="mb-1"><strong>NIT:</strong> {{ company.nit }}</p>
               <p class="mb-1"><strong>Registro Comercial:</strong> {{ company.registro_comercial }}</p>
@@ -105,15 +105,6 @@
                 <li>
                   <a class="link-secondary"
                      href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes somos</a>
                 </li>
               </ul>
             </div>

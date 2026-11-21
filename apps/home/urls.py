@@ -10,6 +10,7 @@ from apps.home.views.institucion.institucional.views import (
     AboutView,
     CookiePolicyView,
     DataSubjectRightsView,
+    InstitutionalInformationView,
     LegalNoticeView,
     MissionView,
     PrivacyPolicyView,
@@ -151,6 +152,11 @@ urlpatterns = [
     path('institucion/vision/', VisionView.as_view(), name='institution_vision'),
     path('institucion/mision/', MissionView.as_view(), name='institution_mission'),
     path('institucion/quienes-somos/', AboutView.as_view(), name='institution_about'),
+    path(
+        'institucion/informacion/',
+        InstitutionalInformationView.as_view(),
+        name='institution_information',
+    ),
     path(
         'institucion/aviso-legal/',
         LegalNoticeView.as_view(),

@@ -3,7 +3,7 @@ import logging
 from django.conf import settings
 from django.utils import timezone
 
-from apps.core.models import SiteConfiguration
+from apps.core.models import CompanySettings, SiteConfiguration
 from apps.meteo.models import Warning
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,13 @@ def site_branding(request):
     site_config = getattr(request, 'site_config', None)
     if site_config is None:
         site_config = SiteConfiguration.get_instance()
-    return {'site_branding': site_config}
+    company = CompanySettings.get_instance()
+    return {
+        'site_branding': site_config,
+        'company_settings': company,
+        'company': company,
+        'contact_email': 'direccion@cmw.insmet.cu',
+    }
 
 
 def menu_notifications(request):
