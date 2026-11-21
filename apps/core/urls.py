@@ -16,6 +16,10 @@ from apps.core.views import (
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
     SiteConfigurationUpdateView,
+    TermsChangeNoticeCreateView,
+    TermsChangeNoticeDeleteView,
+    TermsChangeNoticeListView,
+    TermsChangeNoticeUpdateView,
 )
 
 app_name = 'core'
@@ -66,6 +70,26 @@ urlpatterns = [
         'solicitudes-derechos/<int:pk>/editar/',
         DataSubjectRequestUpdateView.as_view(),
         name='data_subject_request_update',
+    ),
+    path(
+        'avisos-cambios-legales/',
+        TermsChangeNoticeListView.as_view(),
+        name='terms_change_notice_list',
+    ),
+    path(
+        'avisos-cambios-legales/crear/',
+        TermsChangeNoticeCreateView.as_view(),
+        name='terms_change_notice_create',
+    ),
+    path(
+        'avisos-cambios-legales/<uuid:pk>/editar/',
+        TermsChangeNoticeUpdateView.as_view(),
+        name='terms_change_notice_update',
+    ),
+    path(
+        'avisos-cambios-legales/<uuid:pk>/eliminar/',
+        TermsChangeNoticeDeleteView.as_view(),
+        name='terms_change_notice_delete',
     ),
     path('cookies/consentimiento/', CookieConsentView.as_view(), name='cookie_consent'),
 ]

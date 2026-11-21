@@ -24,6 +24,12 @@ from apps.core.views.serve_file import PublicServeFileView, ServeModelFileView
 from apps.core.views.site_configuration import (
     SiteConfigurationUpdateView,
 )
+from apps.core.views.terms_change_notices import (
+    TermsChangeNoticeCreateView,
+    TermsChangeNoticeDeleteView,
+    TermsChangeNoticeListView,
+    TermsChangeNoticeUpdateView,
+)
 
 __all__ = [
     'ActivityLogListView',
@@ -32,6 +38,10 @@ __all__ = [
     'CookieConsentView',
     'DataSubjectRequestListView',
     'DataSubjectRequestUpdateView',
+    'TermsChangeNoticeCreateView',
+    'TermsChangeNoticeDeleteView',
+    'TermsChangeNoticeListView',
+    'TermsChangeNoticeUpdateView',
     'EmailRecipientListCreateView',
     'EmailRecipientListDeleteView',
     'EmailRecipientListListView',
