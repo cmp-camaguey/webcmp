@@ -4,8 +4,16 @@
  * cristal (tema claro) y las olas animadas de Tabler.
  */
 
+.section-institutional {
+  --inst-line: rgba(255, 255, 255, 0.18);
+}
+
 [data-bs-theme="light"] .section-institutional {
   background-color: #2b4b9b !important;
+}
+
+[data-bs-theme="dark"] .section-institutional {
+  --inst-line: var(--tblr-border-color);
 }
 
 [data-bs-theme="light"] .section-institutional .section-title,
@@ -147,4 +155,85 @@
 [data-bs-theme="dark"] .section-institutional .wave-3 {
   fill: var(--tblr-bg-surface-secondary) !important;
   opacity: 1 !important;
+}
+
+/* ─── Índice lateral: una lista, no una tarjeta más ─── */
+
+.institution-aside__label {
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.institution-aside__links {
+  margin: 0 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.institution-aside__links li + li {
+  border-top: 1px solid var(--inst-line);
+}
+
+.institution-aside__links a {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.institution-aside__links a:hover,
+.institution-aside__links a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.institution-aside__links a:focus-visible,
+.institution-aside__mail:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.institution-aside__links .ti {
+  font-size: 1rem;
+  opacity: 0.45;
+}
+
+.institution-aside__mail {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ─── Lista editorial de compromisos y valores (Misión/Visión) ─── */
+
+.institution-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.institution-point {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem 0;
+}
+
+.institution-point + .institution-point {
+  border-top: 1px solid var(--inst-line);
+}
+
+.institution-point:first-child {
+  padding-top: 0;
+}
+
+.institution-point:last-child {
+  padding-bottom: 0;
 }

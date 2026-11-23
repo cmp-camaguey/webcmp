@@ -540,7 +540,28 @@ class InstitutionPagesTests(TestCase):
                 self.assertIn('section-divider', html)
                 self.assertNotIn('hero-curve', html)
                 self.assertNotIn('section-tarjetas', html)
+
+    def test_related_links_rail_skips_pages_that_already_link_their_destinations(self):
+        """El índice lateral no repite destinos que la página ya ofrece como tarjetas."""
+        with_rail = (
+            'home:institution_vision',
+            'home:institution_mission',
+            'home:institution_information',
+            'home:institution_public_information',
+            'home:institution_legal_notice',
+            'home:institution_privacy_policy',
+            'home:institution_cookie_policy',
+            'home:institution_data_subject_rights',
+        )
+        for name in with_rail:
+            with self.subTest(name=name):
+                html = self.client.get(reverse(name)).content.decode()
                 self.assertEqual(1, html.count('Enlaces relacionados'))
+                self.assertIn('institution-aside__links', html)
+
+        html = self.client.get(reverse('home:institution_about')).content.decode()
+        self.assertNotIn('Enlaces relacionados', html)
+        self.assertEqual(1, html.count('Contacto institucional'))
 
     def test_pages_render_with_context(self):
         for name, template, title, segment in self.PAGES:

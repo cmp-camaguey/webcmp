@@ -14,8 +14,8 @@
         <h2 class="section-title">El quehacer del Centro</h2>
         <div class="section-description">Vigilancia, investigación, servicios y contacto directo con la comunidad.</div>
       </div>
-      <div class="row g-4 gx-lg-10 gy-lg-5">
-        <div class="col-sm-6">
+      <div class="row g-4">
+        <div class="col-12">
           <a class="card card-link card-md h-100"
              href="{% url 'home:publications' %}">
             <div class="card-stamp card-stamp-lg">
@@ -46,7 +46,7 @@
             </div>
           </a>
         </div>
-        <div class="col-sm-6">
+        <div class="col-12">
           <a class="card card-link card-md h-100"
              href="{% url 'home:services_public' %}">
             <div class="card-stamp card-stamp-lg">
@@ -78,7 +78,7 @@
             </div>
           </a>
         </div>
-        <div class="col-sm-6">
+        <div class="col-12">
           <a class="card card-link card-md h-100"
              href="{% url 'home:institution_information' %}">
             <div class="card-stamp card-stamp-lg">
@@ -111,9 +111,6 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-4">
-      {% include 'includes/landing/related_links.html' with group='institution' current='about' %}
-      {% include 'includes/landing/contact_card.html' %}
-    </div>
+    <div class="col-lg-4">{% include 'includes/landing/contact_card.html' %}</div>
   </div>
 {% endblock %}
