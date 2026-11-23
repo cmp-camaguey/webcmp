@@ -1,7 +1,7 @@
 {% comment %}
   Bloque de contacto institucional con los datos de CompanySettings, en el
-  mismo tono que el índice lateral. `cta_label` agrega un botón de correo;
-  `cta_subject` define su asunto.
+  mismo tono que el índice lateral. `contact_note` agrega una aclaración bajo
+  el correo; `cta_label` agrega un botón de correo y `cta_subject` su asunto.
 {% endcomment %}
 <div class="institution-aside">
   <h2 class="institution-aside__label">Contacto institucional</h2>
@@ -13,6 +13,9 @@
   <p class="mb-0">
     <a class="institution-aside__mail" href="mailto:{{ contact_email }}">{{ contact_email }}</a>
   </p>
+  {% if contact_note %}
+    <p class="institution-aside__note mt-2 mb-0">{{ contact_note }}</p>
+  {% endif %}
   {% if cta_label %}
     <a class="btn btn-light w-100 mt-3"
        href="mailto:{{ contact_email }}?subject={{ cta_subject|urlencode }}">

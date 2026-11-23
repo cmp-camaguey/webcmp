@@ -8,7 +8,7 @@
 {% block institution_content %}
   <div class="row g-4">
     <div class="col-lg-8">
-      <div class="card h-100">
+      <div class="card">
         <div class="card-body d-flex flex-column">
           <h3 class="subheader text-muted fw-medium mb-3">Formulario de solicitud</h3>
           <p class="text-secondary mb-4">
@@ -91,85 +91,79 @@
               </a>
             </div>
           </form>
+          <div class="institution-facts-block mt-4 pt-4">
+            <h3 class="subheader text-muted fw-medium mb-2">Qué pasa después de enviar</h3>
+            <dl class="institution-facts mb-0">
+              <div>
+                <dt>Confirmación de recibo</dt>
+                <dd>
+                  Inmediata, por correo automático.
+                </dd>
+              </div>
+              <div>
+                <dt>Respuesta</dt>
+                <dd>
+                  Máximo 30 días hábiles desde la recepción de la solicitud.
+                </dd>
+              </div>
+              <div>
+                <dt>Prórroga</dt>
+                <dd>
+                  Hasta 30 días hábiles adicionales, notificándole la causa.
+                </dd>
+              </div>
+              <div>
+                <dt>Identidad</dt>
+                <dd>
+                  Podremos solicitar un documento acreditativo si resulta necesario.
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-lg-4">
       {% include 'includes/landing/related_links.html' with group='legal' current='data_subject_rights' %}
-      <div class="card mt-3 bg-primary bg-opacity-10 border-primary">
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-2">Contacto directo</h3>
-          <p class="small mb-1">
-            <strong>Delegado de Protección de Datos:</strong>
-            <br>
-            <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
-          </p>
-          <p class="small mb-0">
-            <strong>Teléfono:</strong> {{ company.telefonos }}
-          </p>
-        </div>
-      </div>
-      <div class="card mt-3">
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">Plazos y proceso</h3>
-          <ul class="list-unstyled list-separated gap-2 mb-0">
-            <li><strong>Confirmación de recibo:</strong> Inmediata (correo automático).</li>
-            <li><strong>Respuesta sustantiva:</strong> Máximo 30 días hábiles desde la recepción.</li>
-            <li><strong>Prórroga:</strong> Excepcionalmente 30 días hábiles adicionales, notificándole la causa.</li>
-            <li><strong>Verificación de identidad:</strong> Podremos solicitar documento acreditativo si es necesario.</li>
-            <li><strong>Gratuidad:</strong> El ejercicio de estos derechos es gratuito.</li>
-            <li><strong>Contacto DPD:</strong> <a href="mailto:{{ contact_email }}"
-                                                  class="link-primary">{{ contact_email }}</a></li>
-          </ul>
-        </div>
-      </div>
+      {% include 'includes/landing/contact_card.html' with contact_note='Las solicitudes las atiende el Delegado de Protección de Datos en esa dirección.' %}
     </div>
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">Información sobre sus derechos</h3>
-          <div class="row g-3">
-            <div class="col-md-6 col-lg-4">
-              <div class="card h-100 border-light">
-                <div class="card-body">
-                  <h3 class="subheader text-muted fw-medium mb-2">Acceso</h3>
-                  <p class="small mb-0">Derecho a obtener confirmación de si se tratan sus datos y acceder a ellos.</p>
-                </div>
-              </div>
+          <h3 class="subheader text-muted fw-medium mb-2">Información sobre sus derechos</h3>
+          <p class="text-secondary mb-4">El ejercicio de estos derechos es gratuito.</p>
+          <dl class="institution-facts mb-0">
+            <div>
+              <dt>Acceso</dt>
+              <dd>
+                Obtener confirmación de si se tratan sus datos y acceder a ellos.
+              </dd>
             </div>
-            <div class="col-md-6 col-lg-4">
-              <div class="card h-100 border-light">
-                <div class="card-body">
-                  <h3 class="subheader text-muted fw-medium mb-2">Rectificación</h3>
-                  <p class="small mb-0">Derecho a solicitar la corrección de datos inexactos o incompletos.</p>
-                </div>
-              </div>
+            <div>
+              <dt>Rectificación</dt>
+              <dd>
+                Solicitar la corrección de datos inexactos o incompletos.
+              </dd>
             </div>
-            <div class="col-md-6 col-lg-4">
-              <div class="card h-100 border-light">
-                <div class="card-body">
-                  <h3 class="subheader text-muted fw-medium mb-2">Cancelación</h3>
-                  <p class="small mb-0">Derecho a solicitar la supresión de sus datos cuando ya no sean necesarios.</p>
-                </div>
-              </div>
+            <div>
+              <dt>Cancelación</dt>
+              <dd>
+                Solicitar la supresión de sus datos cuando ya no sean necesarios.
+              </dd>
             </div>
-            <div class="col-md-6 col-lg-4">
-              <div class="card h-100 border-light">
-                <div class="card-body">
-                  <h3 class="subheader text-muted fw-medium mb-2">Oposición</h3>
-                  <p class="small mb-0">Derecho a oponerse al tratamiento de sus datos para fines específicos.</p>
-                </div>
-              </div>
+            <div>
+              <dt>Oposición</dt>
+              <dd>
+                Oponerse al tratamiento de sus datos para fines específicos.
+              </dd>
             </div>
-            <div class="col-md-6 col-lg-4">
-              <div class="card h-100 border-light">
-                <div class="card-body">
-                  <h3 class="subheader text-muted fw-medium mb-2">Portabilidad</h3>
-                  <p class="small mb-0">Derecho a recibir sus datos en formato estructurado y de uso común.</p>
-                </div>
-              </div>
+            <div>
+              <dt>Portabilidad</dt>
+              <dd>
+                Recibir sus datos en un formato estructurado y de uso común.
+              </dd>
             </div>
-          </div>
+          </dl>
         </div>
       </div>
     </div>
