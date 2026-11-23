@@ -211,6 +211,47 @@
   </div>
   </div>
   </div>
+  {% include 'includes/dashboard/form_card.html' with card_title='Catálogo público' %}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.requirements.id_for_label }}">{{ form.requirements.label }}</label>
+    <textarea class="form-control
+                     {% if form.requirements.errors %}is-invalid{% endif %}"
+              id="{{ form.requirements.id_for_label }}"
+              name="{{ form.requirements.name }}"
+              rows="3"
+              placeholder="Requisitos para solicitar el servicio">{{ form.requirements.value|default:'' }}</textarea>
+    {% if form.requirements.errors %}
+      <div class="invalid-feedback d-block">{{ form.requirements.errors.0 }}</div>
+    {% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.procedure.id_for_label }}">{{ form.procedure.label }}</label>
+    <textarea class="form-control
+                     {% if form.procedure.errors %}is-invalid{% endif %}"
+              id="{{ form.procedure.id_for_label }}"
+              name="{{ form.procedure.name }}"
+              rows="3"
+              placeholder="Procedimiento o pasos para solicitar el servicio">{{ form.procedure.value|default:'' }}</textarea>
+    {% if form.procedure.errors %}
+      <div class="invalid-feedback d-block">{{ form.procedure.errors.0 }}</div>
+    {% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.delivery_time.id_for_label }}">{{ form.delivery_time.label }}</label>
+    <input type="text"
+           class="form-control
+                  {% if form.delivery_time.errors %}is-invalid{% endif %}"
+           id="{{ form.delivery_time.id_for_label }}"
+           name="{{ form.delivery_time.name }}"
+           placeholder="Ej: 5 días hábiles"
+           value="{{ form.delivery_time.value|default:'' }}">
+    {% if form.delivery_time.errors %}
+      <div class="invalid-feedback d-block">{{ form.delivery_time.errors.0 }}</div>
+    {% endif %}
+  </div>
+  </div>
+  </div>
+  </div>
 {% endblock %}
 {% block extrajs %}
   <script>

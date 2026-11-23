@@ -57,6 +57,28 @@
               </div>
             {% endif %}
           </div>
+          {% if service.delivery_time or service.requirements or service.procedure %}
+            <div class="mt-3">
+              {% if service.delivery_time %}
+                <div class="mb-2">
+                  <span class="text-secondary">Plazo de entrega:</span>
+                  <strong>{{ service.delivery_time }}</strong>
+                </div>
+              {% endif %}
+              {% if service.requirements %}
+                <div class="mb-2">
+                  <div class="text-secondary mb-1">Requisitos</div>
+                  <div>{{ service.requirements|linebreaksbr }}</div>
+                </div>
+              {% endif %}
+              {% if service.procedure %}
+                <div class="mb-2">
+                  <div class="text-secondary mb-1">Procedimiento</div>
+                  <div>{{ service.procedure|linebreaksbr }}</div>
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
           <p class="text-muted mb-2">Publicado por: {{ service.user.get_full_name }}</p>
         </div>
       </div>
