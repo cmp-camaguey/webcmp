@@ -36,6 +36,10 @@ from apps.core.views.env_config import (
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
 )
+from apps.core.views.institutional_pages import (
+    InstitutionalPageListView,
+    InstitutionalPageUpdateView,
+)
 from apps.core.views.public_information_requests import (
     PublicInformationRequestListView,  # noqa: F401
     PublicInformationRequestUpdateView,  # noqa: F401
@@ -68,6 +72,8 @@ __all__ = [
     'BudgetPeriodUpdateView',
     'ComplianceProcedureListView',
     'ComplianceProcedureUpdateView',
+    'InstitutionalPageListView',
+    'InstitutionalPageUpdateView',
     'TermsChangeNoticeCreateView',
     'TermsChangeNoticeDeleteView',
     'TermsChangeNoticeListView',

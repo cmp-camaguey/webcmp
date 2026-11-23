@@ -1,15 +1,15 @@
 {% extends 'layouts/institution.html' %}
 {% block hero_description %}
   <p class="hero-description mt-4">
-    Identidad y datos de contacto del titular del sitio web del Centro Meteorológico Provincial de Camagüey.
+    {{ content_blocks.hero_description|default:"Identidad y datos de contacto del titular del sitio web del Centro Meteorológico Provincial de Camagüey." }}
   </p>
 {% endblock %}
 {% block institution_content %}
   <div class="card">
     <div class="card-body">
-      <h3 class="subheader text-muted fw-medium mb-3">Titular del sitio web</h3>
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.card_title|default:"Titular del sitio web" }}</h3>
       <p class="mb-1"><strong>Denominación:</strong> {{ company.nombre }}</p>
-      <p class="mb-1"><strong>Condición institucional:</strong> Centro Meteorológico Provincial de Camagüey, organismo del Estado encargado de la información meteorológica y climática en la provincia.</p>
+      <p class="mb-1"><strong>Condición institucional:</strong> {{ content_blocks.institutional_condition|default:"Centro Meteorológico Provincial de Camagüey, organismo del Estado encargado de la información meteorológica y climática en la provincia." }}</p>
       <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
       <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
       <p class="mb-1"><strong>Correo institucional:</strong> <a href="mailto:{{ contact_email }}"
@@ -20,7 +20,7 @@
       <p class="mb-1"><strong>Cuenta bancaria:</strong> {{ company.cuenta_bancaria }}</p>
       <p class="mb-1"><strong>Agencia bancaria:</strong> {{ company.agencia_bancaria }}</p>
       <p class="text-secondary small">
-        Este aviso legal se publica en cumplimiento de la Resolución 58/2022, artículo 6.c, que exige identificar la titularidad del sitio web institucional.
+        {{ content_blocks.footer_note|default:"Este aviso legal se publica en cumplimiento de la Resolución 58/2022, artículo 6.c, que exige identificar la titularidad del sitio web institucional." }}
       </p>
     </div>
   </div>

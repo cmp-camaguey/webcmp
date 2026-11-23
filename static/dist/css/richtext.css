@@ -19,3 +19,60 @@
 .richtext-editor-wrapper .ql-editor {
   min-height: 12rem;
 }
+
+/* Make Quill editor content look closer to public rich content */
+.richtext-editor-wrapper .ql-editor {
+  font-family: inherit;
+  line-height: 1.6;
+  color: var(--tblr-body-color, #1d273b);
+}
+
+.richtext-editor-wrapper .ql-editor p,
+.richtext-editor-wrapper .ql-editor ul,
+.richtext-editor-wrapper .ql-editor ol,
+.richtext-editor-wrapper .ql-editor table,
+.richtext-editor-wrapper .ql-editor blockquote {
+  margin-bottom: 0.75rem;
+}
+
+.richtext-editor-wrapper .ql-editor h3,
+.richtext-editor-wrapper .ql-editor h4,
+.richtext-editor-wrapper .ql-editor h5,
+.richtext-editor-wrapper .ql-editor h6 {
+  color: var(--tblr-muted, #667382);
+  font-weight: 500;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.richtext-editor-wrapper .ql-editor a {
+  color: var(--tblr-primary, #066fd1);
+  text-decoration: none;
+}
+
+.richtext-editor-wrapper .ql-editor ul,
+.richtext-editor-wrapper .ql-editor ol {
+  padding-left: 1.25rem;
+}
+
+.richtext-editor-wrapper .ql-editor table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.richtext-editor-wrapper .ql-editor th,
+.richtext-editor-wrapper .ql-editor td {
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  padding: 0.5rem 0.75rem;
+}
+
+.richtext-editor-wrapper .ql-editor th {
+  background: var(--tblr-bg-surface-tertiary, #f8fafc);
+  font-weight: 600;
+}
+
+.richtext-editor-wrapper .ql-editor blockquote {
+  border-left: 3px solid var(--tblr-border-color, #e6e7e9);
+  padding-left: 1rem;
+  color: var(--tblr-muted, #667382);
+}

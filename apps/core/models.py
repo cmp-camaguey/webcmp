@@ -1299,3 +1299,47 @@ class ComplianceProcedure(models.Model):
         from django.urls import reverse
 
         return reverse('core:compliance_procedure_update', args=[self.pk])
+
+
+class InstitutionalPage(models.Model):
+    """Editable content blocks for institutional/legal pages with fixed templates."""
+
+    class PageKey(models.TextChoices):
+        VISION = 'vision', 'Visión'
+        MISSION = 'mission', 'Misión'
+        ABOUT = 'about', 'Quiénes somos'
+        INSTITUTIONAL_INFORMATION = 'institutional_information', 'Información institucional'
+        LEGAL_NOTICE = 'legal_notice', 'Aviso legal'
+        DATA_SUBJECT_RIGHTS = 'data_subject_rights', 'Derechos del titular'
+        COOKIE_POLICY = 'cookie_policy', 'Política de cookies'
+        PRIVACY_POLICY = 'privacy_policy', 'Política de privacidad'
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    page_key = models.CharField(
+        max_length=50,
+        choices=PageKey.choices,
+        unique=True,
+        verbose_name='Página',
+    )
+    blocks = models.JSONField(default=dict, blank=True, verbose_name='Bloques')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Contenido institucional'
+        verbose_name_plural = 'Contenidos institucionales'
+        ordering = ['page_key']
+        default_permissions = ()
+        permissions = [
+            ('view_institutionalpage', 'Ver'),
+            ('add_institutionalpage', 'Añadir'),
+            ('change_institutionalpage', 'Editar'),
+            ('delete_institutionalpage', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return self.get_page_key_display()
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:institutional_page_update', args=[self.pk])

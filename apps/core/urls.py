@@ -25,6 +25,8 @@ from apps.core.views import (
     EnvironmentConfigApplyView,
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
+    InstitutionalPageListView,
+    InstitutionalPageUpdateView,
     PublicInformationRequestListView,
     PublicInformationRequestUpdateView,
     SiteConfigurationUpdateView,
@@ -173,6 +175,16 @@ urlpatterns = [
         'legal/procedimientos-cumplimiento/<uuid:pk>/editar/',
         ComplianceProcedureUpdateView.as_view(),
         name='compliance_procedure_update',
+    ),
+    path(
+        'legal/paginas-institucionales/',
+        InstitutionalPageListView.as_view(),
+        name='institutional_page_list',
+    ),
+    path(
+        'legal/paginas-institucionales/<uuid:pk>/editar/',
+        InstitutionalPageUpdateView.as_view(),
+        name='institutional_page_update',
     ),
     path('cookies/consentimiento/', CookieConsentView.as_view(), name='cookie_consent'),
 ]

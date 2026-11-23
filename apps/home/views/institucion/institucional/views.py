@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 
+from apps.core.institutional_pages import get_page_blocks
 from apps.core.models import (
     CompanySettings,
     DataSubjectRequest,
@@ -19,6 +20,7 @@ class VisionView(TemplateView):
         context['title'] = 'Visión'
         context['parent'] = 'institucion'
         context['segment'] = 'vision'
+        context['content_blocks'] = get_page_blocks('vision')
         return context
 
 
@@ -30,6 +32,7 @@ class MissionView(TemplateView):
         context['title'] = 'Misión'
         context['parent'] = 'institucion'
         context['segment'] = 'mision'
+        context['content_blocks'] = get_page_blocks('mission')
         return context
 
 
@@ -41,6 +44,7 @@ class AboutView(TemplateView):
         context['title'] = 'Quiénes Somos'
         context['parent'] = 'institucion'
         context['segment'] = 'quienes_somos'
+        context['content_blocks'] = get_page_blocks('about')
         return context
 
 
@@ -71,6 +75,7 @@ class LegalNoticeView(TermsChangeNoticeMixin, TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'legal_notice'
         context['company'] = CompanySettings.get_instance()
+        context['content_blocks'] = get_page_blocks('legal_notice')
         return context
 
 
@@ -84,6 +89,7 @@ class PrivacyPolicyView(TermsChangeNoticeMixin, TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'privacy_policy'
         context['company'] = CompanySettings.get_instance()
+        context['content_blocks'] = get_page_blocks('privacy_policy')
         return context
 
 
@@ -97,6 +103,7 @@ class CookiePolicyView(TermsChangeNoticeMixin, TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'cookie_policy'
         context['company'] = CompanySettings.get_instance()
+        context['content_blocks'] = get_page_blocks('cookie_policy')
         return context
 
 
@@ -227,6 +234,7 @@ class DataSubjectRightsView(TermsChangeNoticeMixin, FormView):
         context['parent'] = 'institucion'
         context['segment'] = 'data_subject_rights'
         context['company'] = CompanySettings.get_instance()
+        context['content_blocks'] = get_page_blocks('data_subject_rights')
         return context
 
     def form_valid(self, form):
@@ -250,6 +258,7 @@ class InstitutionalInformationView(TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'institutional_information'
         context['company'] = CompanySettings.get_instance()
+        context['content_blocks'] = get_page_blocks('institutional_information')
         return context
 
 

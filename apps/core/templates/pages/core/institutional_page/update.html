@@ -1,0 +1,53 @@
+{% extends 'layouts/form.html' %}
+{% load static %}
+{% load utils_filters %}
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'dist/libs/quill/quill.snow.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/richtext.css' %}">
+{% endblock %}
+{% block form %}
+  {% include 'includes/dashboard/form_card.html' with card_title=object.get_page_key_display %}
+  <div class="alert alert-info bg-blue-lt mb-4" role="alert">
+    <div class="d-flex">
+      <div class="me-2">
+        <i class="icon ti ti-info-circle"></i>
+      </div>
+      <div>
+        Edite solo los bloques necesarios. La estructura de la página se mantiene fija y los campos vacíos conservan el contenido original.
+      </div>
+    </div>
+  </div>
+  {% for block in schema_blocks %}
+    {% if block.group %}
+      {% ifchanged block.group %}
+        {% if not forloop.first %}<hr class="my-4">{% endif %}
+        <h4 class="subheader text-muted mb-3">{{ block.group }}</h4>
+      {% endifchanged %}
+    {% endif %}
+    {% with field=form|get_item:block.name %}
+      {% if field %}
+        <div class="mb-3">
+          {% if block.group != block.label %}
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% endif %}
+          {{ field }}
+          {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  {% endfor %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+  {% endif %}
+  </div>
+  </div>
+  </div>
+{% endblock %}
+{% block extrajs %}
+  {{ block.super }}
+  <script src="{% static 'dist/libs/quill/quill.js' %}"></script>
+  <script src="{% static 'dist/js/richtext-init.js' %}"></script>
+{% endblock %}

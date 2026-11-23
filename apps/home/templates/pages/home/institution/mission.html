@@ -1,16 +1,16 @@
 {% extends 'layouts/institution.html' %}
 {% block hero_description %}
   <p class="hero-description mt-4">
-    El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera.
+    {{ content_blocks.hero_paragraph_1|default:"El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera." }}
   </p>
   <p class="hero-description mt-4">
-    Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible.
+    {{ content_blocks.hero_paragraph_2|default:"Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible." }}
   </p>
 {% endblock %}
 {% block institution_content %}
   <div class="section-header mb-6">
-    <h2 class="section-title">Nuestros compromisos</h2>
-    <div class="section-description">La razón de ser de nuestra labor de vigilancia meteorológica.</div>
+    <h2 class="section-title">{{ content_blocks.section_title|default:"Nuestros compromisos" }}</h2>
+    <div class="section-description">{{ content_blocks.section_description|default:"La razón de ser de nuestra labor de vigilancia meteorológica." }}</div>
   </div>
   <div class="row g-4">
     <div class="col-12">
@@ -21,10 +21,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Proteger la vida</h3>
-          <p class="text-secondary mb-0">
-            Dirigimos la información a velar por la seguridad de la vida humana y a reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico.
-          </p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_1_title|default:"Proteger la vida" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_1_text|default:"Dirigimos la información a velar por la seguridad de la vida humana y a reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico." }}</p>
         </div>
       </div>
     </div>
@@ -36,10 +34,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Vigilancia permanente</h3>
-          <p class="text-secondary mb-0">
-            Mantenemos la observación y el seguimiento de los fenómenos atmosféricos durante las 24 horas, todos los días del año.
-          </p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_2_title|default:"Vigilancia permanente" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_2_text|default:"Mantenemos la observación y el seguimiento de los fenómenos atmosféricos durante las 24 horas, todos los días del año." }}</p>
         </div>
       </div>
     </div>
@@ -51,10 +47,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Información oportuna</h3>
-          <p class="text-secondary mb-0">
-            Emisión de avisos y alertas con la antelación necesaria para que la población y los organismos tomen decisiones seguras.
-          </p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_3_title|default:"Información oportuna" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_3_text|default:"Emisión de avisos y alertas con la antelación necesaria para que la población y los organismos tomen decisiones seguras." }}</p>
         </div>
       </div>
     </div>
@@ -66,10 +60,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Desarrollo sostenible</h3>
-          <p class="text-secondary mb-0">
-            Contribuimos directamente al bienestar de la comunidad y al desarrollo sostenible de la provincia de Camagüey.
-          </p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_4_title|default:"Desarrollo sostenible" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_4_text|default:"Contribuimos directamente al bienestar de la comunidad y al desarrollo sostenible de la provincia de Camagüey." }}</p>
         </div>
       </div>
     </div>

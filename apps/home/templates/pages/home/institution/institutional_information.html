@@ -1,57 +1,72 @@
 {% extends 'layouts/institution.html' %}
+{% load utils_filters %}
 {% block hero_description %}
   <p class="hero-description mt-4">
-    Información pública sobre la organización, dirección y estrategia de desarrollo del Centro Meteorológico Provincial de Camagüey.
+    {{ content_blocks.hero_description|default:"Información pública sobre la organización, dirección y estrategia de desarrollo del Centro Meteorológico Provincial de Camagüey." }}
   </p>
 {% endblock %}
 {% block institution_content %}
   <div class="card mb-4">
     <div class="card-body">
-      <h3 class="subheader text-muted fw-medium mb-3">Estructura organizativa</h3>
-      <p class="mb-3">
-        La estructura organizativa del Centro responde a las funciones de dirección, vigilancia meteorológica, pronósticos, servicios, investigación y apoyo técnico-administrativo, en correspondencia con el sistema del INSMET.
-      </p>
-      <ul class="mb-0 ps-3">
-        <li><strong>Dirección:</strong> conducción estratégica, representación institucional y toma de decisiones.</li>
-        <li><strong>Grupo de Pronósticos:</strong> elaboración de pronósticos, avisos y vigilancias meteorológicas.</li>
-        <li><strong>Red de Estaciones:</strong> observación meteorológica y mantenimiento de la red provincial.</li>
-        <li><strong>Servicios Científico-Técnicos:</strong> servicios comerciales, asesoría y productos especializados.</li>
-        <li><strong>Apoyo administrativo y técnico:</strong> gestión administrativa, informática y aseguramiento operativo.</li>
-      </ul>
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.org_title|default:"Estructura organizativa" }}</h3>
+      {% if content_blocks.org_description %}
+        <p class="mb-3">{{ content_blocks.org_description }}</p>
+      {% else %}
+        <p class="mb-3">La estructura organizativa del Centro responde a las funciones de dirección, vigilancia meteorológica, pronósticos, servicios, investigación y apoyo técnico-administrativo, en correspondencia con el sistema del INSMET.</p>
+      {% endif %}
+      {% if content_blocks.org_body %}
+        <div class="richtext-content mb-0">{{ content_blocks.org_body|richtext }}</div>
+      {% else %}
+        <ul class="mb-0 ps-3">
+          <li><strong>Dirección:</strong> conducción estratégica, representación institucional y toma de decisiones.</li>
+          <li><strong>Grupo de Pronósticos:</strong> elaboración de pronósticos, avisos y vigilancias meteorológicas.</li>
+          <li><strong>Red de Estaciones:</strong> observación meteorológica y mantenimiento de la red provincial.</li>
+          <li><strong>Servicios Científico-Técnicos:</strong> servicios comerciales, asesoría y productos especializados.</li>
+          <li><strong>Apoyo administrativo y técnico:</strong> gestión administrativa, informática y aseguramiento operativo.</li>
+        </ul>
+      {% endif %}
     </div>
   </div>
   <div class="card mb-4">
     <div class="card-body">
-      <h3 class="subheader text-muted fw-medium mb-3">Directivos</h3>
-      <p class="text-secondary mb-3">
-        Información de la dirección institucional según lo dispuesto en la Ley 168/2024. Para asuntos oficiales, utilice el correo institucional de contacto.
-      </p>
-      <div class="table-responsive">
-        <table class="table table-vcenter">
-          <thead>
-            <tr>
-              <th>Cargo</th>
-              <th>Funciones principales</th>
-              <th>Correo institucional</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Dirección del Centro</td>
-              <td>Dirección, representación y gestión institucional del Centro Meteorológico Provincial de Camagüey.</td>
-              <td><a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.directors_title|default:"Directivos" }}</h3>
+      {% if content_blocks.directors_description %}
+        <p class="text-secondary mb-3">{{ content_blocks.directors_description }}</p>
+      {% else %}
+        <p class="text-secondary mb-3">Información de la dirección institucional según lo dispuesto en la Ley 168/2024. Para asuntos oficiales, utilice el correo institucional de contacto.</p>
+      {% endif %}
+      {% if content_blocks.directors_body %}
+        <div class="richtext-content mb-0">{{ content_blocks.directors_body|richtext }}</div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table table-vcenter">
+            <thead>
+              <tr>
+                <th>Cargo</th>
+                <th>Funciones principales</th>
+                <th>Correo institucional</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Dirección del Centro</td>
+                <td>Dirección, representación y gestión institucional del Centro Meteorológico Provincial de Camagüey.</td>
+                <td><a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
     </div>
   </div>
   <div class="card">
     <div class="card-body">
-      <h3 class="subheader text-muted fw-medium mb-3">Estrategia de desarrollo</h3>
-      <p class="mb-0">
-        La estrategia de desarrollo del Centro se orienta a fortalecer la vigilancia meteorológica continua, modernizar los servicios de información y avisos a la población, elevar la calidad de los productos científicos y comerciales, y consolidar la transformación digital institucional para contribuir al desarrollo sostenible y la reducción de riesgos ante desastres meteorológicos en la provincia de Camagüey.
-      </p>
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.strategy_title|default:"Estrategia de desarrollo" }}</h3>
+      {% if content_blocks.strategy_body %}
+        <div class="richtext-content mb-0">{{ content_blocks.strategy_body|richtext }}</div>
+      {% else %}
+        <p class="mb-0">La estrategia de desarrollo del Centro se orienta a fortalecer la vigilancia meteorológica continua, modernizar los servicios de información y avisos a la población, elevar la calidad de los productos científicos y comerciales, y consolidar la transformación digital institucional para contribuir al desarrollo sostenible y la reducción de riesgos ante desastres meteorológicos en la provincia de Camagüey.</p>
+      {% endif %}
     </div>
   </div>
 {% endblock %}
