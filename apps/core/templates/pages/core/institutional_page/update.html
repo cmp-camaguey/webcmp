@@ -1,0 +1,38 @@
+{% extends 'layouts/form.html' %}
+{% load static %}
+{% load utils_filters %}
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'dist/libs/quill/quill.snow.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/richtext.css' %}">
+{% endblock %}
+{% block form %}
+  {% include 'includes/dashboard/form_card.html' with card_title=object.get_page_key_display %}
+  <p class="text-secondary mb-4">
+    Edite solo los bloques necesarios. La estructura de la página se mantiene fija para conservar el formato.
+  </p>
+  {% for block in schema_blocks %}
+    {% with field=form|get_item:block.name %}
+      {% if field %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  {% endfor %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+  {% endif %}
+  </div>
+  </div>
+  </div>
+{% endblock %}
+{% block extrajs %}
+  {{ block.super }}
+  <script src="{% static 'dist/libs/quill/quill.js' %}"></script>
+  <script src="{% static 'dist/js/richtext-init.js' %}"></script>
+{% endblock %}

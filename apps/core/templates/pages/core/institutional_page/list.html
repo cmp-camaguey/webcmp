@@ -1,0 +1,24 @@
+{% extends 'layouts/list.html' %}
+{% load my_filters %}
+{% block columns %}
+  <th>Página</th>
+  <th>Última actualización</th>
+  <th class="text-end">Acciones</th>
+{% endblock %}
+{% block row %}
+  <td>{{ object.get_page_key_display }}</td>
+  <td>{{ object.updated_at|date:"d/m/Y H:i" }}</td>
+  <td class="text-end">
+    {% if request.user|has_permission:'core.change_institutionalpage' %}
+      <a href="{% url 'core:institutional_page_update' object.uuid %}"
+         type="button"
+         class="btn btn-icon bg-orange-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Editar"
+         data-bs-original-title="Editar">
+        <i class="icon ti ti-edit"></i>
+      </a>
+    {% endif %}
+  </td>
+{% endblock %}

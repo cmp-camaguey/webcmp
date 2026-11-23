@@ -406,6 +406,7 @@ GROUP_PERMISSION_MODEL_APP_OVERRIDE = {
     'Período presupuestario': 'legal',
     'Informe de rendición de cuenta': 'legal',
     'Procedimiento de cumplimiento': 'legal',
+    'Contenido institucional': 'legal',
 }
 GROUP_PERMISSION_APP_VERBOSE_NAMES = {
     'sistema': 'Sistema',

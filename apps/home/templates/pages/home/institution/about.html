@@ -1,16 +1,16 @@
 {% extends 'layouts/institution.html' %}
 {% block hero_description %}
   <p class="hero-description mt-4">
-    El Centro Meteorológico Provincial de Camagüey integra el sistema del Instituto de Meteorología de Cuba (INSMET) y presta servicios meteorológicos autorizados a la población y a las entidades de la provincia.
+    {{ content_blocks.hero_paragraph_1|default:"El Centro Meteorológico Provincial de Camagüey integra el sistema del Instituto de Meteorología de Cuba (INSMET) y presta servicios meteorológicos autorizados a la población y a las entidades de la provincia." }}
   </p>
   <p class="hero-description mt-3">
-    Nuestra institución vigila el estado de la atmósfera sobre los 13 municipios de la provincia, elabora los pronósticos del tiempo, emite avisos ante fenómenos meteorológicos peligrosos y desarrolla investigaciones que contribuyen al conocimiento del clima de la región.
+    {{ content_blocks.hero_paragraph_2|default:"Nuestra institución vigila el estado de la atmósfera sobre los 13 municipios de la provincia, elabora los pronósticos del tiempo, emite avisos ante fenómenos meteorológicos peligrosos y desarrolla investigaciones que contribuyen al conocimiento del clima de la región." }}
   </p>
 {% endblock %}
 {% block institution_content %}
   <div class="section-header mb-6">
-    <h2 class="section-title">El quehacer del Centro</h2>
-    <div class="section-description">Vigilancia, investigación, servicios y contacto directo con la comunidad.</div>
+    <h2 class="section-title">{{ content_blocks.section_title|default:"El quehacer del Centro" }}</h2>
+    <div class="section-description">{{ content_blocks.section_description|default:"Vigilancia, investigación, servicios y contacto directo con la comunidad." }}</div>
   </div>
   <div class="row g-4">
     <div class="col-12">
@@ -39,8 +39,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Investigación</h3>
-          <p class="text-secondary mb-0">Publicaciones científicas y resultados de la investigación meteorológica provincial.</p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_1_title|default:"Investigación" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_1_text|default:"Publicaciones científicas y resultados de la investigación meteorológica provincial." }}</p>
         </div>
       </a>
     </div>
@@ -71,8 +71,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Servicios</h3>
-          <p class="text-secondary mb-0">Servicios públicos y comerciales de asesoría e información meteorológica en línea.</p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_2_title|default:"Servicios" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_2_text|default:"Servicios públicos y comerciales de asesoría e información meteorológica en línea." }}</p>
         </div>
       </a>
     </div>
@@ -102,8 +102,8 @@
           </div>
         </div>
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">Información institucional</h3>
-          <p class="text-secondary mb-0">Organización, directivos, funciones y estrategia de desarrollo del Centro.</p>
+          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_3_title|default:"Información institucional" }}</h3>
+          <p class="text-secondary mb-0">{{ content_blocks.card_3_text|default:"Organización, directivos, funciones y estrategia de desarrollo del Centro." }}</p>
         </div>
       </a>
     </div>

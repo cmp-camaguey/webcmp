@@ -112,9 +112,14 @@ def payment_method_icon(method):
 
 @register.filter
 def get_item(dictionary, key):
-    if not isinstance(dictionary, dict):
+    if dictionary is None:
         return None
-    return dictionary.get(key)
+    if isinstance(dictionary, dict):
+        return dictionary.get(key)
+    try:
+        return dictionary[key]
+    except Exception:
+        return None
 
 
 ALLOWED_TAGS = {
