@@ -1,6 +1,6 @@
 {% extends 'layouts/institution.html' %}
 {% block hero_description %}
-  <p class="hero-description mt-4">{{ title }}</p>
+  <p class="hero-description mt-4">{{ hero_description|default:title }}</p>
 {% endblock %}
 {% block institution_content %}
   <div class="card mb-4">
