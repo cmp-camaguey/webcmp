@@ -1,0 +1,48 @@
+{% load my_filters %}
+{% if request.user|has_permission:'core.view_datasubjectrequest' or request.user|has_permission:'core.view_publicinformationrequest' or request.user|has_permission:'core.view_termschangenotice' %}
+  <li class="nav-item dropdown
+             {% if 'data_subject_request' in segment or 'public_information_request' in segment or 'terms_change_notice' in segment %}active{% endif %}">
+    <a class="nav-link dropdown-toggle"
+       href="#navbar-legal"
+       data-bs-toggle="dropdown"
+       data-bs-auto-close="false"
+       role="button"
+       aria-expanded="false">
+      <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="icon ti ti-scale"></i></span>
+      <span class="nav-link-title">Legal</span>
+    </a>
+    <div class="dropdown-menu
+                {% if 'data_subject_request' in segment or 'public_information_request' in segment or 'terms_change_notice' in segment %}show{% endif %}">
+      <div class="dropdown-menu-columns">
+        <div class="dropdown-menu-column">
+          {% if request.user|has_permission:'core.view_datasubjectrequest' or request.user|has_permission:'core.view_publicinformationrequest' %}
+            <div class="dropend">
+              <a class="dropdown-item dropdown-toggle"
+                 href="#"
+                 data-bs-toggle="dropdown"
+                 data-bs-auto-close="false">Solicitudes</a>
+              <div class="dropdown-menu
+                          {% if 'data_subject_request' in segment or 'public_information_request' in segment %}show{% endif %}">
+                {% if request.user|has_permission:'core.view_datasubjectrequest' %}
+                  <a class="dropdown-item
+                            {% if 'data_subject_request' in segment %}active{% endif %}"
+                     href="{% url 'core:data_subject_request_list' %}">Derechos ARCO/ARCOP</a>
+                {% endif %}
+                {% if request.user|has_permission:'core.view_publicinformationrequest' %}
+                  <a class="dropdown-item
+                            {% if 'public_information_request' in segment %}active{% endif %}"
+                     href="{% url 'core:public_information_request_list' %}">Información pública</a>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+          {% if request.user|has_permission:'core.view_termschangenotice' %}
+            <a class="dropdown-item
+                      {% if 'terms_change_notice' in segment %}active{% endif %}"
+               href="{% url 'core:terms_change_notice_list' %}">Avisos de cambios legales</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </li>
+{% endif %}
