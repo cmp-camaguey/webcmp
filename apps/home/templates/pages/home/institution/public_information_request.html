@@ -1,0 +1,186 @@
+{% extends 'layouts/landing.html' %}
+{% load static %}
+{% block extrahead %}
+  <style>
+    [data-bs-theme="light"] .section-institutional { background-color: #2b4b9b !important; }
+    [data-bs-theme="light"] .section-institutional .section-title,
+    [data-bs-theme="light"] .section-institutional .section-description,
+    [data-bs-theme="light"] .section-institutional h3,
+    [data-bs-theme="light"] .section-institutional h4,
+    [data-bs-theme="light"] .section-institutional p,
+    [data-bs-theme="light"] .section-institutional li,
+    [data-bs-theme="light"] .section-institutional td,
+    [data-bs-theme="light"] .section-institutional th { color: #ffffff; }
+    [data-bs-theme="light"] .section-institutional .text-secondary,
+    [data-bs-theme="light"] .section-institutional .text-muted { color: rgba(255,255,255,.75) !important; }
+    [data-bs-theme="light"] .section-institutional .card {
+      background-color: rgba(255,255,255,.1) !important;
+      border: 1px solid rgba(255,255,255,.15) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary,
+    [data-bs-theme="light"] .section-institutional .card a.text-reset {
+      color: rgba(255,255,255,.9) !important;
+    }
+    [data-bs-theme="light"] .section-institutional .card a.link-secondary:hover,
+    [data-bs-theme="light"] .section-institutional .card a.link-primary:hover,
+    [data-bs-theme="light"] .section-institutional .card a.text-reset:hover {
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-institutional .wave-1 { fill: var(--tblr-bg-surface) !important; opacity: 1 !important; }
+    [data-bs-theme="light"] .section-institutional .wave-2 { fill: #e5201e !important; opacity: 1 !important; }
+    [data-bs-theme="light"] .section-institutional .wave-3 { fill: #2b4b9b !important; opacity: 1 !important; }
+    [data-bs-theme="dark"] .section-institutional { background-color: var(--tblr-bg-surface-secondary) !important; }
+    [data-bs-theme="dark"] .section-institutional .wave-1 { fill: var(--tblr-bg-surface) !important; opacity: 1 !important; }
+    [data-bs-theme="dark"] .section-institutional .wave-2 { fill: var(--tblr-border-color) !important; opacity: 1 !important; }
+    [data-bs-theme="dark"] .section-institutional .wave-3 { fill: var(--tblr-bg-surface-secondary) !important; opacity: 1 !important; }
+  </style>
+{% endblock %}
+{% block hero_content %}
+  <div class="pb-4 pb-lg-6">
+    <h1 class="hero-title">{{ title }}</h1>
+    <p class="hero-description mt-4">
+      Procedimiento para ejercer el derecho de acceso a la información pública del Centro Meteorológico
+      Provincial de Camagüey, conforme a la Ley 168/2024 de Transparencia y Acceso a la Información Pública.
+    </p>
+  </div>
+{% endblock %}
+{% block content %}
+  <section class="section section-institutional">
+    <svg class="section-divider"
+         xmlns="http://www.w3.org/2000/svg"
+         viewBox="0 24 150 28"
+         preserveAspectRatio="none">
+      <path class="wave-1" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+      <path class="wave-2" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+      <path class="wave-3" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+    </svg>
+    <div class="container position-relative">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card mb-4">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Cómo presentar una solicitud</h3>
+              <p class="mb-3">
+                Toda persona puede solicitar información pública producida o en poder del Centro. La solicitud
+                se presenta por escrito y debe permitir identificar con claridad qué información se requiere.
+              </p>
+              <ol class="mb-0 ps-3">
+                <li class="mb-2">
+                  <strong>Identifíquese:</strong> nombre y apellidos, documento de identidad y un medio de
+                  contacto (correo electrónico, teléfono o dirección).
+                </li>
+                <li class="mb-2">
+                  <strong>Describa la información:</strong> indique el tema, el período y, si corresponde, el
+                  área o documento concreto al que se refiere la solicitud.
+                </li>
+                <li class="mb-2">
+                  <strong>Señale la forma de respuesta:</strong> correo electrónico, consulta en sede o entrega
+                  de copia, según su preferencia.
+                </li>
+                <li>
+                  <strong>Envíe la solicitud:</strong> por correo electrónico a
+                  <a href="mailto:{{ contact_email }}?subject=Solicitud%20de%20informaci%C3%B3n%20p%C3%BAblica"
+                     class="text-reset">{{ contact_email }}</a>
+                  o entréguela por escrito en la sede institucional.
+                </li>
+              </ol>
+            </div>
+          </div>
+          <div class="card mb-4">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Plazos de respuesta</h3>
+              <div class="table-responsive mb-3">
+                <table class="table table-vcenter">
+                  <tbody>
+                    <tr>
+                      <th style="width: 38%;">Plazo de respuesta</th>
+                      <td>Quince días hábiles desde la recepción de la solicitud.</td>
+                    </tr>
+                    <tr>
+                      <th>Prórroga</th>
+                      <td>
+                        Por igual período, cuando concurran circunstancias que hagan razonablemente difícil
+                        reunir la información solicitada. La prórroga se notifica al solicitante.
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>Gratuidad</th>
+                      <td>El acceso es gratuito, salvo el costo de reproducción cuando se soliciten copias.</td>
+                    </tr>
+                    <tr>
+                      <th>Resultado</th>
+                      <td>
+                        Se entrega la información solicitada o, si no puede brindarse, se indica la causa y,
+                        cuando corresponda, el organismo competente.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="small text-secondary mb-0">
+                Base legal: Ley 168/2024, artículos 11, 12 y 18; artículo 15 sobre gratuidad.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Información que puede solicitarse</h3>
+              <p class="mb-2">
+                Puede solicitarse información pública sobre la organización, funciones, servicios, presupuestos,
+                informes y demás contenido generado o conservado por el Centro en el ejercicio de sus competencias.
+              </p>
+              <p class="mb-2">El acceso puede restringirse en los casos previstos por la ley, con la debida justificación y, cuando corresponda, previa prueba de daño. En particular:</p>
+              <ul class="mb-0 ps-3">
+                <li>Información cuya restricción se encuentre legalmente justificada.</li>
+                <li>Datos personales de terceros, salvo autorización o base legal para su entrega.</li>
+                <li>Información protegida por derechos de propiedad intelectual o industrial.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card mb-4">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Enlaces relacionados</h3>
+              <ul class="list-unstyled list-separated gap-2 mb-0">
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_information' %}">Información institucional</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_legal_notice' %}">Aviso legal</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
+                </li>
+                <li>
+                  <a class="link-secondary"
+                     href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <h3 class="subheader text-muted fw-medium mb-3">Contacto institucional</h3>
+              <p class="mb-1"><strong>Centro Meteorológico Provincial de Camagüey</strong></p>
+              <p class="mb-1">{{ company.direccion|default:'Avenida Finlay Km 7 1/2, Camagüey, Cuba' }}</p>
+              <p class="mb-1">+53 {{ company.telefonos|default:'32261284' }}</p>
+              <p class="mb-3">
+                <a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a>
+              </p>
+              <a href="mailto:{{ contact_email }}?subject=Solicitud%20de%20informaci%C3%B3n%20p%C3%BAblica"
+                 class="btn btn-primary w-100">
+                <i class="ti ti-mail me-2"></i> Enviar solicitud
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

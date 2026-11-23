@@ -14,6 +14,7 @@ from apps.home.views.institucion.institucional.views import (
     LegalNoticeView,
     MissionView,
     PrivacyPolicyView,
+    PublicInformationRequestView,
     VisionView,
 )
 from apps.home.views.institucion.publicaciones.views import ScientificPublicationListView
@@ -156,6 +157,11 @@ urlpatterns = [
         'institucion/informacion/',
         InstitutionalInformationView.as_view(),
         name='institution_information',
+    ),
+    path(
+        'institucion/solicitud-informacion-publica/',
+        PublicInformationRequestView.as_view(),
+        name='institution_public_information',
     ),
     path(
         'institucion/aviso-legal/',
