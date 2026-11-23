@@ -24,14 +24,17 @@
           <div class="subheader mb-3">Contacto</div>
           <ul class="list-unstyled list-separated gap-2">
             <li>
-              <a class="link-secondary"
+              <a class="link-secondary d-inline-flex align-items-start gap-2"
                  href="tel:+53{{ company.telefonos|default:'32261284' }}">
-                <i class="icon ti ti-phone me-1"></i>+53 {{ company.telefonos|default:'32 261284' }}
+                <i class="icon ti ti-phone mt-1 flex-shrink-0"></i>
+                <span>+53 {{ company.telefonos|default:'32 261284' }}</span>
               </a>
             </li>
             <li>
-              <a class="link-secondary text-break" href="mailto:{{ contact_email }}">
-                <i class="icon ti ti-mail me-1"></i>{{ contact_email }}
+              <a class="link-secondary d-inline-flex align-items-start gap-2"
+                 href="mailto:{{ contact_email }}">
+                <i class="icon ti ti-mail mt-1 flex-shrink-0"></i>
+                <span class="text-break">{{ contact_email }}</span>
               </a>
             </li>
           </ul>
