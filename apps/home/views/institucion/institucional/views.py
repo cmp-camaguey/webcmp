@@ -194,3 +194,15 @@ class InstitutionalInformationView(TemplateView):
         context['segment'] = 'institutional_information'
         context['company'] = CompanySettings.get_instance()
         return context
+
+
+class PublicInformationRequestView(TemplateView):
+    template_name = 'pages/home/institution/public_information_request.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Solicitud de información pública'
+        context['parent'] = 'institucion'
+        context['segment'] = 'public_information_request'
+        context['company'] = CompanySettings.get_instance()
+        return context

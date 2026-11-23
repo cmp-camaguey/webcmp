@@ -494,12 +494,28 @@ class InstitutionPagesTests(TestCase):
             'Quiénes Somos',
             'quienes_somos',
         ),
+        (
+            'home:institution_public_information',
+            'pages/home/institution/public_information_request.html',
+            'Solicitud de información pública',
+            'public_information_request',
+        ),
     )
 
     def test_urls_reverse(self):
         self.assertEqual(reverse('home:institution_vision'), '/institucion/vision/')
         self.assertEqual(reverse('home:institution_mission'), '/institucion/mision/')
         self.assertEqual(reverse('home:institution_about'), '/institucion/quienes-somos/')
+        self.assertEqual(
+            reverse('home:institution_public_information'),
+            '/institucion/solicitud-informacion-publica/',
+        )
+
+    def test_public_information_page_explains_plazo_and_gratuidad(self):
+        response = self.client.get(reverse('home:institution_public_information'))
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, 'Quince días hábiles')
+        self.assertContains(response, 'salvo el costo de reproducción')
 
     def test_pages_render_with_context(self):
         for name, template, title, segment in self.PAGES:
