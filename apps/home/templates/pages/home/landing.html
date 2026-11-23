@@ -68,6 +68,34 @@
       opacity: 1 !important;
     }
 
+    /* ─── TARJETAS EN SECCIÓN AZUL (igual que institucional) ─── */
+    [data-bs-theme="light"] .section-tarjetas .card {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-tarjetas .card:hover {
+      background-color: rgba(255, 255, 255, 0.15) !important;
+    }
+    [data-bs-theme="light"] .section-tarjetas .card .text-secondary,
+    [data-bs-theme="light"] .section-tarjetas .card .text-muted {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+    [data-bs-theme="light"] .section-tarjetas .card .subheader {
+      color: rgba(255, 255, 255, 0.85) !important;
+    }
+    [data-bs-theme="light"] .section-tarjetas .card-stamp-icon {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: #ffffff !important;
+    }
+    [data-bs-theme="light"] .section-tarjetas .card .btn-outline-light {
+      --tblr-btn-color: #ffffff;
+      --tblr-btn-border-color: rgba(255, 255, 255, 0.35);
+      --tblr-btn-hover-color: #2b4b9b;
+      --tblr-btn-hover-bg: #ffffff;
+      --tblr-btn-hover-border-color: #ffffff;
+    }
+
     /* ─── MODO OSCURO: párrafos e iconos legibles ───
        Sobre la superficie casi negra los párrafos de las tarjetas heredaban el
        gris de cuerpo y se leían como texto secundario; los iconos de la
@@ -134,62 +162,112 @@
       <path class="wave-3" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
     </svg>
     <div class="container position-relative">
-      <div class="row items-center text-center g-lg-10 mb-4">
-        <div class="col-md-6 col-lg">
-          <div class="shape shape-md bg-white bg-opacity-10 text-white mb-3">
-            <i class="icon ti ti-temperature-sun" aria-hidden="true"></i>
-          </div>
-          <h2 class="h2">El tiempo en su región</h2>
-          <p class="mb-4">
-            Pronóstico del tiempo por regiones de la provincia, con la temperatura, el viento y el estado del mar previstos para cada jornada.
-          </p>
+      <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+          <a class="card card-link card-md h-100" href="{% url 'home:index' %}">
+            <div class="card-stamp card-stamp-lg">
+              <div class="card-stamp-icon bg-primary">
+                <i class="ti ti-temperature-sun" aria-hidden="true"></i>
+              </div>
+            </div>
+            <div class="card-body">
+              <h2 class="subheader text-muted fw-medium mb-1">El tiempo en su región</h2>
+              <p class="text-secondary mb-0">
+                Pronóstico del tiempo por regiones de la provincia, con la temperatura, el viento y el estado del mar previstos para cada jornada.
+              </p>
+            </div>
+          </a>
         </div>
-        <div class="col-md-6 col-lg">
-          <div class="shape shape-md bg-white bg-opacity-10 text-white mb-3">
-            <i class="icon ti ti-alert-triangle" aria-hidden="true"></i>
+        <div class="col-md-6 col-lg-4">
+          <div class="card card-md h-100">
+            <div class="card-stamp card-stamp-lg">
+              <div class="card-stamp-icon bg-primary">
+                <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+              </div>
+            </div>
+            <div class="card-body">
+              <h2 class="subheader text-muted fw-medium mb-1">Avisos y alertas meteorológicas</h2>
+              <p class="text-secondary mb-3">
+                Documentos oficiales de alerta temprana, ciclones tropicales y tormentas, actualizados por los especialistas del centro.
+              </p>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-outline-light"
+                   href="{% url 'home:warnings_early' %}">Alertas tempranas</a>
+                <a class="btn btn-sm btn-outline-light"
+                   href="{% url 'home:warnings_tropical' %}">Ciclones tropicales</a>
+                <a class="btn btn-sm btn-outline-light"
+                   href="{% url 'home:warnings_storm' %}">Tormentas</a>
+              </div>
+            </div>
           </div>
-          <h2 class="h2">Avisos y alertas meteorológicas</h2>
-          <p class="mb-4">
-            Alertas tempranas, ciclones tropicales y tormentas con sus documentos oficiales, actualizados por los especialistas del centro.
-          </p>
         </div>
-        <div class="col-md-6 col-lg">
-          <div class="shape shape-md bg-white bg-opacity-10 text-white mb-3">
-            <i class="icon ti ti-atom" aria-hidden="true"></i>
+        <div class="col-md-6 col-lg-4">
+          <div class="card card-md h-100">
+            <div class="card-stamp card-stamp-lg">
+              <div class="card-stamp-icon bg-primary">
+                <i class="ti ti-atom" aria-hidden="true"></i>
+              </div>
+            </div>
+            <div class="card-body">
+              <h2 class="subheader text-muted fw-medium mb-1">Física de la atmósfera</h2>
+              <p class="text-secondary mb-0">
+                Mapas del modelo WRF, meteogramas y sondeos para el seguimiento detallado de los fenómenos meteorológicos.
+              </p>
+            </div>
           </div>
-          <h2 class="h2">Física de la atmósfera</h2>
-          <p class="mb-4">
-            Mapas del modelo WRF, meteogramas y sondeos para el seguimiento detallado de los fenómenos meteorológicos.
-          </p>
         </div>
-      </div>
-      <div class="row items-center text-center g-lg-10">
-        <div class="col-md-6 col-lg">
-          <div class="shape shape-md bg-white bg-opacity-10 text-white mb-3">
-            <i class="icon ti ti-satellite" aria-hidden="true"></i>
-          </div>
-          <h2 class="h2">Imágenes satelitales</h2>
-          <p class="mb-4">
-            Seguimiento en imagen de la nubosidad sobre la región desde el satélite GOES-16, actualizado durante toda la jornada.
-          </p>
+        <div class="col-md-6 col-lg-4">
+          <a class="card card-link card-md h-100"
+             href="{% url 'home:satellite' %}">
+            <div class="card-stamp card-stamp-lg">
+              <div class="card-stamp-icon bg-primary">
+                <i class="ti ti-satellite" aria-hidden="true"></i>
+              </div>
+            </div>
+            <div class="card-body">
+              <h2 class="subheader text-muted fw-medium mb-1">Imágenes satelitales</h2>
+              <p class="text-secondary mb-0">
+                Seguimiento en imagen de la nubosidad sobre la región desde el satélite GOES-16, actualizado durante toda la jornada.
+              </p>
+            </div>
+          </a>
         </div>
-        <div class="col-md-6 col-lg">
-          <div class="shape shape-md bg-white bg-opacity-10 text-white mb-3">
-            <i class="icon ti ti-tools" aria-hidden="true"></i>
+        <div class="col-md-6 col-lg-4">
+          <div class="card card-md h-100">
+            <div class="card-stamp card-stamp-lg">
+              <div class="card-stamp-icon bg-primary">
+                <i class="ti ti-tools" aria-hidden="true"></i>
+              </div>
+            </div>
+            <div class="card-body">
+              <h2 class="subheader text-muted fw-medium mb-1">Servicios meteorológicos</h2>
+              <p class="text-secondary mb-3">
+                Atención a la comunidad y al sector empresarial, con solicitud y facturación en línea.
+              </p>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-outline-light"
+                   href="{% url 'home:services_public' %}">Servicios públicos</a>
+                <a class="btn btn-sm btn-outline-light"
+                   href="{% url 'home:services_commercial' %}">Servicios comerciales</a>
+              </div>
+            </div>
           </div>
-          <h2 class="h2">Servicios meteorológicos</h2>
-          <p class="mb-4">
-            Servicios públicos y comerciales para la comunidad y el sector empresarial, con solicitud y facturación en línea.
-          </p>
         </div>
-        <div class="col-md-6 col-lg">
-          <div class="shape shape-md bg-white bg-opacity-10 text-white mb-3">
-            <i class="icon ti ti-book" aria-hidden="true"></i>
-          </div>
-          <h2 class="h2">Publicaciones científicas</h2>
-          <p class="mb-4">
-            Artículos y resultados de la investigación meteorológica provincial, con acceso a los documentos completos.
-          </p>
+        <div class="col-md-6 col-lg-4">
+          <a class="card card-link card-md h-100"
+             href="{% url 'home:publications' %}">
+            <div class="card-stamp card-stamp-lg">
+              <div class="card-stamp-icon bg-primary">
+                <i class="ti ti-book" aria-hidden="true"></i>
+              </div>
+            </div>
+            <div class="card-body">
+              <h2 class="subheader text-muted fw-medium mb-1">Publicaciones científicas</h2>
+              <p class="text-secondary mb-0">
+                Artículos y resultados de la investigación meteorológica provincial, con acceso a los documentos completos.
+              </p>
+            </div>
+          </a>
         </div>
       </div>
     </div>
