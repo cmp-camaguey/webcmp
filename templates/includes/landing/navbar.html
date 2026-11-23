@@ -15,17 +15,22 @@
     </button>
     <div class="collapse navbar-collapse" id="landing-navbar">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'home:institution_mission' %}">Misión</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'home:institution_vision' %}">Visión</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'home:institution_about' %}">Quiénes Somos</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'home:institution_information' %}">Información institucional</a>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle"
+             href="#"
+             data-bs-toggle="dropdown"
+             data-bs-auto-close="outside"
+             role="button"
+             aria-expanded="false">Institución</a>
+          <div class="dropdown-menu">
+            <a class="dropdown-item" href="{% url 'home:institution_mission' %}">Misión</a>
+            <a class="dropdown-item" href="{% url 'home:institution_vision' %}">Visión</a>
+            <a class="dropdown-item" href="{% url 'home:institution_about' %}">Quiénes Somos</a>
+            <a class="dropdown-item" href="{% url 'home:institution_information' %}">Información institucional</a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item"
+               href="{% url 'home:institution_public_information' %}">Solicitud de información pública</a>
+          </div>
         </li>
         <div class="nav-item d-none d-md-flex">
           <a href="?theme=dark"

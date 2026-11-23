@@ -453,7 +453,7 @@ class LandingNavbarTests(TestCase):
         navbar = self._navbar_html(self.client.get('/').content.decode())
         self.assertEqual('/home/', self._anchor_href_by_text(navbar, 'Inicio'))
         self.assertNotIn('Iniciar sesión', navbar)
-        self.assertNotIn('dropdown', navbar, msg='sin menú de usuario')
+        self.assertEqual(1, navbar.count('dropdown-toggle'), msg='solo el menú de institución')
 
     def test_landing_navbar_has_theme_toggles(self):
         landing = self.client.get('/').content.decode()
