@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from apps.core.models import DataSubjectRequest
+from apps.core.models import DataSubjectRequest, PublicInformationRequest
 from apps.core.tasks import send_email_task
 
 
@@ -82,6 +82,137 @@ def _notify_requester_confirmation(request_obj):
     <p style="font-size: 0.85em; color: #666;">
         Centro Meteorológico Provincial de Camagüey<br>
         Delegado de Protección de Datos: direccion@cmw.insmet.cu
+    </p>
+    """
+    send_email_task(
+        subject,
+        html_message,
+        settings.DEFAULT_FROM_EMAIL,
+        [request_obj.subject_email],
+    )
+
+
+@receiver(post_save, sender=PublicInformationRequest)
+def notify_public_information_request(sender, instance, created, **kwargs):
+    """
+    Envía notificaciones por email cuando se crea o actualiza una solicitud
+    de información pública.
+
+    - Al crear: notifica al admin y envía confirmación al solicitante
+    - Al cambiar estado a COMPLETADA/RECHAZADA: notifica al solicitante
+    """
+    if created:
+        _notify_admin_new_public_information_request(instance)
+        _notify_public_information_requester_confirmation(instance)
+    else:
+        if instance.tracker.has_changed('status'):
+            new_status = instance.status
+            if new_status in (
+                PublicInformationRequest.Status.COMPLETADA,
+                PublicInformationRequest.Status.RECHAZADA,
+            ):
+                _notify_public_information_requester_resolution(instance)
+
+
+def _notify_admin_new_public_information_request(request_obj):
+    """Notifica a los superusuarios sobre una nueva solicitud de información pública."""
+    from django.urls import reverse
+
+    from apps.core.models import Notification
+    from apps.core.notifications import make_dedupe_key, notify_superusers
+
+    notify_superusers(
+        source='public_information_request',
+        severity=Notification.Severity.INFO,
+        title='Nueva solicitud de información pública',
+        body=(
+            f'Solicitante: {request_obj.subject_name} ({request_obj.subject_email})\n'
+            f'Documento: {request_obj.subject_document or "No proporcionado"}\n'
+            f'Descripción: {request_obj.description[:200]}'
+        ),
+        url=reverse('core:public_information_request_update', args=[request_obj.pk]),
+        dedupe_key=make_dedupe_key('public_information_request', 'new', request_obj.uuid),
+    )
+
+
+def _notify_public_information_requester_confirmation(request_obj):
+    """Envía confirmación de recibo al solicitante de información pública."""
+    subject = 'Confirmación de su solicitud de información pública'
+    created_at = request_obj.created_at.strftime('%d/%m/%Y %H:%M')
+    document = request_obj.subject_document or 'No proporcionado'
+    html_message = f"""
+    <p>Estimado/a {request_obj.subject_name}:</p>
+    <p>Hemos recibido su solicitud de <strong>acceso a la información pública</strong>.</p>
+    <p><strong>Detalles de la solicitud:</strong></p>
+    <ul>
+        <li><strong>Correo:</strong> {request_obj.subject_email}</li>
+        <li><strong>Documento:</strong> {document}</li>
+        <li><strong>Forma de respuesta:</strong> {request_obj.get_response_format_display()}</li>
+        <li><strong>Fecha de recepción:</strong> {created_at}</li>
+    </ul>
+    <p><strong>Descripción:</strong></p>
+    <p>{request_obj.description}</p>
+    <p>Su solicitud ha sido registrada con el número de referencia:
+    <strong>{request_obj.uuid}</strong>.</p>
+    <p>Le responderemos en un plazo máximo de <strong>quince días hábiles</strong>
+    desde la recepción, conforme a la Ley 168/2024. Este plazo puede prorrogarse
+    por igual período cuando concurran circunstancias que hagan razonablemente
+    difícil reunir la información solicitada, notificándole la causa.</p>
+    <p>Si necesita aportar información adicional, responda a este correo
+    citando su número de referencia.</p>
+    <hr>
+    <p style="font-size: 0.85em; color: #666;">
+        Centro Meteorológico Provincial de Camagüey<br>
+        Contacto: direccion@cmw.insmet.cu
+    </p>
+    """
+    send_email_task(
+        subject,
+        html_message,
+        settings.DEFAULT_FROM_EMAIL,
+        [request_obj.subject_email],
+    )
+
+
+def _notify_public_information_requester_resolution(request_obj):
+    """Notifica al solicitante cuando se resuelve su solicitud de información pública."""
+    if request_obj.status == PublicInformationRequest.Status.COMPLETADA:
+        subject = 'Su solicitud de información pública ha sido completada'
+        status_text = 'completada satisfactoriamente'
+    else:
+        subject = 'Su solicitud de información pública ha sido rechazada'
+        status_text = 'rechazada'
+
+    if request_obj.completed_at:
+        completed_at = request_obj.completed_at.strftime('%d/%m/%Y %H:%M')
+    else:
+        completed_at = 'N/A'
+    html_message = f"""
+    <p>Estimado/a {request_obj.subject_name}:</p>
+    <p>Le informamos que su solicitud de <strong>acceso a la información pública</strong>
+    (referencia: <strong>{request_obj.uuid}</strong>) ha sido
+    <strong>{status_text}</strong>.</p>
+    <p><strong>Detalles:</strong></p>
+    <ul>
+        <li><strong>Estado final:</strong> {request_obj.get_status_display()}</li>
+        <li><strong>Fecha de resolución:</strong> {completed_at}</li>
+    </ul>
+    """
+    if request_obj.admin_notes:
+        html_message += f"""
+        <p><strong>Notas de la resolución:</strong></p>
+        <p>{request_obj.admin_notes}</p>
+        """
+    if request_obj.status == PublicInformationRequest.Status.RECHAZADA:
+        html_message += """
+        <p>Si no está de acuerdo con esta decisión, puede contactar con el Centro en
+        <a href="mailto:direccion@cmw.insmet.cu">direccion@cmw.insmet.cu</a>.</p>
+        """
+    html_message += """
+    <hr>
+    <p style="font-size: 0.85em; color: #666;">
+        Centro Meteorológico Provincial de Camagüey<br>
+        Contacto: direccion@cmw.insmet.cu
     </p>
     """
     send_email_task(

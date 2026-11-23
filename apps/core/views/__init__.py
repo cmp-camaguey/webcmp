@@ -20,6 +20,10 @@ from apps.core.views.env_config import (
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
 )
+from apps.core.views.public_information_requests import (
+    PublicInformationRequestListView,  # noqa: F401
+    PublicInformationRequestUpdateView,  # noqa: F401
+)
 from apps.core.views.serve_file import PublicServeFileView, ServeModelFileView
 from apps.core.views.site_configuration import (
     SiteConfigurationUpdateView,

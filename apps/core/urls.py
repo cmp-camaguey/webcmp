@@ -15,6 +15,8 @@ from apps.core.views import (
     EnvironmentConfigApplyView,
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
+    PublicInformationRequestListView,
+    PublicInformationRequestUpdateView,
     SiteConfigurationUpdateView,
     TermsChangeNoticeCreateView,
     TermsChangeNoticeDeleteView,
@@ -70,6 +72,16 @@ urlpatterns = [
         'solicitudes-derechos/<int:pk>/editar/',
         DataSubjectRequestUpdateView.as_view(),
         name='data_subject_request_update',
+    ),
+    path(
+        'solicitudes-informacion-publica/',
+        PublicInformationRequestListView.as_view(),
+        name='public_information_request_list',
+    ),
+    path(
+        'solicitudes-informacion-publica/<int:pk>/editar/',
+        PublicInformationRequestUpdateView.as_view(),
+        name='public_information_request_update',
     ),
     path(
         'avisos-cambios-legales/',

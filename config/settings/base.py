@@ -409,6 +409,7 @@ USE_I18N = True
 USE_TZ = True
 
 TIME_INPUT_FORMATS = ['%H:%M:%S', '%H:%M:%S.%f', '%H:%M', '%I:%M %p', '%I:%M %P']
+DATE_INPUT_FORMATS = ['%d/%m/%Y', '%d/%m/%y', '%Y-%m-%d']
 DATETIME_INPUT_FORMATS = [
     '%d/%m/%Y %H:%M:%S',
     '%d/%m/%Y %H:%M:%S.%f',
