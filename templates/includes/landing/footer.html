@@ -2,83 +2,84 @@
 <footer class="footer d-print-none">
   <div class="container">
     <div class="py-3">
-      <div class="row g-lg-4">
-        <div class="col-lg-7">
-          <div class="row g-lg-4">
-            <div class="col-md">
-              <div class="subheader mb-3">Servicios</div>
-              <ul class="list-unstyled list-separated gap-2">
-                <li>
-                  <a class="link-secondary" href="{% url 'home:services_commercial' %}">Servicios Comerciales</a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="{% url 'home:services_public' %}">Servicios Públicos</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'doc' %}"
-                     target="_blank"
-                     rel="noopener noreferrer">API</a>
-                </li>
-              </ul>
-            </div>
-            <div class="col-md">
-              <div class="subheader mb-3">Contacto</div>
-              <ul class="list-unstyled list-separated gap-2">
-                <li>
-                  <a class="link-secondary"
-                     href="tel:+53{{ company.telefonos|default:'32261284' }}">
-                    <i class="icon ti ti-phone me-1"></i>+53 {{ company.telefonos|default:'32 261284' }}
-                  </a>
-                </li>
-                <li>
-                  <a class="link-secondary" href="mailto:{{ contact_email }}">
-                    <i class="icon ti ti-mail me-1"></i>{{ contact_email }}
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div class="col-md">
-              <div class="subheader mb-3">Institución</div>
-              <ul class="list-unstyled list-separated gap-2">
-                <li>
-                  <a class="link-secondary" href="{% url 'home:publications' %}">Publicaciones</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_information' %}">Información institucional</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_public_information' %}">Solicitud de información pública</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_legal_notice' %}">Aviso legal</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_cookie_policy' %}">Política de cookies</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
-                </li>
-              </ul>
-            </div>
-          </div>
+      <div class="row g-3 g-lg-5">
+        <div class="col-sm-6 col-lg">
+          <div class="subheader mb-3">Servicios</div>
+          <ul class="list-unstyled list-separated gap-2">
+            <li>
+              <a class="link-secondary" href="{% url 'home:services_commercial' %}">Servicios Comerciales</a>
+            </li>
+            <li>
+              <a class="link-secondary" href="{% url 'home:services_public' %}">Servicios Públicos</a>
+            </li>
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'doc' %}"
+                 target="_blank"
+                 rel="noopener noreferrer">API</a>
+            </li>
+          </ul>
         </div>
-        <div class="col-lg-4 ml-auto">
+        <div class="col-sm-6 col-lg">
+          <div class="subheader mb-3">Contacto</div>
+          <ul class="list-unstyled list-separated gap-2">
+            <li>
+              <a class="link-secondary d-inline-flex align-items-start gap-2"
+                 href="tel:+53{{ company.telefonos|default:'32261284' }}">
+                <i class="icon ti ti-phone mt-1 flex-shrink-0"></i>
+                <span>+53 {{ company.telefonos|default:'32 261284' }}</span>
+              </a>
+            </li>
+            <li>
+              <a class="link-secondary d-inline-flex align-items-start gap-2"
+                 href="mailto:{{ contact_email }}">
+                <i class="icon ti ti-mail mt-1 flex-shrink-0"></i>
+                <span class="text-break">{{ contact_email }}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div class="col-sm-6 col-lg">
+          <div class="subheader mb-3">Institución</div>
+          <ul class="list-unstyled list-separated gap-2">
+            <li>
+              <a class="link-secondary" href="{% url 'home:publications' %}">Publicaciones</a>
+            </li>
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'home:institution_information' %}">Información institucional</a>
+            </li>
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'home:institution_public_information' %}">Solicitud de información pública</a>
+            </li>
+          </ul>
+        </div>
+        <div class="col-sm-6 col-lg">
+          <div class="subheader mb-3">Legal</div>
+          <ul class="list-unstyled list-separated gap-2">
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'home:institution_legal_notice' %}">Aviso legal</a>
+            </li>
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
+            </li>
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'home:institution_cookie_policy' %}">Política de cookies</a>
+            </li>
+            <li>
+              <a class="link-secondary"
+                 href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
+            </li>
+          </ul>
+        </div>
+        <div class="col-lg-4">
           <div class="subheader mb-3">Centro Meteorológico Provincial de Camagüey</div>
-          <p class="text-secondary mb-2">
-            El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera.
-          </p>
           <p class="text-secondary mb-0">
-            Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible.
+            Entidad del Instituto de Meteorología de Cuba en la provincia de Camagüey. A través de este portal ofrece pronósticos, avisos, datos climatológicos y servicios meteorológicos para la población y los organismos del territorio.
           </p>
         </div>
       </div>

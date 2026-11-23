@@ -193,7 +193,6 @@ class LandingRenderTests(TestCase):
         sections = (
             ('ti-temperature-sun', 'El tiempo en su región'),
             ('ti-alert-triangle', 'Avisos y alertas meteorológicas'),
-            ('ti-atom', 'Física de la atmósfera'),
             ('ti-satellite', 'Imágenes satelitales'),
             ('ti-tools', 'Servicios meteorológicos'),
             ('ti-book', 'Publicaciones científicas'),
@@ -453,7 +452,7 @@ class LandingNavbarTests(TestCase):
         navbar = self._navbar_html(self.client.get('/').content.decode())
         self.assertEqual('/home/', self._anchor_href_by_text(navbar, 'Inicio'))
         self.assertNotIn('Iniciar sesión', navbar)
-        self.assertNotIn('dropdown', navbar, msg='sin menú de usuario')
+        self.assertEqual(1, navbar.count('dropdown-toggle'), msg='solo el menú de institución')
 
     def test_landing_navbar_has_theme_toggles(self):
         landing = self.client.get('/').content.decode()
@@ -516,6 +515,51 @@ class InstitutionPagesTests(TestCase):
         self.assertEqual(200, response.status_code)
         self.assertContains(response, 'Quince días hábiles')
         self.assertContains(response, 'salvo el costo de reproducción')
+
+    ALL_PAGES = (
+        'home:institution_vision',
+        'home:institution_mission',
+        'home:institution_about',
+        'home:institution_information',
+        'home:institution_public_information',
+        'home:institution_legal_notice',
+        'home:institution_privacy_policy',
+        'home:institution_cookie_policy',
+        'home:institution_data_subject_rights',
+    )
+
+    def test_institutional_and_legal_pages_share_one_layout(self):
+        """Todas las páginas del bloque usan el mismo esqueleto y la misma hoja de estilos."""
+        for name in self.ALL_PAGES:
+            with self.subTest(name=name):
+                response = self.client.get(reverse(name))
+                html = response.content.decode()
+                self.assertEqual(200, response.status_code)
+                self.assertTemplateUsed(response, 'layouts/institution.html')
+                self.assertIn('dist/css/institution-pages.css', html)
+                self.assertIn('institution-body', html)
+                self.assertIn('section-divider', html)
+                self.assertNotIn('hero-curve', html)
+                self.assertNotIn('section-tarjetas', html)
+
+    def test_pages_do_not_repeat_the_navigation_already_in_navbar_and_footer(self):
+        """El navbar y el footer ya listan estas páginas; el cuerpo no repite esos enlaces."""
+        for name in self.ALL_PAGES:
+            with self.subTest(name=name):
+                html = self.client.get(reverse(name)).content.decode()
+                self.assertNotIn('Enlaces relacionados', html)
+                self.assertNotIn('Contacto institucional', html)
+
+    def test_document_index_links_reach_their_sections(self):
+        """Cada entrada del índice apunta a una sección que existe en la página."""
+        for name in ('home:institution_privacy_policy', 'home:institution_cookie_policy'):
+            with self.subTest(name=name):
+                html = self.client.get(reverse(name)).content.decode()
+                self.assertIn('institution-toc', html)
+                anchors = re.findall(r'href="#([^"]+)"', html)
+                self.assertGreaterEqual(len(anchors), 7)
+                for anchor in anchors:
+                    self.assertIn(f'id="{anchor}"', html)
 
     def test_pages_render_with_context(self):
         for name, template, title, segment in self.PAGES:

@@ -207,15 +207,4 @@
   {#                            <span class="nav-link-title">Pagos en linea</span>#}
   {#                        </a>#}
   {#                    </li>#}
-  <!-- Registro Clientes -->
-  {% if not user.is_authenticated %}
-    <li class="nav-item {% if 'registro' in segment %}active{% endif %}">
-      <a class="nav-link" href="{% url 'user_auth:customer_register' %}">
-        <span class="nav-link-icon d-md-none d-lg-inline-block">
-          <i class="icon ti ti-users"></i>
-        </span>
-        <span class="nav-link-title">Registro Clientes</span>
-      </a>
-    </li>
-  {% endif %}
 </ul>

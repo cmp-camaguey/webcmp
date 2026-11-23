@@ -65,8 +65,16 @@ var pointSeries = chart.series.push(
 // Función para cargar las estaciones desde la API
 function cargarEstaciones() {
     fetch(API_STATIONS_URL)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} al cargar estaciones`);
+            }
+            return response.json();
+        })
         .then(data => {
+            if (!Array.isArray(data)) {
+                throw new Error('La respuesta de estaciones no es un arreglo');
+            }
             data.forEach(station => {
                 addCity(station.longitude, station.latitude, station.name, station.number);
             });

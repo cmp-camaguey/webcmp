@@ -1,0 +1,284 @@
+/*
+ * Páginas institucionales y legales del landing.
+ * Una sola fuente de estilos para el hero, la sección azul con tarjetas de
+ * cristal (tema claro) y las olas animadas de Tabler.
+ */
+
+.section-institutional {
+  --inst-line: rgba(255, 255, 255, 0.18);
+  --inst-fg: #ffffff;
+  --inst-fg-muted: rgba(255, 255, 255, 0.75);
+}
+
+[data-bs-theme="light"] .section-institutional {
+  background-color: #2b4b9b !important;
+}
+
+[data-bs-theme="dark"] .section-institutional {
+  --inst-line: var(--tblr-border-color);
+  --inst-fg: var(--tblr-body-color);
+  --inst-fg-muted: var(--tblr-secondary-color);
+}
+
+[data-bs-theme="light"] .section-institutional .section-title,
+[data-bs-theme="light"] .section-institutional .section-description,
+[data-bs-theme="light"] .section-institutional h2,
+[data-bs-theme="light"] .section-institutional h3,
+[data-bs-theme="light"] .section-institutional h4,
+[data-bs-theme="light"] .section-institutional h5,
+[data-bs-theme="light"] .section-institutional h6,
+[data-bs-theme="light"] .section-institutional strong,
+[data-bs-theme="light"] .section-institutional .form-label,
+[data-bs-theme="light"] .section-institutional th {
+  color: #ffffff !important;
+}
+
+[data-bs-theme="light"] .section-institutional p,
+[data-bs-theme="light"] .section-institutional li,
+[data-bs-theme="light"] .section-institutional td,
+[data-bs-theme="light"] .section-institutional .text-secondary,
+[data-bs-theme="light"] .section-institutional .text-muted,
+[data-bs-theme="light"] .section-institutional .small,
+[data-bs-theme="light"] .section-institutional .form-text {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card a.link-secondary,
+[data-bs-theme="light"] .section-institutional .card a.link-primary,
+[data-bs-theme="light"] .section-institutional .card a.text-reset {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card a.link-secondary:hover,
+[data-bs-theme="light"] .section-institutional .card a.link-primary:hover,
+[data-bs-theme="light"] .section-institutional .card a.text-reset:hover {
+  color: #ffffff !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card-stamp-icon {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card .table {
+  --tblr-table-color: rgba(255, 255, 255, 0.75);
+  --tblr-table-bg: transparent;
+  --tblr-table-striped-bg: rgba(255, 255, 255, 0.05);
+  --tblr-table-border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-bs-theme="light"] .section-institutional .card .table thead th,
+[data-bs-theme="light"] .section-institutional .card .table-light,
+[data-bs-theme="light"] .section-institutional .card .table-light th,
+[data-bs-theme="light"] .section-institutional .card .table-light td {
+  --tblr-table-bg: rgba(255, 255, 255, 0.1);
+  --tblr-table-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="light"] .section-institutional .card code {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-bs-theme="light"] .section-institutional .card .form-control,
+[data-bs-theme="light"] .section-institutional .card .form-select {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+[data-bs-theme="light"] .section-institutional .card .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+}
+
+[data-bs-theme="light"] .section-institutional .card .form-control:focus,
+[data-bs-theme="light"] .section-institutional .card .form-select:focus {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.15);
+}
+
+[data-bs-theme="light"] .section-institutional .card .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-bs-theme="light"] .section-institutional .card .form-select option {
+  color: #1e293b;
+}
+
+[data-bs-theme="light"] .section-institutional .card .text-danger {
+  color: #fecaca !important;
+}
+
+/* Olas animadas: mismo trazo en tema claro y oscuro, sin rojo en oscuro. */
+[data-bs-theme="light"] .section-institutional .wave-1 {
+  fill: var(--tblr-bg-surface) !important;
+  opacity: 1 !important;
+}
+
+[data-bs-theme="light"] .section-institutional .wave-2 {
+  fill: #e5201e !important;
+  opacity: 1 !important;
+}
+
+[data-bs-theme="light"] .section-institutional .wave-3 {
+  fill: #2b4b9b !important;
+  opacity: 1 !important;
+}
+
+[data-bs-theme="dark"] .section-institutional {
+  background-color: var(--tblr-bg-surface-secondary) !important;
+}
+
+[data-bs-theme="dark"] .section-institutional .wave-1 {
+  fill: var(--tblr-bg-surface) !important;
+  opacity: 1 !important;
+}
+
+[data-bs-theme="dark"] .section-institutional .wave-2 {
+  fill: var(--tblr-border-color) !important;
+  opacity: 1 !important;
+}
+
+[data-bs-theme="dark"] .section-institutional .wave-3 {
+  fill: var(--tblr-bg-surface-secondary) !important;
+  opacity: 1 !important;
+}
+
+/* Cuerpo del documento: alineado al contenedor del navbar y el footer. */
+.institution-body {
+  width: 100%;
+}
+
+.institution-body--wide {
+  width: 100%;
+}
+
+.section-institutional [id] {
+  scroll-margin-top: 6rem;
+}
+
+/* ─── Etiqueta de sección, en el tono del tema ─── */
+
+.institution-label {
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* ─── Índice del documento: solo anclas internas ─── */
+
+.institution-toc {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--inst-line);
+  border-radius: var(--tblr-border-radius);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-bs-theme="dark"] .institution-toc {
+  background: transparent;
+}
+
+.institution-toc__list {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.875rem;
+}
+
+.institution-toc__list li {
+  margin-bottom: 0.35rem;
+}
+
+.institution-toc__list a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.institution-toc__list a:hover,
+.institution-toc__list a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 992px) {
+  .institution-toc--rail {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+/* ─── Tabla de definiciones: derechos, plazos y datos afines ─── */
+
+.institution-facts {
+  margin: 0;
+}
+
+.institution-facts > div {
+  padding: 0.75rem 0;
+}
+
+.institution-facts > div + div {
+  border-top: 1px solid var(--inst-line);
+}
+
+.institution-facts dt {
+  margin: 0;
+  font-weight: 600;
+  color: var(--inst-fg);
+}
+
+.institution-facts dd {
+  margin: 0;
+  color: var(--inst-fg-muted);
+}
+
+.institution-facts dd {
+  margin-top: 0.125rem;
+}
+
+/* Dos columnas solo cuando la tabla ocupa todo el ancho de la página. */
+@media (min-width: 768px) {
+  .institution-facts--inline > div {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: 0.25rem 1.5rem;
+  }
+
+  .institution-facts--inline dd {
+    margin-top: 0;
+  }
+}
+
+/* ─── Bloque de puntos: compromisos y valores (Misión/Visión) ─── */
+
+.institution-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.institution-point {
+  display: flex;
+  gap: 1rem;
+  padding: 0;
+}
