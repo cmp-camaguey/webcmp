@@ -162,7 +162,7 @@
       <path class="wave-3" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
     </svg>
     <div class="container position-relative">
-      <div class="row g-4">
+      <div class="row g-4 justify-content-center">
         <div class="col-md-6 col-lg-4">
           <a class="card card-link card-md h-100" href="{% url 'home:index' %}">
             <div class="card-stamp card-stamp-lg">
@@ -190,12 +190,12 @@
               <p class="text-secondary mb-3">
                 Documentos oficiales de alerta temprana, ciclones tropicales y tormentas, actualizados por los especialistas del centro.
               </p>
-              <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-sm btn-outline-light"
+              <div class="d-flex flex-wrap gap-2 justify-content-center">
+                <a class="btn btn-sm btn-outline-light flex-fill text-center"
                    href="{% url 'home:warnings_early' %}">Alertas tempranas</a>
-                <a class="btn btn-sm btn-outline-light"
+                <a class="btn btn-sm btn-outline-light flex-fill text-center"
                    href="{% url 'home:warnings_tropical' %}">Ciclones tropicales</a>
-                <a class="btn btn-sm btn-outline-light"
+                <a class="btn btn-sm btn-outline-light flex-fill text-center"
                    href="{% url 'home:warnings_storm' %}">Tormentas</a>
               </div>
             </div>
@@ -229,10 +229,10 @@
               <p class="text-secondary mb-3">
                 Atención a la comunidad y al sector empresarial, con solicitud y facturación en línea.
               </p>
-              <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-sm btn-outline-light"
+              <div class="d-flex flex-wrap gap-2 justify-content-center">
+                <a class="btn btn-sm btn-outline-light flex-fill text-center"
                    href="{% url 'home:services_public' %}">Servicios públicos</a>
-                <a class="btn btn-sm btn-outline-light"
+                <a class="btn btn-sm btn-outline-light flex-fill text-center"
                    href="{% url 'home:services_commercial' %}">Servicios comerciales</a>
               </div>
             </div>

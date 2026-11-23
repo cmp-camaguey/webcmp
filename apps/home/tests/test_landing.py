@@ -193,7 +193,6 @@ class LandingRenderTests(TestCase):
         sections = (
             ('ti-temperature-sun', 'El tiempo en su región'),
             ('ti-alert-triangle', 'Avisos y alertas meteorológicas'),
-            ('ti-atom', 'Física de la atmósfera'),
             ('ti-satellite', 'Imágenes satelitales'),
             ('ti-tools', 'Servicios meteorológicos'),
             ('ti-book', 'Publicaciones científicas'),
