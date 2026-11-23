@@ -1,4 +1,10 @@
 from apps.core.views.activity_log import ActivityLogListView
+from apps.core.views.budget import (
+    BudgetPeriodCreateView,
+    BudgetPeriodDeleteView,
+    BudgetPeriodListView,
+    BudgetPeriodUpdateView,
+)
 from apps.core.views.company_settings import (
     CompanySettingsAjaxUpdateView,
     CompanySettingsUpdateView,
@@ -42,6 +48,10 @@ __all__ = [
     'CookieConsentView',
     'DataSubjectRequestListView',
     'DataSubjectRequestUpdateView',
+    'BudgetPeriodCreateView',
+    'BudgetPeriodDeleteView',
+    'BudgetPeriodListView',
+    'BudgetPeriodUpdateView',
     'TermsChangeNoticeCreateView',
     'TermsChangeNoticeDeleteView',
     'TermsChangeNoticeListView',

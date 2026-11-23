@@ -1,0 +1,97 @@
+{% include 'includes/dashboard/form_card.html' with card_title='Período presupuestario' %}
+<div class="row">
+  <div class="col-md-4 mb-3">
+    <label class="form-label required" for="{{ form.year.id_for_label }}">{{ form.year.label }}</label>
+    {{ form.year }}
+    {% if form.year.errors %}<div class="invalid-feedback d-block">{{ form.year.errors.0 }}</div>{% endif %}
+  </div>
+  <div class="col-md-8 mb-3">
+    <label class="form-label required" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+    {{ form.title }}
+    {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>{% endif %}
+  </div>
+</div>
+<div class="mb-3">
+  <label class="form-label" for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+  {{ form.description }}
+  {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>{% endif %}
+</div>
+<div class="mb-3">
+  <label class="form-check form-switch">
+    {{ form.is_published }}
+    <span class="form-check-label">{{ form.is_published.label }}</span>
+  </label>
+  {% if form.is_published.errors %}<div class="invalid-feedback d-block">{{ form.is_published.errors.0 }}</div>{% endif %}
+</div>
+</div>
+</div>
+</div>
+{% include 'includes/dashboard/form_card.html' with card_title='Partidas' %}
+{% if formset.non_form_errors %}
+  <div class="alert alert-danger mb-3">
+    {% for error in formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+{% endif %}
+{{ formset.management_form }}
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Partida</th>
+        <th style="width: 160px;">Planificado</th>
+        <th style="width: 160px;">Ejecutado</th>
+        <th style="width: 100px;">Orden</th>
+        <th class="text-center" style="width: 90px;">Eliminar</th>
+      </tr>
+    </thead>
+    <tbody id="line-tbody">
+      {% for line_form in formset %}
+        <tr>
+          {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
+          <td>
+            {{ line_form.category }}
+            {% if line_form.category.errors %}<div class="invalid-feedback d-block">{{ line_form.category.errors.0 }}</div>{% endif %}
+          </td>
+          <td>
+            {{ line_form.planned_amount }}
+            {% if line_form.planned_amount.errors %}<div class="invalid-feedback d-block">{{ line_form.planned_amount.errors.0 }}</div>{% endif %}
+          </td>
+          <td>
+            {{ line_form.executed_amount }}
+            {% if line_form.executed_amount.errors %}<div class="invalid-feedback d-block">{{ line_form.executed_amount.errors.0 }}</div>{% endif %}
+          </td>
+          <td>
+            {{ line_form.order }}
+            {% if line_form.order.errors %}<div class="invalid-feedback d-block">{{ line_form.order.errors.0 }}</div>{% endif %}
+          </td>
+          <td class="align-middle text-center">
+            {% if line_form.instance.pk %}
+              <input type="checkbox"
+                     name="{{ line_form.DELETE.html_name }}"
+                     value="on"
+                     class="line-delete"
+                     hidden>
+              <button type="button"
+                      class="btn btn-icon bg-red-lt btn-sm delete-line"
+                      title="Eliminar partida">
+                <i class="icon ti ti-trash"></i>
+              </button>
+            {% else %}
+              <button type="button"
+                      class="btn btn-icon bg-red-lt btn-sm delete-line"
+                      title="Eliminar partida">
+                <i class="icon ti ti-trash"></i>
+              </button>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<button type="button"
+        id="add-line"
+        class="btn btn-pill bg-green-lt btn-sm mt-2">Añadir partida</button>
+</div>
+</div>
+</div>

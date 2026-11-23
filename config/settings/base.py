@@ -392,7 +392,33 @@ GROUP_PERMISSION_MODEL_MERGE = {
     'Factura': 'Facturacion',
     'Item': 'Facturacion',
     'Correo': 'Lista de correo',
+    'Emailrecipient': 'Destinatario de correo',
 }
+GROUP_PERMISSION_MODEL_APP_OVERRIDE = {
+    'Registro de actividad': 'sistema',
+    'Registro de ejecución de tareas': 'sistema',
+    'Notificación': 'sistema',
+    'Preferencia de aviso': 'sistema',
+    'Consentimiento de cookies': 'legal',
+    'Solicitud de derechos ARCO/ARCOP': 'legal',
+    'Solicitud de información pública': 'legal',
+    'Aviso de cambio legal': 'legal',
+    'Período presupuestario': 'legal',
+}
+GROUP_PERMISSION_APP_VERBOSE_NAMES = {
+    'sistema': 'Sistema',
+    'legal': 'Legal',
+}
+GROUP_PERMISSION_APP_ORDER = [
+    'dashboard',
+    'meteo',
+    'commercial',
+    'publications',
+    'core',
+    'legal',
+    'sistema',
+    'monitoring',
+]
 
 MESSAGE_TAGS = {
     messages.DEBUG: 'debug',

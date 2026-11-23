@@ -253,6 +253,23 @@ class InstitutionalInformationView(TemplateView):
         return context
 
 
+class BudgetInformationView(TemplateView):
+    template_name = 'pages/home/institution/budget_information.html'
+
+    def get_context_data(self, **kwargs):
+        from apps.core.models import BudgetPeriod
+
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Presupuesto'
+        context['parent'] = 'institucion'
+        context['segment'] = 'institution_budget'
+        context['company'] = CompanySettings.get_instance()
+        context['budget_periods'] = BudgetPeriod.objects.filter(is_published=True).prefetch_related(
+            'lines'
+        )
+        return context
+
+
 class PublicInformationRequestView(FormView):
     template_name = 'pages/home/institution/public_information_request.html'
     form_class = PublicInformationRequestForm

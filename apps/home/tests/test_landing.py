@@ -494,6 +494,12 @@ class InstitutionPagesTests(TestCase):
             'quienes_somos',
         ),
         (
+            'home:institution_budget',
+            'pages/home/institution/budget_information.html',
+            'Presupuesto',
+            'institution_budget',
+        ),
+        (
             'home:institution_public_information',
             'pages/home/institution/public_information_request.html',
             'Solicitud de información pública',
@@ -505,6 +511,7 @@ class InstitutionPagesTests(TestCase):
         self.assertEqual(reverse('home:institution_vision'), '/institucion/vision/')
         self.assertEqual(reverse('home:institution_mission'), '/institucion/mision/')
         self.assertEqual(reverse('home:institution_about'), '/institucion/quienes-somos/')
+        self.assertEqual(reverse('home:institution_budget'), '/institucion/presupuestos/')
         self.assertEqual(
             reverse('home:institution_public_information'),
             '/institucion/solicitud-informacion-publica/',
@@ -521,6 +528,7 @@ class InstitutionPagesTests(TestCase):
         'home:institution_mission',
         'home:institution_about',
         'home:institution_information',
+        'home:institution_budget',
         'home:institution_public_information',
         'home:institution_legal_notice',
         'home:institution_privacy_policy',
@@ -578,6 +586,8 @@ class InstitutionPagesTests(TestCase):
             ('Visión', reverse('home:institution_vision')),
             ('Misión', reverse('home:institution_mission')),
             ('Quiénes Somos', reverse('home:institution_about')),
+            ('Información institucional', reverse('home:institution_information')),
+            ('Presupuestos', reverse('home:institution_budget')),
         ):
             self.assertIn(label, html, msg=label)
             self.assertIn(path, html, msg=path)

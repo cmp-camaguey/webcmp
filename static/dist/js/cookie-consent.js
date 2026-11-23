@@ -243,7 +243,7 @@
   }
 
   function sendConsentToServer(choice, analytics, functional) {
-    var url = '/config/cookies/consentimiento/'
+    var url = '/cookies/consentimiento/'
     var body = JSON.stringify({ choice: choice, analytics: analytics, functional: functional })
     try {
       fetch(url, {
