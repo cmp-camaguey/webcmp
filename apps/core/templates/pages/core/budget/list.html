@@ -1,0 +1,54 @@
+{% extends 'layouts/list.html' %}
+{% load my_filters %}
+{% block columns %}
+  <th>Año</th>
+  <th>Título</th>
+  <th>Publicado</th>
+  <th>Partidas</th>
+  <th class="text-end">Acciones</th>
+{% endblock %}
+{% block row %}
+  <td>{{ object.year }}</td>
+  <td>{{ object.title }}</td>
+  <td>
+    {% if object.is_published %}
+      <span class="badge bg-green-lt">Publicado</span>
+    {% else %}
+      <span class="badge bg-yellow-lt">Borrador</span>
+    {% endif %}
+  </td>
+  <td>{{ object.lines.count }}</td>
+  <td class="text-end">
+    {% if request.user|has_permission:'core.change_budgetperiod' %}
+      <a href="{% url 'core:budget_period_update' object.pk %}"
+         type="button"
+         class="btn btn-icon bg-orange-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Editar"
+         data-bs-original-title="Editar">
+        <i class="icon ti ti-edit"></i>
+      </a>
+    {% endif %}
+    {% if request.user|has_permission:'core.delete_budgetperiod' %}
+      <a href="#"
+         type="button"
+         class="btn btn-icon bg-red-lt btn-sm btn-delete"
+         data-id="{{ object.pk }}"
+         data-name="{{ object.title }}"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Eliminar"
+         data-bs-original-title="Eliminar">
+        <i class="icon ti ti-trash"></i>
+      </a>
+    {% endif %}
+  </td>
+{% endblock %}
+{% block modal %}
+  {% include 'includes/dashboard/modal_delete.html' %}
+{% endblock %}
+{% block extrajs %}
+  {{ block.super }}
+  {% include 'includes/dashboard/modal_delete_js.html' with delete_url_name='core:budget_period_delete' %}
+{% endblock %}

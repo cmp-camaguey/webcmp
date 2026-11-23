@@ -31,6 +31,8 @@ class RequestMetric(models.Model):
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
+        verbose_name = 'Métrica de petición'
+        verbose_name_plural = 'Métricas de peticiones'
         default_permissions = ()
         permissions = [
             ('view_requestmetric', 'Ver métricas de peticiones'),
@@ -91,6 +93,8 @@ class PageView(models.Model):
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
+        verbose_name = 'Vista de página'
+        verbose_name_plural = 'Vistas de página'
         default_permissions = ()
         permissions = [
             ('view_pageview', 'Ver páginas vistas'),
@@ -139,6 +143,8 @@ class WebVital(models.Model):
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
+        verbose_name = 'Métrica web vital'
+        verbose_name_plural = 'Métricas web vital'
         default_permissions = ()
         permissions = [
             ('view_webvital', 'Ver métricas web'),
@@ -165,6 +171,8 @@ class JavaScriptError(models.Model):
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
+        verbose_name = 'Error de JavaScript'
+        verbose_name_plural = 'Errores de JavaScript'
         default_permissions = ()
         permissions = [
             ('view_javascripterror', 'Ver errores JavaScript'),

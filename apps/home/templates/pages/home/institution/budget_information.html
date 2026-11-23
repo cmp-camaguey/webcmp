@@ -1,0 +1,63 @@
+{% extends 'layouts/institution.html' %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    Información sobre el presupuesto del Centro Meteorológico Provincial de Camagüey, sus principales partidas y la ejecución anual, conforme a la Ley 168/2024 de Transparencia y Acceso a la Información Pública.
+  </p>
+{% endblock %}
+{% block institution_content %}
+  {% if budget_periods %}
+    {% for period in budget_periods %}
+      <div class="card mb-4">
+        <div class="card-body">
+          <h3 class="subheader text-muted fw-medium mb-3">{{ period.title }} ({{ period.year }})</h3>
+          {% if period.description %}<p class="mb-3">{{ period.description }}</p>{% endif %}
+          <div class="table-responsive">
+            <table class="table table-vcenter">
+              <thead>
+                <tr>
+                  <th>Partida</th>
+                  <th class="text-end">Planificado</th>
+                  <th class="text-end">Ejecutado</th>
+                  <th class="text-end">% Ejecución</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in period.lines.all %}
+                  <tr>
+                    <td>{{ line.category }}</td>
+                    <td class="text-end">{{ line.planned_amount }}</td>
+                    <td class="text-end">{{ line.executed_amount }}</td>
+                    <td class="text-end">{{ line.execution_percent|floatformat:2 }}%</td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-secondary">No hay partidas publicadas para este período.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h3 class="subheader text-muted fw-medium mb-3">Presupuesto anual</h3>
+        <p class="mb-0 text-secondary">
+          La información presupuestaria se publicará cuando estén disponibles las partidas y la ejecución anual aprobadas.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+  <div class="card">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">Solicitar información adicional</h3>
+      <p class="mb-0">
+        Si necesita información presupuestaria adicional, puede solicitarla a través del procedimiento de
+        <a href="{% url 'home:institution_public_information' %}"
+           class="link-primary">solicitud de información pública</a>.
+      </p>
+    </div>
+  </div>
+{% endblock %}

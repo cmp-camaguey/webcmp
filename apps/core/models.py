@@ -541,6 +541,8 @@ class TaskExecutionLog(models.Model):
     func_args = models.TextField(blank=True)
 
     class Meta:
+        verbose_name = 'Registro de ejecución de tareas'
+        verbose_name_plural = 'Registros de ejecución de tareas'
         ordering = ['-enqueued_at']
         indexes = [models.Index(fields=['status', 'enqueued_at'])]
         default_permissions = ()
@@ -1144,3 +1146,69 @@ class TermsChangeNotice(models.Model):
         from django.urls import reverse
 
         return reverse('core:terms_change_notice_update', args=[self.pk])
+
+
+class BudgetPeriod(models.Model):
+    """Período presupuestario publicado en transparencia activa."""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    year = models.PositiveIntegerField(verbose_name='Año')
+    title = models.CharField(max_length=200, verbose_name='Título')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Período presupuestario'
+        verbose_name_plural = 'Períodos presupuestarios'
+        ordering = ['-year', '-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_budgetperiod', 'Ver'),
+            ('add_budgetperiod', 'Añadir'),
+            ('change_budgetperiod', 'Editar'),
+            ('delete_budgetperiod', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return f'{self.year} - {self.title}'
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:budget_period_update', args=[self.pk])
+
+
+class BudgetLine(models.Model):
+    """Partida presupuestaria dentro de un período."""
+
+    period = models.ForeignKey(
+        BudgetPeriod,
+        on_delete=models.CASCADE,
+        related_name='lines',
+        verbose_name='Período',
+    )
+    category = models.CharField(max_length=200, verbose_name='Partida')
+    planned_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0, verbose_name='Planificado'
+    )
+    executed_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0, verbose_name='Ejecutado'
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+
+    class Meta:
+        verbose_name = 'Partida presupuestaria'
+        verbose_name_plural = 'Partidas presupuestarias'
+        ordering = ['order', 'id']
+        default_permissions = ()
+
+    def __str__(self):
+        return self.category
+
+    @property
+    def execution_percent(self):
+        if self.planned_amount:
+            return (self.executed_amount / self.planned_amount) * 100
+        return 0
