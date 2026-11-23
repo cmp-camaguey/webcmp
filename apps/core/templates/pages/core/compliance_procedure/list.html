@@ -1,0 +1,32 @@
+{% extends 'layouts/list.html' %}
+{% load my_filters %}
+{% block columns %}
+  <th>Tipo</th>
+  <th>Título</th>
+  <th>Publicado</th>
+  <th class="text-end">Acciones</th>
+{% endblock %}
+{% block row %}
+  <td>{{ object.get_procedure_type_display }}</td>
+  <td>{{ object.title }}</td>
+  <td>
+    {% if object.is_published %}
+      <span class="badge bg-green-lt">Publicado</span>
+    {% else %}
+      <span class="badge bg-yellow-lt">Borrador</span>
+    {% endif %}
+  </td>
+  <td class="text-end">
+    {% if request.user|has_permission:'core.change_complianceprocedure' %}
+      <a href="{% url 'core:compliance_procedure_update' object.uuid %}"
+         type="button"
+         class="btn btn-icon bg-orange-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Editar"
+         data-bs-original-title="Editar">
+        <i class="icon ti ti-edit"></i>
+      </a>
+    {% endif %}
+  </td>
+{% endblock %}

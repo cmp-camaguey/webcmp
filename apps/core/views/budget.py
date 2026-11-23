@@ -75,7 +75,7 @@ class BudgetPeriodUpdateView(LoginRequiredMixin, PermissionRequiredMixin, Update
     success_url = reverse_lazy('core:budget_period_list')
 
     def get_object(self, queryset=None):
-        return get_object_or_404(BudgetPeriod, pk=self.kwargs.get('pk'))
+        return get_object_or_404(BudgetPeriod, uuid=self.kwargs.get('pk'))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -108,7 +108,7 @@ class BudgetPeriodDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = 'core.delete_budgetperiod'
 
     def post(self, request, pk):
-        obj = get_object_or_404(BudgetPeriod, pk=pk)
+        obj = get_object_or_404(BudgetPeriod, uuid=pk)
         title = str(obj)
         log_action(
             user=request.user,

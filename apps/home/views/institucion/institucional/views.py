@@ -285,6 +285,42 @@ class AccountabilityInformationView(TemplateView):
         return context
 
 
+class ComplianceProcedureView(TemplateView):
+    template_name = 'pages/home/institution/compliance_procedure.html'
+    procedure_type = None
+    segment = ''
+
+    HERO_DESCRIPTIONS = {
+        'incident_response': (
+            'Información sobre el procedimiento de notificación y gestión de incidentes de '
+            'ciberseguridad que afecten datos personales, conforme a la Resolución 58/2022.'
+        ),
+        'backup_restore': (
+            'Información sobre el respaldo y la restauración de bases de datos con datos '
+            'personales, conforme a la Resolución 58/2022.'
+        ),
+    }
+
+    def get_context_data(self, **kwargs):
+        from apps.core.models import ComplianceProcedure
+
+        context = super().get_context_data(**kwargs)
+        procedure = ComplianceProcedure.objects.filter(
+            procedure_type=self.procedure_type, is_published=True
+        ).first()
+        context['procedure'] = procedure
+        context['title'] = (
+            procedure.title
+            if procedure
+            else dict(ComplianceProcedure.ProcedureType.choices).get(self.procedure_type, '')
+        )
+        context['hero_description'] = self.HERO_DESCRIPTIONS.get(self.procedure_type, '')
+        context['parent'] = 'institucion'
+        context['segment'] = self.segment
+        context['company'] = CompanySettings.get_instance()
+        return context
+
+
 class PublicInformationRequestView(FormView):
     template_name = 'pages/home/institution/public_information_request.html'
     form_class = PublicInformationRequestForm
@@ -307,3 +343,13 @@ class PublicInformationRequestView(FormView):
             'desde su recepción, conforme a la Ley 168/2024.',
         )
         return super().form_valid(form)
+
+
+class SecurityIncidentProcedureView(ComplianceProcedureView):
+    procedure_type = 'incident_response'
+    segment = 'institution_incident_response'
+
+
+class DataBackupProcedureView(ComplianceProcedureView):
+    procedure_type = 'backup_restore'
+    segment = 'institution_backup_restore'

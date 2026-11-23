@@ -11,12 +11,14 @@ from apps.home.views.institucion.institucional.views import (
     AccountabilityInformationView,
     BudgetInformationView,
     CookiePolicyView,
+    DataBackupProcedureView,
     DataSubjectRightsView,
     InstitutionalInformationView,
     LegalNoticeView,
     MissionView,
     PrivacyPolicyView,
     PublicInformationRequestView,
+    SecurityIncidentProcedureView,
     VisionView,
 )
 from apps.home.views.institucion.publicaciones.views import ScientificPublicationListView
@@ -169,6 +171,16 @@ urlpatterns = [
         'institucion/rendicion-cuentas/',
         AccountabilityInformationView.as_view(),
         name='institution_accountability',
+    ),
+    path(
+        'institucion/incidentes-ciberseguridad/',
+        SecurityIncidentProcedureView.as_view(),
+        name='institution_incident_response',
+    ),
+    path(
+        'institucion/respaldo-datos/',
+        DataBackupProcedureView.as_view(),
+        name='institution_backup_restore',
     ),
     path(
         'institucion/solicitud-informacion-publica/',

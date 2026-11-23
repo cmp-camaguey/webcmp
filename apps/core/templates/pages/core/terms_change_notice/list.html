@@ -20,7 +20,7 @@
   </td>
   <td class="text-end">
     {% if request.user|has_permission:'core.change_termschangenotice' %}
-      <a href="{% url 'core:terms_change_notice_update' object.pk %}"
+      <a href="{% url 'core:terms_change_notice_update' object.uuid %}"
          type="button"
          class="btn btn-icon bg-orange-lt btn-sm"
          data-bs-toggle="tooltip"
@@ -31,17 +31,15 @@
       </a>
     {% endif %}
     {% if request.user|has_permission:'core.delete_termschangenotice' %}
-      <a href="#"
-         type="button"
-         class="btn btn-icon bg-red-lt btn-sm btn-delete"
-         data-id="{{ object.pk }}"
-         data-name="{{ object.title }}"
-         data-bs-toggle="tooltip"
-         data-bs-placement="bottom"
-         aria-label="Eliminar"
-         data-bs-original-title="Eliminar">
+      <button type="button"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
+              data-uuid="{{ object.uuid }}"
+              data-bs-toggle="tooltip"
+              data-bs-placement="bottom"
+              aria-label="Eliminar"
+              data-bs-original-title="Eliminar">
         <i class="icon ti ti-trash"></i>
-      </a>
+      </button>
     {% endif %}
   </td>
 {% endblock %}
