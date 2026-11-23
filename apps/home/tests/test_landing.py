@@ -506,6 +506,18 @@ class InstitutionPagesTests(TestCase):
             'institution_accountability',
         ),
         (
+            'home:institution_incident_response',
+            'pages/home/institution/compliance_procedure.html',
+            'Notificación de incidentes de ciberseguridad',
+            'institution_incident_response',
+        ),
+        (
+            'home:institution_backup_restore',
+            'pages/home/institution/compliance_procedure.html',
+            'Respaldo y restauración de bases de datos',
+            'institution_backup_restore',
+        ),
+        (
             'home:institution_public_information',
             'pages/home/institution/public_information_request.html',
             'Solicitud de información pública',
@@ -521,6 +533,11 @@ class InstitutionPagesTests(TestCase):
         self.assertEqual(
             reverse('home:institution_accountability'), '/institucion/rendicion-cuentas/'
         )
+        self.assertEqual(
+            reverse('home:institution_incident_response'),
+            '/institucion/incidentes-ciberseguridad/',
+        )
+        self.assertEqual(reverse('home:institution_backup_restore'), '/institucion/respaldo-datos/')
         self.assertEqual(
             reverse('home:institution_public_information'),
             '/institucion/solicitud-informacion-publica/',
@@ -539,6 +556,8 @@ class InstitutionPagesTests(TestCase):
         'home:institution_information',
         'home:institution_budget',
         'home:institution_accountability',
+        'home:institution_incident_response',
+        'home:institution_backup_restore',
         'home:institution_public_information',
         'home:institution_legal_notice',
         'home:institution_privacy_policy',

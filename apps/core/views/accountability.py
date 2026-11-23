@@ -67,7 +67,7 @@ class AccountabilityReportUpdateView(LoginRequiredMixin, PermissionRequiredMixin
     success_url = reverse_lazy('core:accountability_report_list')
 
     def get_object(self, queryset=None):
-        return get_object_or_404(AccountabilityReport, pk=self.kwargs.get('pk'))
+        return get_object_or_404(AccountabilityReport, uuid=self.kwargs.get('pk'))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -93,7 +93,7 @@ class AccountabilityReportDeleteView(LoginRequiredMixin, PermissionRequiredMixin
     permission_required = 'core.delete_accountabilityreport'
 
     def post(self, request, pk):
-        obj = get_object_or_404(AccountabilityReport, pk=pk)
+        obj = get_object_or_404(AccountabilityReport, uuid=pk)
         title = str(obj)
         log_action(
             user=request.user,

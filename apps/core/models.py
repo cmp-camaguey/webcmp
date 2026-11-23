@@ -1252,3 +1252,50 @@ class AccountabilityReport(FileHandlerMixin, models.Model):
         from django.urls import reverse
 
         return reverse('core:accountability_report_update', args=[self.pk])
+
+
+class ComplianceProcedure(models.Model):
+    """Procedimiento de cumplimiento editable desde dashboard y publicable en el portal."""
+
+    class ProcedureType(models.TextChoices):
+        INCIDENT_RESPONSE = (
+            'incident_response',
+            'Notificación de incidentes de ciberseguridad',
+        )
+        BACKUP_RESTORE = (
+            'backup_restore',
+            'Respaldo y restauración de bases de datos',
+        )
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    procedure_type = models.CharField(
+        max_length=30,
+        choices=ProcedureType.choices,
+        unique=True,
+        verbose_name='Tipo de procedimiento',
+    )
+    title = models.CharField(max_length=255, verbose_name='Título')
+    body = models.TextField(blank=True, verbose_name='Contenido')
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Procedimiento de cumplimiento'
+        verbose_name_plural = 'Procedimientos de cumplimiento'
+        ordering = ['procedure_type']
+        default_permissions = ()
+        permissions = [
+            ('view_complianceprocedure', 'Ver'),
+            ('add_complianceprocedure', 'Añadir'),
+            ('change_complianceprocedure', 'Editar'),
+            ('delete_complianceprocedure', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return self.get_procedure_type_display()
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:compliance_procedure_update', args=[self.pk])

@@ -1,0 +1,34 @@
+{% extends 'layouts/form.html' %}
+{% block form %}
+  {% include 'includes/dashboard/form_card.html' with card_title='Procedimiento de cumplimiento' %}
+  <div class="mb-3">
+    <label class="form-label text-secondary">Tipo</label>
+    <div class="form-control-plaintext">{{ object.get_procedure_type_display }}</div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label required" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+    {{ form.title }}
+    {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.body.id_for_label }}">{{ form.body.label }}</label>
+    {{ form.body }}
+    {% if form.body.errors %}<div class="invalid-feedback d-block">{{ form.body.errors.0 }}</div>{% endif %}
+    <small class="form-text text-muted">Este contenido se muestra en la página pública cuando el procedimiento está publicado.</small>
+  </div>
+  <div class="mb-3">
+    <label class="form-check form-switch">
+      {{ form.is_published }}
+      <span class="form-check-label">{{ form.is_published.label }}</span>
+    </label>
+    {% if form.is_published.errors %}<div class="invalid-feedback d-block">{{ form.is_published.errors.0 }}</div>{% endif %}
+  </div>
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+  {% endif %}
+  </div>
+  </div>
+  </div>
+{% endblock %}

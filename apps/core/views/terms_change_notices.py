@@ -68,7 +68,7 @@ class TermsChangeNoticeUpdateView(LoginRequiredMixin, PermissionRequiredMixin, U
 
     def get_object(self, queryset=None):
         pk = self.kwargs.get('pk')
-        return get_object_or_404(TermsChangeNotice, pk=pk)
+        return get_object_or_404(TermsChangeNotice, uuid=pk)
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -94,7 +94,7 @@ class TermsChangeNoticeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, V
     permission_required = 'core.delete_termschangenotice'
 
     def post(self, request, pk):
-        obj = get_object_or_404(TermsChangeNotice, pk=pk)
+        obj = get_object_or_404(TermsChangeNotice, uuid=pk)
         title = obj.title
         log_action(
             user=request.user,

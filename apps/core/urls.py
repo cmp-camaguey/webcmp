@@ -12,6 +12,8 @@ from apps.core.views import (
     BudgetPeriodUpdateView,
     CompanySettingsAjaxUpdateView,
     CompanySettingsUpdateView,
+    ComplianceProcedureListView,
+    ComplianceProcedureUpdateView,
     CookieConsentView,
     DataSubjectRequestListView,
     DataSubjectRequestUpdateView,
@@ -161,6 +163,16 @@ urlpatterns = [
         'legal/rendicion-cuentas/<uuid:pk>/eliminar/',
         AccountabilityReportDeleteView.as_view(),
         name='accountability_report_delete',
+    ),
+    path(
+        'legal/procedimientos-cumplimiento/',
+        ComplianceProcedureListView.as_view(),
+        name='compliance_procedure_list',
+    ),
+    path(
+        'legal/procedimientos-cumplimiento/<uuid:pk>/editar/',
+        ComplianceProcedureUpdateView.as_view(),
+        name='compliance_procedure_update',
     ),
     path('cookies/consentimiento/', CookieConsentView.as_view(), name='cookie_consent'),
 ]

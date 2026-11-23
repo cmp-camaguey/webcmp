@@ -15,6 +15,10 @@ from apps.core.views.company_settings import (
     CompanySettingsAjaxUpdateView,
     CompanySettingsUpdateView,
 )
+from apps.core.views.compliance_procedures import (
+    ComplianceProcedureListView,
+    ComplianceProcedureUpdateView,
+)
 from apps.core.views.cookie_consent import CookieConsentView
 from apps.core.views.data_subject_requests import (
     DataSubjectRequestListView,
@@ -62,6 +66,8 @@ __all__ = [
     'BudgetPeriodDeleteView',
     'BudgetPeriodListView',
     'BudgetPeriodUpdateView',
+    'ComplianceProcedureListView',
+    'ComplianceProcedureUpdateView',
     'TermsChangeNoticeCreateView',
     'TermsChangeNoticeDeleteView',
     'TermsChangeNoticeListView',
