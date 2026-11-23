@@ -1212,3 +1212,43 @@ class BudgetLine(models.Model):
         if self.planned_amount:
             return (self.executed_amount / self.planned_amount) * 100
         return 0
+
+
+class AccountabilityReport(FileHandlerMixin, models.Model):
+    """Informe de rendición de cuenta publicado en transparencia activa."""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    year = models.PositiveIntegerField(verbose_name='Año')
+    title = models.CharField(max_length=255, verbose_name='Título')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    file = models.FileField(
+        upload_to=pdf_upload_path,
+        blank=True,
+        null=True,
+        verbose_name='Archivo',
+    )
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    file_fields = ['file']
+
+    class Meta:
+        verbose_name = 'Informe de rendición de cuenta'
+        verbose_name_plural = 'Informes de rendición de cuenta'
+        ordering = ['-year', '-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_accountabilityreport', 'Ver'),
+            ('add_accountabilityreport', 'Añadir'),
+            ('change_accountabilityreport', 'Editar'),
+            ('delete_accountabilityreport', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return f'{self.year} - {self.title}'
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:accountability_report_update', args=[self.pk])

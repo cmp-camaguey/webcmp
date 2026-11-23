@@ -1,3 +1,9 @@
+from apps.core.views.accountability import (
+    AccountabilityReportCreateView,
+    AccountabilityReportDeleteView,
+    AccountabilityReportListView,
+    AccountabilityReportUpdateView,
+)
 from apps.core.views.activity_log import ActivityLogListView
 from apps.core.views.budget import (
     BudgetPeriodCreateView,
@@ -48,6 +54,10 @@ __all__ = [
     'CookieConsentView',
     'DataSubjectRequestListView',
     'DataSubjectRequestUpdateView',
+    'AccountabilityReportCreateView',
+    'AccountabilityReportDeleteView',
+    'AccountabilityReportListView',
+    'AccountabilityReportUpdateView',
     'BudgetPeriodCreateView',
     'BudgetPeriodDeleteView',
     'BudgetPeriodListView',

@@ -1,6 +1,10 @@
 from django.urls import path
 
 from apps.core.views import (
+    AccountabilityReportCreateView,
+    AccountabilityReportDeleteView,
+    AccountabilityReportListView,
+    AccountabilityReportUpdateView,
     ActivityLogListView,
     BudgetPeriodCreateView,
     BudgetPeriodDeleteView,
@@ -137,6 +141,26 @@ urlpatterns = [
         'legal/presupuestos/<uuid:pk>/eliminar/',
         BudgetPeriodDeleteView.as_view(),
         name='budget_period_delete',
+    ),
+    path(
+        'legal/rendicion-cuentas/',
+        AccountabilityReportListView.as_view(),
+        name='accountability_report_list',
+    ),
+    path(
+        'legal/rendicion-cuentas/crear/',
+        AccountabilityReportCreateView.as_view(),
+        name='accountability_report_create',
+    ),
+    path(
+        'legal/rendicion-cuentas/<uuid:pk>/editar/',
+        AccountabilityReportUpdateView.as_view(),
+        name='accountability_report_update',
+    ),
+    path(
+        'legal/rendicion-cuentas/<uuid:pk>/eliminar/',
+        AccountabilityReportDeleteView.as_view(),
+        name='accountability_report_delete',
     ),
     path('cookies/consentimiento/', CookieConsentView.as_view(), name='cookie_consent'),
 ]
