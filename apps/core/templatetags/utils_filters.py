@@ -160,3 +160,21 @@ def sanitize_html(value):
 
     result = TAG_RE.sub(replace_tag, escaped)
     return mark_safe(result)  # nosec B703
+
+
+_HTML_TAG_RE = re.compile(r'<[a-zA-Z][^>]*>')
+
+
+@register.filter
+def richtext(value):
+    """Render dashboard-edited rich content as sanitized HTML."""
+    if not value:
+        return ''
+    from django.utils.html import linebreaks
+
+    from apps.core.sanitize import sanitize_html as sanitize_rich_html
+
+    text = str(value)
+    if not _HTML_TAG_RE.search(text):
+        text = linebreaks(text)
+    return mark_safe(sanitize_rich_html(text))  # nosec B703

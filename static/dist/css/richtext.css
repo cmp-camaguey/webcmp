@@ -1,0 +1,21 @@
+.richtext-editor-wrapper .ql-toolbar.ql-snow,
+.richtext-editor-wrapper .ql-container.ql-snow {
+  border-color: var(--tblr-border-color, #dadcde);
+}
+
+.richtext-editor-wrapper .ql-toolbar.ql-snow {
+  border-top-left-radius: var(--tblr-border-radius, 4px);
+  border-top-right-radius: var(--tblr-border-radius, 4px);
+  background: var(--tblr-bg-surface, #fff);
+}
+
+.richtext-editor-wrapper .ql-container.ql-snow {
+  border-bottom-left-radius: var(--tblr-border-radius, 4px);
+  border-bottom-right-radius: var(--tblr-border-radius, 4px);
+  background: var(--tblr-bg-surface, #fff);
+  font-size: 0.875rem;
+}
+
+.richtext-editor-wrapper .ql-editor {
+  min-height: 12rem;
+}
