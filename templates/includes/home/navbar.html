@@ -64,12 +64,20 @@
           </div>
         </div>
       {% else %}
-        <div class="nav-item">
+        <div class="nav-item d-none d-md-flex">
           <div class="btn-list">
             <a class="btn btn-outline-secondary"
                href="{% url 'user_auth:customer_register' %}">Registrarse</a>
             <a class="btn btn-primary" href="{% url 'user_auth:login' %}">Iniciar sesión</a>
           </div>
+        </div>
+        <div class="nav-item d-md-none">
+          <a href="{% url 'user_auth:login' %}"
+             class="nav-link px-0"
+             title="Iniciar sesión"
+             aria-label="Iniciar sesión">
+            <i class="icon ti ti-login-2"></i>
+          </a>
         </div>
       {% endif %}
     </div>
@@ -78,7 +86,18 @@
 <header class="navbar-expand-md">
   <div class="collapse navbar-collapse" id="navbar-menu">
     <div class="navbar">
-      <div class="container-xl">{% include 'includes/home/menu-list.html' %}</div>
+      <div class="container-xl">
+        {% include 'includes/home/menu-list.html' %}
+        {% if not request.user.is_authenticated %}
+          <div class="d-md-none border-top mt-2 pt-3 pb-2">
+            <div class="btn-list justify-content-center">
+              <a class="btn btn-outline-secondary"
+                 href="{% url 'user_auth:customer_register' %}">Registrarse</a>
+              <a class="btn btn-primary" href="{% url 'user_auth:login' %}">Iniciar sesión</a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 </header>
