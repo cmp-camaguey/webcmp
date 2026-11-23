@@ -517,51 +517,50 @@ class InstitutionPagesTests(TestCase):
         self.assertContains(response, 'Quince días hábiles')
         self.assertContains(response, 'salvo el costo de reproducción')
 
+    ALL_PAGES = (
+        'home:institution_vision',
+        'home:institution_mission',
+        'home:institution_about',
+        'home:institution_information',
+        'home:institution_public_information',
+        'home:institution_legal_notice',
+        'home:institution_privacy_policy',
+        'home:institution_cookie_policy',
+        'home:institution_data_subject_rights',
+    )
+
     def test_institutional_and_legal_pages_share_one_layout(self):
         """Todas las páginas del bloque usan el mismo esqueleto y la misma hoja de estilos."""
-        pages = (
-            'home:institution_vision',
-            'home:institution_mission',
-            'home:institution_about',
-            'home:institution_information',
-            'home:institution_public_information',
-            'home:institution_legal_notice',
-            'home:institution_privacy_policy',
-            'home:institution_cookie_policy',
-            'home:institution_data_subject_rights',
-        )
-        for name in pages:
+        for name in self.ALL_PAGES:
             with self.subTest(name=name):
                 response = self.client.get(reverse(name))
                 html = response.content.decode()
                 self.assertEqual(200, response.status_code)
                 self.assertTemplateUsed(response, 'layouts/institution.html')
                 self.assertIn('dist/css/institution-pages.css', html)
+                self.assertIn('institution-body', html)
                 self.assertIn('section-divider', html)
                 self.assertNotIn('hero-curve', html)
                 self.assertNotIn('section-tarjetas', html)
 
-    def test_related_links_rail_skips_pages_that_already_link_their_destinations(self):
-        """El índice lateral no repite destinos que la página ya ofrece como tarjetas."""
-        with_rail = (
-            'home:institution_vision',
-            'home:institution_mission',
-            'home:institution_information',
-            'home:institution_public_information',
-            'home:institution_legal_notice',
-            'home:institution_privacy_policy',
-            'home:institution_cookie_policy',
-            'home:institution_data_subject_rights',
-        )
-        for name in with_rail:
+    def test_pages_do_not_repeat_the_navigation_already_in_navbar_and_footer(self):
+        """El navbar y el footer ya listan estas páginas; el cuerpo no repite esos enlaces."""
+        for name in self.ALL_PAGES:
             with self.subTest(name=name):
                 html = self.client.get(reverse(name)).content.decode()
-                self.assertEqual(1, html.count('Enlaces relacionados'))
-                self.assertIn('institution-aside__links', html)
+                self.assertNotIn('Enlaces relacionados', html)
+                self.assertNotIn('Contacto institucional', html)
 
-        html = self.client.get(reverse('home:institution_about')).content.decode()
-        self.assertNotIn('Enlaces relacionados', html)
-        self.assertEqual(1, html.count('Contacto institucional'))
+    def test_document_index_links_reach_their_sections(self):
+        """Cada entrada del índice apunta a una sección que existe en la página."""
+        for name in ('home:institution_privacy_policy', 'home:institution_cookie_policy'):
+            with self.subTest(name=name):
+                html = self.client.get(reverse(name)).content.decode()
+                self.assertIn('institution-toc', html)
+                anchors = re.findall(r'href="#([^"]+)"', html)
+                self.assertGreaterEqual(len(anchors), 7)
+                for anchor in anchors:
+                    self.assertIn(f'id="{anchor}"', html)
 
     def test_pages_render_with_context(self):
         for name, template, title, segment in self.PAGES:

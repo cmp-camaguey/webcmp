@@ -1,15 +1,32 @@
 {% extends 'layouts/institution.html' %}
+{% block institution_body_class %}institution-body--wide{% endblock %}
 {% block hero_description %}
   <p class="hero-description mt-4">
     Cómo tratamos tus datos personales, con qué finalidad, durante cuánto tiempo y cómo puedes ejercer tus derechos.
   </p>
 {% endblock %}
 {% block institution_content %}
-  <div class="row g-4">
+  <div class="row g-4 align-items-start">
+    <div class="col-lg-4">
+      <nav class="institution-toc institution-toc--rail"
+           aria-label="En esta página">
+        <div class="institution-label">En esta página</div>
+        <ol class="institution-toc__list">
+          <li><a href="#responsable">Responsable del tratamiento</a></li>
+          <li><a href="#datos">Datos que tratamos y finalidad</a></li>
+          <li><a href="#destinatarios">Destinatarios</a></li>
+          <li><a href="#transferencias">Transferencias internacionales</a></li>
+          <li><a href="#conservacion">Plazos de conservación</a></li>
+          <li><a href="#derechos">Derechos del titular</a></li>
+          <li><a href="#seguridad">Medidas de seguridad</a></li>
+          <li><a href="#actualizaciones">Actualizaciones</a></li>
+        </ol>
+      </nav>
+    </div>
     <div class="col-lg-8">
       <div class="card">
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">1. Responsable del tratamiento</h3>
+          <h3 id="responsable" class="subheader text-muted fw-medium mb-3">1. Responsable del tratamiento</h3>
           <p class="mb-1"><strong>Titular:</strong> {{ company.nombre }}</p>
           <p class="mb-0">
             <strong>Contacto:</strong>
@@ -17,7 +34,7 @@
             ·
             <a href="{% url 'home:institution_legal_notice' %}" class="link-primary">Ver aviso legal</a>
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">2. Datos que tratamos y finalidad</h3>
+          <h3 id="datos" class="subheader text-muted fw-medium mt-4 mb-3">2. Datos que tratamos y finalidad</h3>
           <p class="mb-2">El portal trata las siguientes categorías de datos personales:</p>
           <ul class="list-unstyled list-separated gap-2 mb-3">
             <li>
@@ -36,23 +53,24 @@
               <strong>Log de acceso y métricas técnicas (RUM):</strong> dirección IP anonimizada, user-agent, ruta solicitada, tiempo de respuesta, errores HTTP. Finalidad: monitorización de disponibilidad, rendimiento y seguridad del servicio. Base legal: interés legítimo (seguridad y calidad del servicio).
             </li>
           </ul>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">3. Destinatarios</h3>
+          <h3 id="destinatarios" class="subheader text-muted fw-medium mt-4 mb-3">3. Destinatarios</h3>
           <p class="mb-2">Los datos no se ceden a terceros salvo obligación legal o cuando sea necesario para la prestación del servicio contratado:</p>
           <ul class="list-unstyled list-separated gap-2 mb-3">
             <li>Entidades bancarias para la gestión de cobros y pagos.</li>
             <li>Administración tributaria (ONAT) en cumplimiento de obligaciones fiscales.</li>
             <li>Proveedores de infraestructura (alojamiento, correo) bajo cláusulas de encargado de tratamiento.</li>
           </ul>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">4. Transferencias internacionales</h3>
+          <h3 id="transferencias"
+              class="subheader text-muted fw-medium mt-4 mb-3">4. Transferencias internacionales</h3>
           <p class="mb-3">No se realizan transferencias internacionales de datos personales. Todo el tratamiento se realiza en infraestructura nacional (Cuba).</p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">5. Plazos de conservación</h3>
+          <h3 id="conservacion" class="subheader text-muted fw-medium mt-4 mb-3">5. Plazos de conservación</h3>
           <ul class="list-unstyled list-separated gap-2 mb-3">
             <li>Suscriptores: mientras la suscripción esté activa; tras la baja se conserva el correo y la prueba de consentimiento durante 4 años para acreditar el cumplimiento.</li>
             <li>Usuarios del panel: mientras la cuenta exista; tras la baja se anonimizan los datos de perfil en 30 días.</li>
             <li>Clientes y facturación: 10 años desde la finalización de la relación contractual, por obligación contable y tributaria.</li>
             <li>Logs técnicos y métricas: 12 meses en bruto; agregados estadísticos sin datos personales se conservan indefinidamente.</li>
           </ul>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">6. Derechos del titular</h3>
+          <h3 id="derechos" class="subheader text-muted fw-medium mt-4 mb-3">6. Derechos del titular</h3>
           <p class="mb-2">Tienes derecho a:</p>
           <ul class="list-unstyled list-separated gap-2 mb-3">
             <li>Acceder a tus datos personales.</li>
@@ -68,17 +86,14 @@
             <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
             indicando el derecho que ejercitas y adjuntando copia de tu documento de identidad.
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">7. Medidas de seguridad</h3>
+          <h3 id="seguridad" class="subheader text-muted fw-medium mt-4 mb-3">7. Medidas de seguridad</h3>
           <p class="mb-3">Se aplican medidas técnicas y organizativas adecuadas al riesgo: acceso por autenticación fuerte, control de accesos por roles, registro de accesos, cifrado en tránsito (TLS), copias de seguridad cifradas y procedimiento de notificación de incidentes.</p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">8. Actualizaciones</h3>
+          <h3 id="actualizaciones" class="subheader text-muted fw-medium mt-4 mb-3">8. Actualizaciones</h3>
           <p class="mb-0">
             Esta política se revisa periódicamente. La versión vigente siempre está accesible en esta misma URL. Los cambios sustanciales se comunican por el boletín y en el panel de administración.
           </p>
         </div>
       </div>
-    </div>
-    <div class="col-lg-4">
-      {% include 'includes/landing/related_links.html' with group='legal' current='privacy_policy' %}
     </div>
   </div>
 {% endblock %}

@@ -1,21 +1,37 @@
 {% extends 'layouts/institution.html' %}
+{% block institution_body_class %}institution-body--wide{% endblock %}
 {% block hero_description %}
   <p class="hero-description mt-4">
     Qué son las cookies, qué categorías usamos, para qué sirven y cómo gestionar tu consentimiento.
   </p>
 {% endblock %}
 {% block institution_content %}
-  <div class="row g-4">
+  <div class="row g-4 align-items-start">
+    <div class="col-lg-4">
+      <nav class="institution-toc institution-toc--rail"
+           aria-label="En esta página">
+        <div class="institution-label">En esta página</div>
+        <ol class="institution-toc__list">
+          <li><a href="#que-son">¿Qué son las cookies?</a></li>
+          <li><a href="#categorias">Categorías de cookies que usamos</a></li>
+          <li><a href="#detalle">Detalle de cookies utilizadas</a></li>
+          <li><a href="#consentimiento">Cómo gestionar tu consentimiento</a></li>
+          <li><a href="#desactivar">Cómo desactivar o borrar cookies desde el navegador</a></li>
+          <li><a href="#contacto">Responsable y contacto</a></li>
+          <li><a href="#actualizaciones">Actualizaciones</a></li>
+        </ol>
+      </nav>
+    </div>
     <div class="col-lg-8">
       <div class="card">
         <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">1. ¿Qué son las cookies?</h3>
+          <h3 id="que-son" class="subheader text-muted fw-medium mb-3">1. ¿Qué son las cookies?</h3>
           <p class="mb-3">
             Las cookies son pequeños archivos de texto que el sitio web almacena en tu navegador cuando lo visitas.
             Permiten recordar información sobre tu visita (como preferencias, sesión, o métricas de uso) para que el
             sitio funcione correctamente y ofrezca una mejor experiencia.
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">2. Categorías de cookies que usamos</h3>
+          <h3 id="categorias" class="subheader text-muted fw-medium mt-4 mb-3">2. Categorías de cookies que usamos</h3>
           <p class="mb-2">Este portal clasifica las cookies en tres categorías:</p>
           <h4 class="subheader text-muted fw-medium mb-2">Necesarias (siempre activas)</h4>
           <p class="mb-3">
@@ -37,7 +53,7 @@
             Reservadas para futuras mejoras: recordar preferencias de visualización (tema, idioma), mapas
             interactivos, contenidos incrustados de terceros. Actualmente no hay cookies funcionales activas.
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">3. Detalle de cookies utilizadas</h3>
+          <h3 id="detalle" class="subheader text-muted fw-medium mt-4 mb-3">3. Detalle de cookies utilizadas</h3>
           <div class="table-responsive">
             <table class="table table-sm table-bordered">
               <thead class="table-light">
@@ -76,7 +92,8 @@
               </tbody>
             </table>
           </div>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">4. Cómo gestionar tu consentimiento</h3>
+          <h3 id="consentimiento"
+              class="subheader text-muted fw-medium mt-4 mb-3">4. Cómo gestionar tu consentimiento</h3>
           <p class="mb-2">
             Al visitar el sitio por primera vez, verás un <strong>banner de consentimiento</strong> en la parte
             inferior con tres opciones:
@@ -91,7 +108,8 @@
             respaldo) durante <strong>1 año</strong>. Puedes cambiarla en cualquier momento desde el enlace
             <strong>«Configurar cookies»</strong> en el pie de página, que vuelve a abrir el modal.
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">5. Cómo desactivar o borrar cookies desde el navegador</h3>
+          <h3 id="desactivar"
+              class="subheader text-muted fw-medium mt-4 mb-3">5. Cómo desactivar o borrar cookies desde el navegador</h3>
           <p class="mb-3">
             Además del control interno, puedes bloquear o eliminar cookies desde la configuración de tu navegador:
             <a href="https://support.google.com/chrome/answer/95647"
@@ -116,7 +134,7 @@
             Ten en cuenta que bloquear las cookies necesarias impedirá que el panel de administración funcione
             correctamente.
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">6. Responsable y contacto</h3>
+          <h3 id="contacto" class="subheader text-muted fw-medium mt-4 mb-3">6. Responsable y contacto</h3>
           <p class="mb-1"><strong>Titular:</strong> {{ company.nombre }}</p>
           <p class="mb-0">
             <strong>Contacto:</strong>
@@ -124,16 +142,13 @@
             ·
             <a href="{% url 'home:institution_legal_notice' %}" class="link-primary">Ver aviso legal</a>
           </p>
-          <h3 class="subheader text-muted fw-medium mt-4 mb-3">7. Actualizaciones</h3>
+          <h3 id="actualizaciones" class="subheader text-muted fw-medium mt-4 mb-3">7. Actualizaciones</h3>
           <p class="mb-0">
             Esta política se revisa periódicamente. La versión vigente siempre está accesible en esta misma URL.
             Los cambios sustanciales se comunican por el boletín y en el panel de administración.
           </p>
         </div>
       </div>
-    </div>
-    <div class="col-lg-4">
-      {% include 'includes/landing/related_links.html' with group='legal' current='cookie_policy' %}
     </div>
   </div>
 {% endblock %}

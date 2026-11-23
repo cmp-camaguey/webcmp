@@ -161,9 +161,24 @@
   opacity: 1 !important;
 }
 
-/* ─── Índice lateral: una lista, no una tarjeta más ─── */
+/* Cuerpo del documento: ancho de lectura cómodo, centrado. La navegación
+   del sitio vive en el navbar y el footer; el contenido no la repite. */
+.institution-body {
+  max-width: 52rem;
+  margin-inline: auto;
+}
 
-.institution-aside__label {
+.institution-body--wide {
+  max-width: 72rem;
+}
+
+.section-institutional [id] {
+  scroll-margin-top: 6rem;
+}
+
+/* ─── Etiqueta de sección, en el tono del tema ─── */
+
+.institution-label {
   margin-bottom: 0.5rem;
   font-size: 0.6875rem;
   font-weight: 600;
@@ -173,90 +188,54 @@
   opacity: 0.7;
 }
 
-.institution-aside__links {
-  margin: 0 0 2rem;
-  padding: 0;
-  list-style: none;
+/* ─── Índice del documento: solo anclas internas ─── */
+
+.institution-toc {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--inst-line);
+  border-radius: var(--tblr-border-radius);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.institution-aside__links li + li {
-  border-top: 1px solid var(--inst-line);
+[data-bs-theme="dark"] .institution-toc {
+  background: transparent;
 }
 
-.institution-aside__links a {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0;
+.institution-toc__list {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.875rem;
+}
+
+.institution-toc__list li {
+  margin-bottom: 0.35rem;
+}
+
+.institution-toc__list a {
   color: inherit;
   text-decoration: none;
 }
 
-.institution-aside__links a:hover,
-.institution-aside__links a:focus-visible {
+.institution-toc__list a:hover,
+.institution-toc__list a:focus-visible {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.institution-aside__links a:focus-visible,
-.institution-aside__mail:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 3px;
-}
-
-.institution-aside__links .ti {
-  font-size: 1rem;
-  opacity: 0.45;
-}
-
-.institution-aside__mail {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* ─── Lista editorial de compromisos y valores (Misión/Visión) ─── */
-
-.institution-points {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.institution-point {
-  display: flex;
-  gap: 1rem;
-  padding: 1.5rem 0;
-}
-
-.institution-point + .institution-point {
-  border-top: 1px solid var(--inst-line);
-}
-
-.institution-point:first-child {
-  padding-top: 0;
-}
-
-.institution-point:last-child {
-  padding-bottom: 0;
-}
-
-.institution-aside__note {
-  font-size: 0.8125rem;
-  line-height: 1.5;
+@media (min-width: 992px) {
+  .institution-toc--rail {
+    position: sticky;
+    top: 6rem;
+  }
 }
 
 /* ─── Tabla de definiciones: derechos, plazos y datos afines ─── */
 
-.institution-facts-block {
-  border-top: 1px solid var(--inst-line);
+.institution-facts {
+  margin: 0;
 }
 
 .institution-facts > div {
-  display: grid;
-  grid-template-columns: 10rem 1fr;
-  gap: 0.25rem 1.5rem;
   padding: 0.75rem 0;
 }
 
@@ -275,9 +254,33 @@
   color: var(--inst-fg-muted);
 }
 
-@media (max-width: 575.98px) {
-  .institution-facts > div {
-    grid-template-columns: 1fr;
-    gap: 0.125rem;
+.institution-facts dd {
+  margin-top: 0.125rem;
+}
+
+/* Dos columnas solo cuando la tabla ocupa todo el ancho de la página. */
+@media (min-width: 768px) {
+  .institution-facts--inline > div {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: 0.25rem 1.5rem;
   }
+
+  .institution-facts--inline dd {
+    margin-top: 0;
+  }
+}
+
+/* ─── Bloque de puntos: compromisos y valores (Misión/Visión) ─── */
+
+.institution-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.institution-point {
+  display: flex;
+  gap: 1rem;
+  padding: 0;
 }

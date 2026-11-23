@@ -6,92 +6,84 @@
   </p>
 {% endblock %}
 {% block institution_content %}
-  <div class="row g-4">
-    <div class="col-lg-8">
-      <div class="card mb-4">
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">Cómo presentar una solicitud</h3>
-          <p class="mb-3">
-            Toda persona puede solicitar información pública producida o en poder del Centro. La solicitud
-            se presenta por escrito y debe permitir identificar con claridad qué información se requiere.
-          </p>
-          <ol class="mb-0 ps-3">
-            <li class="mb-2">
-              <strong>Identifíquese:</strong> nombre y apellidos, documento de identidad y un medio de
-              contacto (correo electrónico, teléfono o dirección).
-            </li>
-            <li class="mb-2">
-              <strong>Describa la información:</strong> indique el tema, el período y, si corresponde, el
-              área o documento concreto al que se refiere la solicitud.
-            </li>
-            <li class="mb-2">
-              <strong>Señale la forma de respuesta:</strong> correo electrónico, consulta en sede o entrega
-              de copia, según su preferencia.
-            </li>
-            <li>
-              <strong>Envíe la solicitud:</strong> por correo electrónico a
-              <a href="mailto:{{ contact_email }}?subject=Solicitud%20de%20informaci%C3%B3n%20p%C3%BAblica"
-                 class="text-reset">{{ contact_email }}</a>
-              o entréguela por escrito en la sede institucional.
-            </li>
-          </ol>
-        </div>
-      </div>
-      <div class="card mb-4">
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">Plazos de respuesta</h3>
-          <div class="table-responsive mb-3">
-            <table class="table table-vcenter">
-              <tbody>
-                <tr>
-                  <th style="width: 38%;">Plazo de respuesta</th>
-                  <td>Quince días hábiles desde la recepción de la solicitud.</td>
-                </tr>
-                <tr>
-                  <th>Prórroga</th>
-                  <td>
-                    Por igual período, cuando concurran circunstancias que hagan razonablemente difícil
-                    reunir la información solicitada. La prórroga se notifica al solicitante.
-                  </td>
-                </tr>
-                <tr>
-                  <th>Gratuidad</th>
-                  <td>El acceso es gratuito, salvo el costo de reproducción cuando se soliciten copias.</td>
-                </tr>
-                <tr>
-                  <th>Resultado</th>
-                  <td>
-                    Se entrega la información solicitada o, si no puede brindarse, se indica la causa y,
-                    cuando corresponda, el organismo competente.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="small text-secondary mb-0">
-            Base legal: Ley 168/2024, artículos 11, 12 y 18; artículo 15 sobre gratuidad.
-          </p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-3">Información que puede solicitarse</h3>
-          <p class="mb-2">
-            Puede solicitarse información pública sobre la organización, funciones, servicios, presupuestos,
-            informes y demás contenido generado o conservado por el Centro en el ejercicio de sus competencias.
-          </p>
-          <p class="mb-2">El acceso puede restringirse en los casos previstos por la ley, con la debida justificación y, cuando corresponda, previa prueba de daño. En particular:</p>
-          <ul class="mb-0 ps-3">
-            <li>Información cuya restricción se encuentre legalmente justificada.</li>
-            <li>Datos personales de terceros, salvo autorización o base legal para su entrega.</li>
-            <li>Información protegida por derechos de propiedad intelectual o industrial.</li>
-          </ul>
-        </div>
-      </div>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">Cómo presentar una solicitud</h3>
+      <p class="mb-3">
+        Toda persona puede solicitar información pública producida o en poder del Centro. La solicitud
+        se presenta por escrito y debe permitir identificar con claridad qué información se requiere.
+      </p>
+      <ol class="mb-0 ps-3">
+        <li class="mb-2">
+          <strong>Identifíquese:</strong> nombre y apellidos, documento de identidad y un medio de
+          contacto (correo electrónico, teléfono o dirección).
+        </li>
+        <li class="mb-2">
+          <strong>Describa la información:</strong> indique el tema, el período y, si corresponde, el
+          área o documento concreto al que se refiere la solicitud.
+        </li>
+        <li class="mb-2">
+          <strong>Señale la forma de respuesta:</strong> correo electrónico, consulta en sede o entrega
+          de copia, según su preferencia.
+        </li>
+        <li>
+          <strong>Envíe la solicitud:</strong> por correo electrónico a
+          <a href="mailto:{{ contact_email }}?subject=Solicitud%20de%20informaci%C3%B3n%20p%C3%BAblica"
+             class="text-reset">{{ contact_email }}</a>
+          o entréguela por escrito en la sede institucional.
+        </li>
+      </ol>
     </div>
-    <div class="col-lg-4">
-      {% include 'includes/landing/related_links.html' with group='public_information' %}
-      {% include 'includes/landing/contact_card.html' with cta_label='Enviar solicitud' cta_subject='Solicitud de información pública' %}
+  </div>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">Plazos de respuesta</h3>
+      <div class="table-responsive mb-3">
+        <table class="table table-vcenter">
+          <tbody>
+            <tr>
+              <th style="width: 38%;">Plazo de respuesta</th>
+              <td>Quince días hábiles desde la recepción de la solicitud.</td>
+            </tr>
+            <tr>
+              <th>Prórroga</th>
+              <td>
+                Por igual período, cuando concurran circunstancias que hagan razonablemente difícil
+                reunir la información solicitada. La prórroga se notifica al solicitante.
+              </td>
+            </tr>
+            <tr>
+              <th>Gratuidad</th>
+              <td>El acceso es gratuito, salvo el costo de reproducción cuando se soliciten copias.</td>
+            </tr>
+            <tr>
+              <th>Resultado</th>
+              <td>
+                Se entrega la información solicitada o, si no puede brindarse, se indica la causa y,
+                cuando corresponda, el organismo competente.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-secondary mb-0">
+        Base legal: Ley 168/2024, artículos 11, 12 y 18; artículo 15 sobre gratuidad.
+      </p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">Información que puede solicitarse</h3>
+      <p class="mb-2">
+        Puede solicitarse información pública sobre la organización, funciones, servicios, presupuestos,
+        informes y demás contenido generado o conservado por el Centro en el ejercicio de sus competencias.
+      </p>
+      <p class="mb-2">El acceso puede restringirse en los casos previstos por la ley, con la debida justificación y, cuando corresponda, previa prueba de daño. En particular:</p>
+      <ul class="mb-0 ps-3">
+        <li>Información cuya restricción se encuentre legalmente justificada.</li>
+        <li>Datos personales de terceros, salvo autorización o base legal para su entrega.</li>
+        <li>Información protegida por derechos de propiedad intelectual o industrial.</li>
+      </ul>
     </div>
   </div>
 {% endblock %}

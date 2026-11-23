@@ -8,109 +8,104 @@
   </p>
 {% endblock %}
 {% block institution_content %}
+  <div class="section-header mb-6">
+    <h2 class="section-title">El quehacer del Centro</h2>
+    <div class="section-description">Vigilancia, investigación, servicios y contacto directo con la comunidad.</div>
+  </div>
   <div class="row g-4">
-    <div class="col-lg-8">
-      <div class="section-header mb-6">
-        <h2 class="section-title">El quehacer del Centro</h2>
-        <div class="section-description">Vigilancia, investigación, servicios y contacto directo con la comunidad.</div>
-      </div>
-      <div class="row g-4">
-        <div class="col-12">
-          <a class="card card-link card-md h-100"
-             href="{% url 'home:publications' %}">
-            <div class="card-stamp card-stamp-lg">
-              <div class="card-stamp-icon bg-primary">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     width="24"
-                     height="24"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2"
-                     stroke-linecap="round"
-                     stroke-linejoin="round"
-                     aria-hidden="true"
-                     focusable="false"
-                     class="icon">
-                  <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
-                  <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
-                  <path d="M3 6l0 13"></path>
-                  <path d="M12 6l0 13"></path>
-                  <path d="M21 6l0 13"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="card-body">
-              <h3 class="subheader text-muted fw-medium mb-1">Investigación</h3>
-              <p class="text-secondary mb-0">Publicaciones científicas y resultados de la investigación meteorológica provincial.</p>
-            </div>
-          </a>
+    <div class="col-12">
+      <a class="card card-link card-md h-100"
+         href="{% url 'home:publications' %}">
+        <div class="card-stamp card-stamp-lg">
+          <div class="card-stamp-icon bg-primary">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 width="24"
+                 height="24"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round"
+                 aria-hidden="true"
+                 focusable="false"
+                 class="icon">
+              <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
+              <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
+              <path d="M3 6l0 13"></path>
+              <path d="M12 6l0 13"></path>
+              <path d="M21 6l0 13"></path>
+            </svg>
+          </div>
         </div>
-        <div class="col-12">
-          <a class="card card-link card-md h-100"
-             href="{% url 'home:services_public' %}">
-            <div class="card-stamp card-stamp-lg">
-              <div class="card-stamp-icon bg-primary">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     width="24"
-                     height="24"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2"
-                     stroke-linecap="round"
-                     stroke-linejoin="round"
-                     aria-hidden="true"
-                     focusable="false"
-                     class="icon">
-                  <path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"></path>
-                  <path d="M14.5 5.5l4 4"></path>
-                  <path d="M12 8l-5 -5l-4 4l5 5"></path>
-                  <path d="M7 8l-1.5 1.5"></path>
-                  <path d="M16 12l5 5l-4 4l-5 -5"></path>
-                  <path d="M16 17l-1.5 1.5"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="card-body">
-              <h3 class="subheader text-muted fw-medium mb-1">Servicios</h3>
-              <p class="text-secondary mb-0">Servicios públicos y comerciales de asesoría e información meteorológica en línea.</p>
-            </div>
-          </a>
+        <div class="card-body">
+          <h3 class="subheader text-muted fw-medium mb-1">Investigación</h3>
+          <p class="text-secondary mb-0">Publicaciones científicas y resultados de la investigación meteorológica provincial.</p>
         </div>
-        <div class="col-12">
-          <a class="card card-link card-md h-100"
-             href="{% url 'home:institution_information' %}">
-            <div class="card-stamp card-stamp-lg">
-              <div class="card-stamp-icon bg-primary">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     width="24"
-                     height="24"
-                     viewBox="0 0 24 24"
-                     fill="none"
-                     stroke="currentColor"
-                     stroke-width="2"
-                     stroke-linecap="round"
-                     stroke-linejoin="round"
-                     aria-hidden="true"
-                     focusable="false"
-                     class="icon">
-                  <path d="M3 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
-                  <path d="M15 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
-                  <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
-                  <path d="M6 15v-1a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v1"></path>
-                  <path d="M12 9l0 3"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="card-body">
-              <h3 class="subheader text-muted fw-medium mb-1">Información institucional</h3>
-              <p class="text-secondary mb-0">Organización, directivos, funciones y estrategia de desarrollo del Centro.</p>
-            </div>
-          </a>
-        </div>
-      </div>
+      </a>
     </div>
-    <div class="col-lg-4">{% include 'includes/landing/contact_card.html' %}</div>
+    <div class="col-12">
+      <a class="card card-link card-md h-100"
+         href="{% url 'home:services_public' %}">
+        <div class="card-stamp card-stamp-lg">
+          <div class="card-stamp-icon bg-primary">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 width="24"
+                 height="24"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round"
+                 aria-hidden="true"
+                 focusable="false"
+                 class="icon">
+              <path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"></path>
+              <path d="M14.5 5.5l4 4"></path>
+              <path d="M12 8l-5 -5l-4 4l5 5"></path>
+              <path d="M7 8l-1.5 1.5"></path>
+              <path d="M16 12l5 5l-4 4l-5 -5"></path>
+              <path d="M16 17l-1.5 1.5"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="subheader text-muted fw-medium mb-1">Servicios</h3>
+          <p class="text-secondary mb-0">Servicios públicos y comerciales de asesoría e información meteorológica en línea.</p>
+        </div>
+      </a>
+    </div>
+    <div class="col-12">
+      <a class="card card-link card-md h-100"
+         href="{% url 'home:institution_information' %}">
+        <div class="card-stamp card-stamp-lg">
+          <div class="card-stamp-icon bg-primary">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 width="24"
+                 height="24"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round"
+                 aria-hidden="true"
+                 focusable="false"
+                 class="icon">
+              <path d="M3 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
+              <path d="M15 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
+              <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
+              <path d="M6 15v-1a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v1"></path>
+              <path d="M12 9l0 3"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <h3 class="subheader text-muted fw-medium mb-1">Información institucional</h3>
+          <p class="text-secondary mb-0">Organización, directivos, funciones y estrategia de desarrollo del Centro.</p>
+        </div>
+      </a>
+    </div>
   </div>
 {% endblock %}
