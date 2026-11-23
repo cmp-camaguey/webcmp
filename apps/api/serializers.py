@@ -125,4 +125,14 @@ class ScientificPublicationSerializer(serializers.ModelSerializer):
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
-        fields = ['uuid', 'title', 'summary', 'service_type', 'price', 'code']
+        fields = [
+            'uuid',
+            'title',
+            'summary',
+            'service_type',
+            'price',
+            'code',
+            'requirements',
+            'procedure',
+            'delivery_time',
+        ]

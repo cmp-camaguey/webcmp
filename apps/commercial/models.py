@@ -414,6 +414,9 @@ class Service(SoftDeleteModel, FileHandlerMixin, models.Model):
         default='pronostico',
         verbose_name='Categoría del servicio',
     )
+    requirements = models.TextField(blank=True, verbose_name='Requisitos')
+    procedure = models.TextField(blank=True, verbose_name='Procedimiento')
+    delivery_time = models.CharField(max_length=255, blank=True, verbose_name='Plazo de entrega')
 
     file_fields = ['pdf', 'image']
 
