@@ -12,6 +12,7 @@
     Edite solo los bloques necesarios. La estructura de la página se mantiene fija para conservar el formato.
   </p>
   {% for block in schema_blocks %}
+    {% if block.group %}{% ifchanged block.group %}<h4 class="subheader text-muted mt-4 mb-3">{{ block.group }}</h4>{% endifchanged %}{% endif %}
     {% with field=form|get_item:block.name %}
       {% if field %}
         <div class="mb-3">
