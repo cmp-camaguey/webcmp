@@ -17,4 +17,4 @@ python-calamine
 openpyxl==3.1.5
 weasyprint==70.0
 requests==2.34.2
-django-model-utils==4.5.0
+django-model-utils==5.0.0
