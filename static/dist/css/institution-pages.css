@@ -161,15 +161,13 @@
   opacity: 1 !important;
 }
 
-/* Cuerpo del documento: ancho de lectura cómodo, centrado. La navegación
-   del sitio vive en el navbar y el footer; el contenido no la repite. */
+/* Cuerpo del documento: alineado al contenedor del navbar y el footer. */
 .institution-body {
-  max-width: 52rem;
-  margin-inline: auto;
+  width: 100%;
 }
 
 .institution-body--wide {
-  max-width: 72rem;
+  width: 100%;
 }
 
 .section-institutional [id] {
