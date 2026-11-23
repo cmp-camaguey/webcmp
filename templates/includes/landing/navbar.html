@@ -50,9 +50,11 @@
         </div>
         <li class="nav-item mt-2 mt-md-0">
           {% if request.user.is_authenticated %}
-            <a class="btn btn-primary" href="{% url 'home:index' %}">Inicio</a>
+            <div class="d-flex justify-content-center justify-content-md-start">
+              <a class="btn btn-primary" href="{% url 'home:index' %}">Inicio</a>
+            </div>
           {% else %}
-            <div class="btn-list">
+            <div class="btn-list justify-content-center justify-content-md-start">
               <a class="btn btn-outline-secondary"
                  href="{% url 'user_auth:customer_register' %}">Registrarse</a>
               <a class="btn btn-primary" href="{% url 'user_auth:login' %}">Iniciar sesión</a>
