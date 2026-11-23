@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.conf import settings
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
@@ -1040,12 +1040,7 @@ class EnvironmentConfigViewTests(EnvironmentViewTestBase):
         self.assertFalse(ActivityLog.objects.filter(object_repr='Entorno del servidor').exists())
 
     def test_menu_shows_the_link_only_for_superusers(self):
-        self.staff.user_permissions.add(
-            Permission.objects.get(
-                content_type__app_label='core', codename='change_siteconfiguration'
-            )
-        )
-        template = 'includes/dashboard/menu/_configuracion.html'
+        template = 'includes/dashboard/menu/_sistema.html'
 
         request = RequestFactory().get('/')
         request.user = self.superuser
