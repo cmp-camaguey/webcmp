@@ -8,15 +8,29 @@
 {% endblock %}
 {% block form %}
   {% include 'includes/dashboard/form_card.html' with card_title=object.get_page_key_display %}
-  <p class="text-secondary mb-4">
-    Edite solo los bloques necesarios. La estructura de la página se mantiene fija para conservar el formato.
-  </p>
+  <div class="alert alert-info bg-blue-lt mb-4" role="alert">
+    <div class="d-flex">
+      <div class="me-2">
+        <i class="icon ti ti-info-circle"></i>
+      </div>
+      <div>
+        Edite solo los bloques necesarios. La estructura de la página se mantiene fija y los campos vacíos conservan el contenido original.
+      </div>
+    </div>
+  </div>
   {% for block in schema_blocks %}
-    {% if block.group %}{% ifchanged block.group %}<h4 class="subheader text-muted mt-4 mb-3">{{ block.group }}</h4>{% endifchanged %}{% endif %}
+    {% if block.group %}
+      {% ifchanged block.group %}
+        {% if not forloop.first %}<hr class="my-4">{% endif %}
+        <h4 class="subheader text-muted mb-3">{{ block.group }}</h4>
+      {% endifchanged %}
+    {% endif %}
     {% with field=form|get_item:block.name %}
       {% if field %}
         <div class="mb-3">
-          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% if block.group != block.label %}
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% endif %}
           {{ field }}
           {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
         </div>
