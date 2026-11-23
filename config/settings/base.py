@@ -210,7 +210,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'csp',
-    'drf_redesign',
     'rest_framework',
     'drf_spectacular',
     'drf_spectacular_sidecar',
