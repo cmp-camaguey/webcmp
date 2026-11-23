@@ -1,4 +1,5 @@
 {% extends 'layouts/institution.html' %}
+{% load utils_filters %}
 {% block hero_description %}
   <p class="hero-description mt-4">{{ hero_description|default:title }}</p>
 {% endblock %}
@@ -8,7 +9,7 @@
       {% if procedure %}
         <h3 class="subheader text-muted fw-medium mb-3">{{ procedure.title }}</h3>
         {% if procedure.body %}
-          <div class="mb-0">{{ procedure.body|linebreaksbr }}</div>
+          <div class="richtext-content mb-0">{{ procedure.body|richtext }}</div>
         {% else %}
           <p class="text-secondary mb-0">Este procedimiento aún no tiene contenido publicado.</p>
         {% endif %}

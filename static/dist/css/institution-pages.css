@@ -282,3 +282,65 @@
   gap: 1rem;
   padding: 0;
 }
+
+/* ─── Contenido rich text editable desde dashboard ─── */
+
+.richtext-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.richtext-content p,
+.richtext-content ul,
+.richtext-content ol,
+.richtext-content table,
+.richtext-content blockquote {
+  margin-bottom: 0.75rem;
+}
+
+.richtext-content h3,
+.richtext-content h4,
+.richtext-content h5,
+.richtext-content h6 {
+  color: var(--tblr-muted, #667382);
+  font-weight: 500;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.richtext-content a {
+  color: var(--tblr-primary, #066fd1);
+  text-decoration: none;
+}
+
+.richtext-content a:hover {
+  text-decoration: underline;
+}
+
+.richtext-content ul,
+.richtext-content ol {
+  padding-left: 1.25rem;
+}
+
+.richtext-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.richtext-content th,
+.richtext-content td {
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+
+.richtext-content th {
+  background: var(--tblr-bg-surface-tertiary, #f8fafc);
+  font-weight: 600;
+}
+
+.richtext-content blockquote {
+  border-left: 3px solid var(--tblr-border-color, #e6e7e9);
+  padding-left: 1rem;
+  color: var(--tblr-muted, #667382);
+}

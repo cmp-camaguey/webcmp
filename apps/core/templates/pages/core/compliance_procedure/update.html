@@ -1,4 +1,10 @@
 {% extends 'layouts/form.html' %}
+{% load static %}
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'dist/libs/quill/quill.snow.css' %}">
+  <link rel="stylesheet" href="{% static 'dist/css/richtext.css' %}">
+{% endblock %}
 {% block form %}
   {% include 'includes/dashboard/form_card.html' with card_title='Procedimiento de cumplimiento' %}
   <div class="mb-3">
@@ -14,7 +20,7 @@
     <label class="form-label" for="{{ form.body.id_for_label }}">{{ form.body.label }}</label>
     {{ form.body }}
     {% if form.body.errors %}<div class="invalid-feedback d-block">{{ form.body.errors.0 }}</div>{% endif %}
-    <small class="form-text text-muted">Este contenido se muestra en la página pública cuando el procedimiento está publicado.</small>
+    <small class="form-text text-muted">Este contenido se muestra en la página pública cuando el procedimiento está publicado. Puede usar formato, enlaces, listas y tablas.</small>
   </div>
   <div class="mb-3">
     <label class="form-check form-switch">
@@ -31,4 +37,9 @@
   </div>
   </div>
   </div>
+{% endblock %}
+{% block extrajs %}
+  {{ block.super }}
+  <script src="{% static 'dist/libs/quill/quill.js' %}"></script>
+  <script src="{% static 'dist/js/richtext-init.js' %}"></script>
 {% endblock %}
