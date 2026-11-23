@@ -18,7 +18,7 @@ class InstitutionalPageForm(forms.ModelForm):
             name = block['name']
             field_type = block.get('type', 'char')
             label = block.get('label', name)
-            initial = blocks.get(name, '')
+            initial = blocks.get(name, '') or block.get('default', '')
             if field_type == 'richtext':
                 self.fields[name] = forms.CharField(
                     label=label,
@@ -46,12 +46,19 @@ class InstitutionalPageForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         schema = get_page_schema(self.instance.page_key)
+        existing = self.instance.blocks or {}
         blocks = {}
         for block in schema.get('blocks', []):
             name = block['name']
             value = cleaned_data.get(name, '') or ''
             if block.get('type') == 'richtext':
                 value = sanitize_html(value)
+            default = block.get('default', '')
+            if block.get('type') == 'richtext':
+                default = sanitize_html(default)
+            # Keep fallback behavior if user didn't customize an empty block.
+            if not existing.get(name) and value == default:
+                value = ''
             blocks[name] = value
         self.cleaned_blocks = blocks
         return cleaned_data
