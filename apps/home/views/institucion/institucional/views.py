@@ -3,7 +3,12 @@ from django.contrib import messages
 from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 
-from apps.core.models import CompanySettings, DataSubjectRequest, TermsChangeNotice
+from apps.core.models import (
+    CompanySettings,
+    DataSubjectRequest,
+    PublicInformationRequest,
+    TermsChangeNotice,
+)
 
 
 class VisionView(TemplateView):
@@ -156,6 +161,58 @@ class DataSubjectRightsForm(forms.Form):
         )
 
 
+class PublicInformationRequestForm(forms.Form):
+    """Formulario público para solicitar información pública."""
+
+    subject_name = forms.CharField(
+        max_length=255,
+        label='Nombre completo',
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+    )
+    subject_email = forms.EmailField(
+        label='Correo electrónico',
+        widget=forms.EmailInput(attrs={'class': 'form-control'}),
+        help_text='Recibirá confirmación y actualizaciones en este correo.',
+    )
+    subject_document = forms.CharField(
+        max_length=50,
+        required=False,
+        label='Documento de identidad (opcional)',
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        help_text='Para verificar su identidad (CI, pasaporte, etc.).',
+    )
+    response_format = forms.ChoiceField(
+        choices=PublicInformationRequest.ResponseFormat.choices,
+        label='Forma de respuesta preferida',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    description = forms.CharField(
+        label='Descripción de la información solicitada',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 8}),
+        help_text=(
+            'Indique el tema, el período y, si corresponde, el área o documento concreto '
+            'al que se refiere la solicitud.'
+        ),
+        min_length=20,
+    )
+
+    def clean_subject_email(self):
+        """Normalizar email a minúsculas."""
+        return self.cleaned_data['subject_email'].strip().lower()
+
+    def save(self):
+        """Crea la solicitud de información pública y la devuelve."""
+        return PublicInformationRequest.objects.create(
+            subject_name=self.cleaned_data['subject_name'].strip(),
+            subject_email=self.cleaned_data['subject_email'].strip().lower(),
+            subject_document=self.cleaned_data['subject_document'].strip()
+            if self.cleaned_data['subject_document']
+            else '',
+            response_format=self.cleaned_data['response_format'],
+            description=self.cleaned_data['description'].strip(),
+        )
+
+
 class DataSubjectRightsView(TermsChangeNoticeMixin, FormView):
     """Vista pública para ejercer derechos ARCO/ARCOP."""
 
@@ -196,8 +253,10 @@ class InstitutionalInformationView(TemplateView):
         return context
 
 
-class PublicInformationRequestView(TemplateView):
+class PublicInformationRequestView(FormView):
     template_name = 'pages/home/institution/public_information_request.html'
+    form_class = PublicInformationRequestForm
+    success_url = '.'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -206,3 +265,13 @@ class PublicInformationRequestView(TemplateView):
         context['segment'] = 'public_information_request'
         context['company'] = CompanySettings.get_instance()
         return context
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(
+            self.request,
+            'Su solicitud ha sido recibida correctamente. '
+            'Le responderemos en un plazo de hasta quince días hábiles '
+            'desde su recepción, conforme a la Ley 168/2024.',
+        )
+        return super().form_valid(form)

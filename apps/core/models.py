@@ -33,6 +33,24 @@ def image_upload_path(instance, filename):
     return f'img/{cls_name}/{uid}_{safe_name}'
 
 
+def public_information_attachment_upload_path(instance, filename):
+    cls_name = instance.__class__.__name__.lower()
+    uid = str(instance.uuid)
+    safe_name = re.sub(r'[^\w\.\-]', '_', filename)
+    return f'attachments/{cls_name}/{uid}_{safe_name}'
+
+
+def add_business_days(start_date, days):
+    """Suma días hábiles saltando sábados y domingos."""
+    current = start_date
+    added = 0
+    while added < days:
+        current += datetime.timedelta(days=1)
+        if current.weekday() < 5:
+            added += 1
+    return current
+
+
 class FileHandlerMixin(models.Model):
     file_fields = []
 
@@ -928,6 +946,128 @@ class DataSubjectRequest(models.Model):
         from django.urls import reverse
 
         return reverse('core:data_subject_request_update', args=[self.pk])
+
+
+class PublicInformationRequest(FileHandlerMixin, models.Model):
+    """Solicitud de acceso a la información pública.
+
+    Canal público para ejercer el derecho de acceso a la información pública
+    conforme a la Ley 168/2024 de Transparencia y Acceso a la Información Pública.
+    """
+
+    class Status(models.TextChoices):
+        PENDIENTE = 'pendiente', 'Pendiente'
+        EN_PROCESO = 'en_proceso', 'En proceso'
+        COMPLETADA = 'completada', 'Completada'
+        RECHAZADA = 'rechazada', 'Rechazada'
+
+    class ResponseFormat(models.TextChoices):
+        EMAIL = 'email', 'Correo electrónico'
+        SEDE = 'sede', 'Consulta en sede'
+        COPIA = 'copia', 'Entrega de copia'
+
+    file_fields = ['response_attachment']
+
+    tracker = FieldTracker()
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    subject_name = models.CharField(max_length=255, verbose_name='Nombre del solicitante')
+    subject_email = models.EmailField(verbose_name='Correo electrónico')
+    subject_document = models.CharField(
+        max_length=50, blank=True, verbose_name='Documento de identidad'
+    )
+    description = models.TextField(verbose_name='Descripción de la información solicitada')
+    response_format = models.CharField(
+        max_length=10,
+        choices=ResponseFormat.choices,
+        default=ResponseFormat.EMAIL,
+        verbose_name='Forma de respuesta solicitada',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDIENTE,
+        verbose_name='Estado',
+        db_index=True,
+    )
+    responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='public_information_requests',
+        verbose_name='Responsable',
+    )
+    due_date = models.DateField(null=True, blank=True, verbose_name='Fecha límite')
+    delivery_date = models.DateField(null=True, blank=True, verbose_name='Fecha de entrega')
+    delivery_format = models.CharField(
+        max_length=10,
+        choices=ResponseFormat.choices,
+        blank=True,
+        verbose_name='Canal real de entrega',
+    )
+    response_attachment = models.FileField(
+        upload_to=public_information_attachment_upload_path,
+        blank=True,
+        null=True,
+        verbose_name='Adjunto de respuesta',
+    )
+    rejection_reason = models.TextField(blank=True, verbose_name='Causa de rechazo')
+    admin_notes = models.TextField(blank=True, verbose_name='Notas de gestión')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creada', db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizada')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Completada')
+
+    class Meta:
+        verbose_name = 'Solicitud de información pública'
+        verbose_name_plural = 'Solicitudes de información pública'
+        ordering = ['-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_publicinformationrequest', 'Ver'),
+            ('add_publicinformationrequest', 'Añadir'),
+            ('change_publicinformationrequest', 'Editar'),
+            ('delete_publicinformationrequest', 'Eliminar'),
+        ]
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['subject_email', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.subject_name} - {self.subject_email} ({self.get_status_display()})'
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.due_date:
+            self.due_date = add_business_days(timezone.localdate(), 15)
+
+        terminal_statuses = {self.Status.COMPLETADA, self.Status.RECHAZADA}
+        update_fields = kwargs.get('update_fields')
+        if self.status in terminal_statuses and not self.completed_at:
+            self.completed_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        elif self.status not in terminal_statuses and self.completed_at:
+            self.completed_at = None
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        super().save(*args, **kwargs)
+
+    def mark_completed(self):
+        """Marca la solicitud como completada con la fecha actual."""
+        self.status = self.Status.COMPLETADA
+        self.completed_at = timezone.now()
+        self.save(update_fields=['status', 'completed_at', 'updated_at'])
+
+    def mark_in_progress(self):
+        """Marca la solicitud como en proceso."""
+        self.status = self.Status.EN_PROCESO
+        self.save(update_fields=['status', 'updated_at'])
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:public_information_request_update', args=[self.pk])
 
 
 class TermsChangeNotice(models.Model):

@@ -1,0 +1,127 @@
+{% extends 'layouts/form.html' %}
+{% load my_filters %}
+{% block form %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="subheader text-muted fw-medium mb-3">Datos de la solicitud</h3>
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Nombre del solicitante</dt>
+          <dd class="col-sm-8">
+            {{ object.subject_name }}
+          </dd>
+          <dt class="col-sm-4">Correo electrónico</dt>
+          <dd class="col-sm-8">
+            {{ object.subject_email }}
+          </dd>
+          <dt class="col-sm-4">Documento de identidad</dt>
+          <dd class="col-sm-8">
+            {{ object.subject_document|default:'No proporcionado' }}
+          </dd>
+          <dt class="col-sm-4">Forma de respuesta solicitada</dt>
+          <dd class="col-sm-8">
+            {{ object.get_response_format_display }}
+          </dd>
+          <dt class="col-sm-4">Fecha de recepción</dt>
+          <dd class="col-sm-8">
+            {{ object.created_at|date:"d/m/Y H:i" }}
+          </dd>
+          <dt class="col-sm-4">Fecha límite</dt>
+          <dd class="col-sm-8">
+            {% if object.due_date %}
+              {{ object.due_date|date:"d/m/Y" }}
+            {% else %}
+              No definida
+            {% endif %}
+          </dd>
+          <dt class="col-sm-4">Estado actual</dt>
+          <dd class="col-sm-8">
+            {{ object.get_status_display }}
+          </dd>
+          {% if object.completed_at %}
+            <dt class="col-sm-4">Fecha de resolución</dt>
+            <dd class="col-sm-8">
+              {{ object.completed_at|date:"d/m/Y H:i" }}
+            </dd>
+          {% endif %}
+          <dt class="col-sm-4">Descripción</dt>
+          <dd class="col-sm-8">
+            {{ object.description|linebreaksbr }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="subheader text-muted fw-medium mb-3">Gestión</h3>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+            {{ form.status }}
+            {% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.responsible.id_for_label }}">{{ form.responsible.label }}</label>
+            {{ form.responsible }}
+            {% if form.responsible.errors %}<div class="invalid-feedback d-block">{{ form.responsible.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            {% include 'includes/dashboard/date_field.html' with field=form.due_date value=form.due_date.value|fmt_date mode='date' placeholder='dd/mm/aaaa' %}
+          </div>
+          <div class="col-md-6">
+            {% include 'includes/dashboard/date_field.html' with field=form.delivery_date value=form.delivery_date.value|fmt_date mode='date' placeholder='dd/mm/aaaa' %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label"
+                   for="{{ form.delivery_format.id_for_label }}">{{ form.delivery_format.label }}</label>
+            {{ form.delivery_format }}
+            {% if form.delivery_format.errors %}<div class="invalid-feedback d-block">{{ form.delivery_format.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label"
+                   for="{{ form.response_attachment.id_for_label }}">{{ form.response_attachment.label }}</label>
+            {{ form.response_attachment }}
+            {% if form.response_attachment.errors %}<div class="invalid-feedback d-block">{{ form.response_attachment.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label"
+                   for="{{ form.rejection_reason.id_for_label }}">{{ form.rejection_reason.label }}</label>
+            {{ form.rejection_reason }}
+            {% if form.rejection_reason.errors %}<div class="invalid-feedback d-block">{{ form.rejection_reason.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="{{ form.admin_notes.id_for_label }}">{{ form.admin_notes.label }}</label>
+            {{ form.admin_notes }}
+            {% if form.admin_notes.errors %}<div class="invalid-feedback d-block">{{ form.admin_notes.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="subheader text-muted fw-medium mb-3">Historial</h3>
+        {% if history %}
+          <div class="list-group list-group-flush">
+            {% for entry in history %}
+              <div class="list-group-item px-0">
+                <div class="d-flex justify-content-between gap-3">
+                  <div>
+                    <div class="fw-medium">{{ entry.message|default:'Actualización' }}</div>
+                    <div class="text-secondary small">{{ entry.user|default:'Sistema' }}</div>
+                  </div>
+                  <div class="text-secondary small text-nowrap">{{ entry.action_time|date:"d/m/Y H:i" }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-secondary mb-0">Sin cambios registrados todavía.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
