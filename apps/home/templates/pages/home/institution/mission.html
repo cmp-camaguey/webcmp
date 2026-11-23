@@ -1,60 +1,15 @@
-{% extends 'layouts/landing.html' %}
-{% load static %}
-{% block extrahead %}
-  <style>
-    /* ─── COLORES EXACTOS Y FONDOS (MODO CLARO) ─── */
-    [data-bs-theme="light"] .section-tarjetas { background-color: #2b4b9b !important; }
-
-    /* Textos del encabezado y de los items en blanco */
-    [data-bs-theme="light"] .section-tarjetas .section-title,
-    [data-bs-theme="light"] .section-tarjetas .section-description,
-    [data-bs-theme="light"] .section-tarjetas h3,
-    [data-bs-theme="light"] .section-tarjetas h4 {
-      color: #ffffff !important;
-    }
-    [data-bs-theme="light"] .section-tarjetas p,
-    [data-bs-theme="light"] .section-tarjetas .text-muted {
-      color: rgba(255, 255, 255, 0.75) !important;
-    }
-
-    /* ─── OLAS ANIMADAS MODO CLARO ─── */
-    [data-bs-theme="light"] .section-tarjetas .wave-1 { fill: var(--tblr-bg-surface) !important; opacity: 1 !important; }
-    [data-bs-theme="light"] .section-tarjetas .wave-2 { fill: #e5201e !important; opacity: 1 !important; }
-    [data-bs-theme="light"] .section-tarjetas .wave-3 { fill: #2b4b9b !important; opacity: 1 !important; }
-
-    /* ─── MODO OSCURO: SIN ROJO Y SIN TRANSPARENCIA ─── */
-    [data-bs-theme="dark"] .section-tarjetas { background-color: var(--tblr-bg-surface-secondary) !important; }
-    [data-bs-theme="dark"] .section-tarjetas .wave-1 { fill: var(--tblr-bg-surface) !important; opacity: 1 !important; }
-    [data-bs-theme="dark"] .section-tarjetas .wave-2 { fill: var(--tblr-border-color) !important; opacity: 1 !important; }
-    [data-bs-theme="dark"] .section-tarjetas .wave-3 { fill: var(--tblr-bg-surface-secondary) !important; opacity: 1 !important; }
-  </style>
+{% extends 'layouts/institution.html' %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera.
+  </p>
+  <p class="hero-description mt-4">
+    Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible.
+  </p>
 {% endblock %}
-{% block hero_content %}
-  <div class="pb-4 pb-lg-6">
-    <h1 class="hero-title">{{ title }}</h1>
-    <p class="hero-description mt-4">
-      El Centro Meteorológico es la institución encargada de suministrar información meteorológica y climática autorizada, confiable y oportuna sobre el estado y comportamiento futuro de la atmósfera.
-    </p>
-    <p class="hero-description mt-4">
-      Esta información está dirigida a velar por la seguridad de la vida humana y reducir las pérdidas de bienes materiales ante desastres naturales de origen meteorológico, contribuyendo directamente al bienestar de la comunidad y al desarrollo sostenible.
-    </p>
-  </div>
-{% endblock %}
-{% block content %}
-  <section class="section section-tarjetas">
-    <!-- Patrón de olas original de mission.html -->
-    <svg class="section-divider"
-         xmlns="http://www.w3.org/2000/svg"
-         viewBox="0 24 150 28"
-         preserveAspectRatio="none">
-      <path class="wave-1" d="M-110 44c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9v44h-352z">
-      </path>
-      <path class="wave-2" d="M-110 44c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9v44h-352z">
-      </path>
-      <path class="wave-3" d="M-110 44c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9c15 0 29-9 44-9s29 9 44 9v44h-352z">
-      </path>
-    </svg>
-    <div class="container position-relative">
+{% block institution_content %}
+  <div class="row g-4">
+    <div class="col-lg-8">
       <div class="section-header mb-6">
         <h2 class="section-title">Nuestros compromisos</h2>
         <div class="section-description">La razón de ser de nuestra labor de vigilancia meteorológica.</div>
@@ -106,5 +61,9 @@
         </div>
       </div>
     </div>
-  </section>
+    <div class="col-lg-4">
+      {% include 'includes/landing/related_links.html' with group='institution' current='mission' %}
+      {% include 'includes/landing/contact_card.html' %}
+    </div>
+  </div>
 {% endblock %}

@@ -517,6 +517,31 @@ class InstitutionPagesTests(TestCase):
         self.assertContains(response, 'Quince días hábiles')
         self.assertContains(response, 'salvo el costo de reproducción')
 
+    def test_institutional_and_legal_pages_share_one_layout(self):
+        """Todas las páginas del bloque usan el mismo esqueleto y la misma hoja de estilos."""
+        pages = (
+            'home:institution_vision',
+            'home:institution_mission',
+            'home:institution_about',
+            'home:institution_information',
+            'home:institution_public_information',
+            'home:institution_legal_notice',
+            'home:institution_privacy_policy',
+            'home:institution_cookie_policy',
+            'home:institution_data_subject_rights',
+        )
+        for name in pages:
+            with self.subTest(name=name):
+                response = self.client.get(reverse(name))
+                html = response.content.decode()
+                self.assertEqual(200, response.status_code)
+                self.assertTemplateUsed(response, 'layouts/institution.html')
+                self.assertIn('dist/css/institution-pages.css', html)
+                self.assertIn('section-divider', html)
+                self.assertNotIn('hero-curve', html)
+                self.assertNotIn('section-tarjetas', html)
+                self.assertEqual(1, html.count('Enlaces relacionados'))
+
     def test_pages_render_with_context(self):
         for name, template, title, segment in self.PAGES:
             with self.subTest(name=name):

@@ -1,0 +1,84 @@
+{% comment %}
+  Navegación contextual de las páginas institucionales y legales.
+  `group` elige el conjunto de enlaces: institution (por defecto), legal o
+  public_information. `current` omite el enlace a la página en la que ya se está.
+{% endcomment %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h3 class="subheader text-muted fw-medium mb-3">Enlaces relacionados</h3>
+    <ul class="list-unstyled list-separated gap-2 mb-0">
+      {% if group == 'legal' %}
+        {% if current != 'legal_notice' %}
+          <li>
+            <a class="link-secondary"
+               href="{% url 'home:institution_legal_notice' %}">Aviso legal</a>
+          </li>
+        {% endif %}
+        {% if current != 'privacy_policy' %}
+          <li>
+            <a class="link-secondary"
+               href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
+          </li>
+        {% endif %}
+        {% if current != 'cookie_policy' %}
+          <li>
+            <a class="link-secondary"
+               href="{% url 'home:institution_cookie_policy' %}">Política de cookies</a>
+          </li>
+        {% endif %}
+        {% if current != 'data_subject_rights' %}
+          <li>
+            <a class="link-secondary"
+               href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
+          </li>
+        {% endif %}
+      {% elif group == 'public_information' %}
+        <li>
+          <a class="link-secondary"
+             href="{% url 'home:institution_information' %}">Información institucional</a>
+        </li>
+        <li>
+          <a class="link-secondary"
+             href="{% url 'home:institution_legal_notice' %}">Aviso legal</a>
+        </li>
+        <li>
+          <a class="link-secondary"
+             href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
+        </li>
+        <li>
+          <a class="link-secondary"
+             href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
+        </li>
+      {% else %}
+        {% if current != 'about' %}
+          <li>
+            <a class="link-secondary" href="{% url 'home:institution_about' %}">Quiénes Somos</a>
+          </li>
+        {% endif %}
+        {% if current != 'mission' %}
+          <li>
+            <a class="link-secondary" href="{% url 'home:institution_mission' %}">Misión</a>
+          </li>
+        {% endif %}
+        {% if current != 'vision' %}
+          <li>
+            <a class="link-secondary" href="{% url 'home:institution_vision' %}">Visión</a>
+          </li>
+        {% endif %}
+        {% if current != 'institutional_information' %}
+          <li>
+            <a class="link-secondary"
+               href="{% url 'home:institution_information' %}">Información institucional</a>
+          </li>
+        {% endif %}
+        <li>
+          <a class="link-secondary"
+             href="{% url 'home:institution_public_information' %}">Solicitud de información pública</a>
+        </li>
+        <li>
+          <a class="link-secondary" href="{% url 'home:publications' %}">Publicaciones científicas</a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+</div>

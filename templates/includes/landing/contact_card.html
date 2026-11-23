@@ -1,0 +1,23 @@
+{% comment %}
+  Tarjeta de contacto institucional con la configuración del sitio.
+  `cta_label` agrega un botón de correo; `cta_subject` define su asunto.
+{% endcomment %}
+<div class="card">
+  <div class="card-body">
+    <h3 class="subheader text-muted fw-medium mb-3">Contacto institucional</h3>
+    <p class="mb-1">
+      <strong>{{ company.nombre|default:'Centro Meteorológico Provincial de Camagüey' }}</strong>
+    </p>
+    <p class="mb-1">{{ company.direccion|default:'Avenida Finlay Km 7 1/2, Camagüey, Cuba' }}</p>
+    <p class="mb-1">+53 {{ company.telefonos|default:'32261284' }}</p>
+    <p class="{% if cta_label %}mb-3{% else %}mb-0{% endif %}">
+      <a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a>
+    </p>
+    {% if cta_label %}
+      <a class="btn btn-primary w-100"
+         href="mailto:{{ contact_email }}?subject={{ cta_subject|urlencode }}">
+        <i class="ti ti-mail me-2"></i> {{ cta_label }}
+      </a>
+    {% endif %}
+  </div>
+</div>

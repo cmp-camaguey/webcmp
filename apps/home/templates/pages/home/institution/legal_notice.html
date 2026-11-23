@@ -1,116 +1,34 @@
-{% extends 'layouts/landing.html' %}
-{% load static %}
-{% block extrahead %}
-  <style>
-    [data-bs-theme="light"] .section-institutional { background-color: #2b4b9b !important; }
-    [data-bs-theme="light"] .hero-curve { fill: #2b4b9b; }
-    [data-bs-theme="light"] .section-institutional .card {
-      background-color: rgba(255, 255, 255, 0.1) !important;
-      border: 1px solid rgba(255, 255, 255, 0.15) !important;
-      color: #ffffff !important;
-    }
-    [data-bs-theme="light"] .section-institutional .card:hover {
-      background-color: rgba(255, 255, 255, 0.15) !important;
-    }
-    [data-bs-theme="light"] .section-institutional .card h2,
-    [data-bs-theme="light"] .section-institutional .card h3,
-    [data-bs-theme="light"] .section-institutional .card h4,
-    [data-bs-theme="light"] .section-institutional .card strong {
-      color: #ffffff !important;
-    }
-    [data-bs-theme="light"] .section-institutional .card p,
-    [data-bs-theme="light"] .section-institutional .card li,
-    [data-bs-theme="light"] .section-institutional .card .text-secondary,
-    [data-bs-theme="light"] .section-institutional .card .text-muted,
-    [data-bs-theme="light"] .section-institutional .card .small,
-    [data-bs-theme="light"] .section-institutional .card .form-text {
-      color: rgba(255, 255, 255, 0.75) !important;
-    }
-    [data-bs-theme="light"] .section-institutional .card a.link-secondary,
-    [data-bs-theme="light"] .section-institutional .card a.link-primary {
-      color: rgba(255, 255, 255, 0.9) !important;
-    }
-    [data-bs-theme="light"] .section-institutional .card a.link-secondary:hover,
-    [data-bs-theme="light"] .section-institutional .card a.link-primary:hover {
-      color: #ffffff !important;
-    }
-    [data-bs-theme="light"] .section-institutional .card-stamp-icon {
-      background-color: rgba(255, 255, 255, 0.2) !important;
-      color: #ffffff !important;
-    }
-    [data-bs-theme="dark"] .section-institutional { background-color: var(--tblr-bg-surface-secondary) !important; }
-    [data-bs-theme="dark"] .hero-curve { fill: var(--tblr-bg-surface-secondary); }
-  </style>
+{% extends 'layouts/institution.html' %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    Identidad y datos de contacto del titular del sitio web del Centro Meteorológico Provincial de Camagüey.
+  </p>
 {% endblock %}
-{% block hero %}
-  <header class="hero" style="padding-bottom: 0;">
-    <div class="container">
-      <div class="pb-4 pb-lg-5">
-        <h1 class="hero-title">{{ title }}</h1>
-        <p class="hero-description mt-4">
-          Identidad y datos de contacto del titular del sitio web del Centro Meteorológico Provincial de Camagüey.
-        </p>
-      </div>
-    </div>
-    <svg xmlns="http://www.w3.org/2000/svg"
-         viewBox="0 0 1920 120"
-         preserveAspectRatio="none"
-         style="display: block;
-                width: 100%;
-                height: 80px;
-                margin-bottom: -1px">
-      <path class="hero-curve" d="M1920 120H0V0s387 120 960 120 960-120 960-120v120Z"></path>
-    </svg>
-  </header>
-{% endblock %}
-{% block content %}
-  <section class="section section-institutional pt-4 pt-lg-5">
-    <div class="container">
-      {% include 'includes/landing/terms_change_notices.html' %}
-      <div class="row g-4">
-        <div class="col-lg-8">
-          <div class="card">
-            <div class="card-body">
-              <h3 class="subheader text-muted fw-medium mb-3">Titular del sitio web</h3>
-              <p class="mb-1"><strong>Denominación:</strong> {{ company.nombre }}</p>
-              <p class="mb-1"><strong>Condición institucional:</strong> Centro Meteorológico Provincial de Camagüey, organismo del Estado encargado de la información meteorológica y climática en la provincia.</p>
-              <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
-              <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
-              <p class="mb-1"><strong>Correo institucional:</strong> <a href="mailto:{{ contact_email }}"
-                                                                        class="link-primary">{{ contact_email }}</a></p>
-              <p class="mb-1"><strong>Código REEUP:</strong> {{ company.codigo_reeup }}</p>
-              <p class="mb-1"><strong>NIT:</strong> {{ company.nit }}</p>
-              <p class="mb-1"><strong>Registro Comercial:</strong> {{ company.registro_comercial }}</p>
-              <p class="mb-1"><strong>Cuenta bancaria:</strong> {{ company.cuenta_bancaria }}</p>
-              <p class="mb-1"><strong>Agencia bancaria:</strong> {{ company.agencia_bancaria }}</p>
-              <p class="text-secondary small">
-                Este aviso legal se publica en cumplimiento de la Resolución 58/2022, artículo 6.c, que exige identificar la titularidad del sitio web institucional.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="col-lg-4">
-          <div class="card">
-            <div class="card-body">
-              <h3 class="subheader text-muted fw-medium mb-3">Enlaces relacionados</h3>
-              <ul class="list-unstyled list-separated gap-2 mb-0">
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_privacy_policy' %}">Política de privacidad</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_cookie_policy' %}">Política de cookies</a>
-                </li>
-                <li>
-                  <a class="link-secondary"
-                     href="{% url 'home:institution_data_subject_rights' %}">Derechos del titular</a>
-                </li>
-              </ul>
-            </div>
-          </div>
+{% block institution_content %}
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="subheader text-muted fw-medium mb-3">Titular del sitio web</h3>
+          <p class="mb-1"><strong>Denominación:</strong> {{ company.nombre }}</p>
+          <p class="mb-1"><strong>Condición institucional:</strong> Centro Meteorológico Provincial de Camagüey, organismo del Estado encargado de la información meteorológica y climática en la provincia.</p>
+          <p class="mb-1"><strong>Domicilio:</strong> {{ company.direccion }}</p>
+          <p class="mb-1"><strong>Teléfonos:</strong> {{ company.telefonos }}</p>
+          <p class="mb-1"><strong>Correo institucional:</strong> <a href="mailto:{{ contact_email }}"
+                                                                    class="link-primary">{{ contact_email }}</a></p>
+          <p class="mb-1"><strong>Código REEUP:</strong> {{ company.codigo_reeup }}</p>
+          <p class="mb-1"><strong>NIT:</strong> {{ company.nit }}</p>
+          <p class="mb-1"><strong>Registro Comercial:</strong> {{ company.registro_comercial }}</p>
+          <p class="mb-1"><strong>Cuenta bancaria:</strong> {{ company.cuenta_bancaria }}</p>
+          <p class="mb-1"><strong>Agencia bancaria:</strong> {{ company.agencia_bancaria }}</p>
+          <p class="text-secondary small">
+            Este aviso legal se publica en cumplimiento de la Resolución 58/2022, artículo 6.c, que exige identificar la titularidad del sitio web institucional.
+          </p>
         </div>
       </div>
     </div>
-  </section>
+    <div class="col-lg-4">
+      {% include 'includes/landing/related_links.html' with group='legal' current='legal_notice' %}
+    </div>
+  </div>
 {% endblock %}
