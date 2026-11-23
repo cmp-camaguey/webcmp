@@ -53,5 +53,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(seed_procedures, unseed_procedures),
+        migrations.RunPython(seed_procedures, unseed_procedures),  # data-safety: reviewed: seeds two default compliance procedure placeholders; reverse removes only those seeded records
     ]
