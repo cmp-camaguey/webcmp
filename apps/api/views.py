@@ -205,9 +205,7 @@ class EarlyWarningListAPIView(CacheAPIMixin, ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return MeteoWarning.objects.select_related('user').filter(
-            warning_type='early', valid_until__gte=timezone.now()
-        )
+        return MeteoWarning.objects.filter(warning_type='early', valid_until__gte=timezone.now())
 
 
 class TropicalCycloneListAPIView(CacheAPIMixin, ListAPIView):
@@ -216,7 +214,7 @@ class TropicalCycloneListAPIView(CacheAPIMixin, ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return MeteoWarning.objects.select_related('user').filter(
+        return MeteoWarning.objects.filter(
             warning_type='tropical_cyclone', valid_until__gte=timezone.now()
         )
 
@@ -227,9 +225,7 @@ class StormWarningListAPIView(CacheAPIMixin, ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return MeteoWarning.objects.select_related('user').filter(
-            warning_type='storm', valid_until__gte=timezone.now()
-        )
+        return MeteoWarning.objects.filter(warning_type='storm', valid_until__gte=timezone.now())
 
 
 class WeatherReportListAPIView(CacheAPIMixin, ListAPIView):
@@ -241,7 +237,7 @@ class WeatherReportListAPIView(CacheAPIMixin, ListAPIView):
         report_type = self.kwargs.get('type')
         if report_type not in ALLOWED_REPORT_TYPES:
             return WeatherReport.objects.none()
-        return WeatherReport.objects.select_related('user').filter(report_type=report_type)
+        return WeatherReport.objects.filter(report_type=report_type)
 
 
 class ScientificPublicationListAPIView(CacheAPIMixin, ListAPIView):

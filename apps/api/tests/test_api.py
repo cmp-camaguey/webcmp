@@ -154,7 +154,7 @@ class EarlyWarningAPITests(APITestCase):
         item = response.data['results'][0]
         self.assertIn('uuid', item)
         self.assertIn('summary', item)
-        self.assertIn('user', item)
+        self.assertNotIn('user', item)
 
 
 class TropicalCycloneAPITests(APITestCase):
