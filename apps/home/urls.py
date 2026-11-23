@@ -8,6 +8,7 @@ from apps.home.views.avisos.tormentas.views import StormListView
 from apps.home.views.home.views import IndexView
 from apps.home.views.institucion.institucional.views import (
     AboutView,
+    AccountabilityInformationView,
     BudgetInformationView,
     CookiePolicyView,
     DataSubjectRightsView,
@@ -163,6 +164,11 @@ urlpatterns = [
         'institucion/presupuestos/',
         BudgetInformationView.as_view(),
         name='institution_budget',
+    ),
+    path(
+        'institucion/rendicion-cuentas/',
+        AccountabilityInformationView.as_view(),
+        name='institution_accountability',
     ),
     path(
         'institucion/solicitud-informacion-publica/',

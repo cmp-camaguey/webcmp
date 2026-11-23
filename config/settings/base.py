@@ -404,6 +404,7 @@ GROUP_PERMISSION_MODEL_APP_OVERRIDE = {
     'Solicitud de información pública': 'legal',
     'Aviso de cambio legal': 'legal',
     'Período presupuestario': 'legal',
+    'Informe de rendición de cuenta': 'legal',
 }
 GROUP_PERMISSION_APP_VERBOSE_NAMES = {
     'sistema': 'Sistema',

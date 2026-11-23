@@ -1,0 +1,68 @@
+{% extends 'layouts/list.html' %}
+{% load my_filters %}
+{% block columns %}
+  <th>Año</th>
+  <th>Título</th>
+  <th>Publicado</th>
+  <th>Archivo</th>
+  <th class="text-end">Acciones</th>
+{% endblock %}
+{% block row %}
+  <td>{{ object.year }}</td>
+  <td>{{ object.title }}</td>
+  <td>
+    {% if object.is_published %}
+      <span class="badge bg-green-lt">Publicado</span>
+    {% else %}
+      <span class="badge bg-yellow-lt">Borrador</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if object.file %}
+      <a href="{{ object.file.url }}"
+         target="_blank"
+         class="btn btn-icon bg-blue-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Ver archivo"
+         data-bs-original-title="Ver archivo">
+        <i class="icon ti ti-file-type-pdf"></i>
+      </a>
+    {% else %}
+      <span class="text-secondary">—</span>
+    {% endif %}
+  </td>
+  <td class="text-end">
+    {% if request.user|has_permission:'core.change_accountabilityreport' %}
+      <a href="{% url 'core:accountability_report_update' object.pk %}"
+         type="button"
+         class="btn btn-icon bg-orange-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Editar"
+         data-bs-original-title="Editar">
+        <i class="icon ti ti-edit"></i>
+      </a>
+    {% endif %}
+    {% if request.user|has_permission:'core.delete_accountabilityreport' %}
+      <a href="#"
+         type="button"
+         class="btn btn-icon bg-red-lt btn-sm btn-delete"
+         data-id="{{ object.pk }}"
+         data-name="{{ object.title }}"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Eliminar"
+         data-bs-original-title="Eliminar">
+        <i class="icon ti ti-trash"></i>
+      </a>
+    {% endif %}
+  </td>
+{% endblock %}
+{% block modal %}
+  {% include 'includes/dashboard/modal_delete.html' %}
+{% endblock %}
+{% block extrajs %}
+  {{ block.super }}
+  {% include 'includes/dashboard/modal_delete_js.html' with delete_url_name='core:accountability_report_delete' %}
+{% endblock %}

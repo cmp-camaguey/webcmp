@@ -270,6 +270,21 @@ class BudgetInformationView(TemplateView):
         return context
 
 
+class AccountabilityInformationView(TemplateView):
+    template_name = 'pages/home/institution/accountability_information.html'
+
+    def get_context_data(self, **kwargs):
+        from apps.core.models import AccountabilityReport
+
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Rendición de cuenta'
+        context['parent'] = 'institucion'
+        context['segment'] = 'institution_accountability'
+        context['company'] = CompanySettings.get_instance()
+        context['reports'] = AccountabilityReport.objects.filter(is_published=True)
+        return context
+
+
 class PublicInformationRequestView(FormView):
     template_name = 'pages/home/institution/public_information_request.html'
     form_class = PublicInformationRequestForm
