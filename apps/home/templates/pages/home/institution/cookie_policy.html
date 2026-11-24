@@ -20,6 +20,9 @@
           <li><a href="#desactivar">Cómo desactivar o borrar cookies desde el navegador</a></li>
           <li><a href="#contacto">Responsable y contacto</a></li>
           <li><a href="#actualizaciones">Actualizaciones</a></li>
+          {% for section in extra_sections %}
+            <li><a href="#extra-{{ section.index }}">{{ section.title|default:"Punto adicional" }}</a></li>
+          {% endfor %}
         </ol>
       </nav>
     </div>
@@ -67,47 +70,31 @@
             </p>
           {% endif %}
           <h3 id="detalle" class="subheader text-muted fw-medium mt-4 mb-3">3. Detalle de cookies utilizadas</h3>
-          {% if content_blocks.section_detalle %}
-            <div class="richtext-content">{{ content_blocks.section_detalle|richtext }}</div>
-          {% else %}
+          {% if has_cookie_rows_data or not content_blocks.section_detalle %}
             <div class="table-responsive">
               <table class="table table-sm table-bordered">
                 <thead class="table-light">
                   <tr>
-                    <th>Nombre</th>
-                    <th>Categoría</th>
-                    <th>Duración</th>
+                    <th style="width: 16%;">Nombre</th>
+                    <th style="width: 16%;">Categoría</th>
+                    <th style="width: 16%;">Duración</th>
                     <th>Descripción</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td><code>sessionid</code></td>
-                    <td>Necesaria</td>
-                    <td>Sesión</td>
-                    <td>Identificador de sesión de Django (usuario autenticado en panel).</td>
-                  </tr>
-                  <tr>
-                    <td><code>csrftoken</code></td>
-                    <td>Necesaria</td>
-                    <td>1 año</td>
-                    <td>Protección CSRF de formularios.</td>
-                  </tr>
-                  <tr>
-                    <td><code>cookie_consent</code></td>
-                    <td>Necesaria</td>
-                    <td>1 año</td>
-                    <td>Guarda tu elección de consentimiento (aceptar/rechazar/configurar).</td>
-                  </tr>
-                  <tr>
-                    <td><code>rum_session</code></td>
-                    <td>Analítica</td>
-                    <td>30 min (inactividad)</td>
-                    <td>ID de sesión anónima para agrupar métricas RUM (solo si consientes analítica).</td>
-                  </tr>
+                  {% for row in cookie_rows %}
+                    <tr>
+                      <td><code>{{ row.nombre }}</code></td>
+                      <td>{{ row.categoria }}</td>
+                      <td>{{ row.duracion }}</td>
+                      <td>{{ row.descripcion }}</td>
+                    </tr>
+                  {% endfor %}
                 </tbody>
               </table>
             </div>
+          {% else %}
+            <div class="richtext-content">{{ content_blocks.section_detalle|richtext }}</div>
           {% endif %}
           <h3 id="consentimiento"
               class="subheader text-muted fw-medium mt-4 mb-3">4. Cómo gestionar tu consentimiento</h3>
@@ -167,6 +154,13 @@
           {% else %}
             <p class="mb-0">Esta política se revisa periódicamente. La versión vigente siempre está accesible en esta misma URL. Los cambios sustanciales se comunican por el boletín y en el panel de administración.</p>
           {% endif %}
+          {% for section in extra_sections %}
+            <h3 id="extra-{{ section.index }}"
+                class="subheader text-muted fw-medium mt-4 mb-3">{{ forloop.counter|add:7 }}. {{ section.title|default:"Punto adicional" }}</h3>
+            {% if section.content %}
+              <div class="richtext-content">{{ section.content|richtext }}</div>
+            {% endif %}
+          {% endfor %}
         </div>
       </div>
     </div>

@@ -13,99 +13,37 @@
     <div class="section-description">{{ content_blocks.section_description|default:"Vigilancia, investigación, servicios y contacto directo con la comunidad." }}</div>
   </div>
   <div class="row g-4">
-    <div class="col-12">
-      <a class="card card-link card-md h-100"
-         href="{% url 'home:publications' %}">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 width="24"
-                 height="24"
-                 viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2"
-                 stroke-linecap="round"
-                 stroke-linejoin="round"
-                 aria-hidden="true"
-                 focusable="false"
-                 class="icon">
-              <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
-              <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
-              <path d="M3 6l0 13"></path>
-              <path d="M12 6l0 13"></path>
-              <path d="M21 6l0 13"></path>
-            </svg>
+    {% for card in card_items %}
+      <div class="{% if card_items|length <= 2 %}col-12{% elif card_items|length == 3 %}col-12 col-md-6 col-lg-4{% else %}col-12 col-md-6{% endif %}">
+        {# djlint:off H054 #}
+        {% if card.index == 1 %}
+          <a class="card card-link card-md h-100"
+             href="{% url 'home:publications' %}">
+        {% elif card.index == 2 %}
+          <a class="card card-link card-md h-100"
+             href="{% url 'home:services_public' %}">
+        {% elif card.index == 3 %}
+          <a class="card card-link card-md h-100"
+             href="{% url 'home:institution_information' %}">
+        {% else %}
+          <div class="card card-md h-100">
+        {% endif %}
+          {# djlint:on H054 #}
+          <div class="card-stamp card-stamp-lg">
+            <div class="card-stamp-icon bg-primary">
+              <i class="icon ti {{ card.icon }}" aria-hidden="true"></i>
+            </div>
           </div>
-        </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_1_title|default:"Investigación" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_1_text|default:"Publicaciones científicas y resultados de la investigación meteorológica provincial." }}</p>
-        </div>
-      </a>
-    </div>
-    <div class="col-12">
-      <a class="card card-link card-md h-100"
-         href="{% url 'home:services_public' %}">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 width="24"
-                 height="24"
-                 viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2"
-                 stroke-linecap="round"
-                 stroke-linejoin="round"
-                 aria-hidden="true"
-                 focusable="false"
-                 class="icon">
-              <path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"></path>
-              <path d="M14.5 5.5l4 4"></path>
-              <path d="M12 8l-5 -5l-4 4l5 5"></path>
-              <path d="M7 8l-1.5 1.5"></path>
-              <path d="M16 12l5 5l-4 4l-5 -5"></path>
-              <path d="M16 17l-1.5 1.5"></path>
-            </svg>
+          <div class="card-body">
+            <h3 class="subheader text-muted fw-medium mb-1">{{ card.title }}</h3>
+            <p class="text-secondary mb-0">{{ card.text }}</p>
           </div>
+          {% if card.index <= 3 %}
+            </a>
+          {% else %}
+            </div>
+          {% endif %}
         </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_2_title|default:"Servicios" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_2_text|default:"Servicios públicos y comerciales de asesoría e información meteorológica en línea." }}</p>
-        </div>
-      </a>
-    </div>
-    <div class="col-12">
-      <a class="card card-link card-md h-100"
-         href="{% url 'home:institution_information' %}">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 width="24"
-                 height="24"
-                 viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2"
-                 stroke-linecap="round"
-                 stroke-linejoin="round"
-                 aria-hidden="true"
-                 focusable="false"
-                 class="icon">
-              <path d="M3 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
-              <path d="M15 15m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
-              <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
-              <path d="M6 15v-1a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v1"></path>
-              <path d="M12 9l0 3"></path>
-            </svg>
-          </div>
-        </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_3_title|default:"Información institucional" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_3_text|default:"Organización, directivos, funciones y estrategia de desarrollo del Centro." }}</p>
-        </div>
-      </a>
-    </div>
+    {% endfor %}
   </div>
 {% endblock %}

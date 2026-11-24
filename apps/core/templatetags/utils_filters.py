@@ -175,11 +175,38 @@ def richtext(value):
     """Render dashboard-edited rich content as sanitized HTML."""
     if not value:
         return ''
-    from django.utils.html import linebreaks
+    from django.utils.html import escape, linebreaks
 
     from apps.core.sanitize import sanitize_html as sanitize_rich_html
 
     text = str(value)
     if not _HTML_TAG_RE.search(text):
-        text = linebreaks(text)
+        link_re = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+
+        def render_inline(raw):
+            parts = []
+            last = 0
+            for m in link_re.finditer(raw):
+                parts.append(escape(raw[last : m.start()]))
+                label = escape(m.group(1))
+                href = escape(m.group(2).strip(), quote=True)
+                parts.append(f'<a href="{href}">{label}</a>')
+                last = m.end()
+            parts.append(escape(raw[last:]))
+            return ''.join(parts)
+
+        lines = [line.strip() for line in text.replace('\r\n', '\n').split('\n') if line.strip()]
+        label_lines = []
+        for line in lines:
+            if ':' in line:
+                label, rest = line.split(':', 1)
+                label = label.strip()
+                rest = rest.strip()
+                if label and rest and len(label) <= 60 and not link_re.search(label):
+                    label_lines.append(
+                        f'<p><strong>{escape(label)}:</strong> {render_inline(rest)}</p>'
+                    )
+                    continue
+            label_lines.append(f'<p>{render_inline(line)}</p>')
+        text = ''.join(label_lines) if label_lines else linebreaks(text)
     return mark_safe(sanitize_rich_html(text))  # nosec B703

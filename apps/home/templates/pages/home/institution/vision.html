@@ -10,57 +10,20 @@
     <div class="section-description">{{ content_blocks.section_description|default:"Los principios que orientan el trabajo de nuestros especialistas cada jornada." }}</div>
   </div>
   <div class="row g-4">
-    <div class="col-12">
-      <div class="card card-md h-100">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <i class="ti ti-briefcase" aria-hidden="true"></i>
+    {% for card in card_items %}
+      <div class="{% if card_items|length <= 2 %}col-12{% elif card_items|length == 3 %}col-12 col-md-6 col-lg-4{% else %}col-12 col-md-6{% endif %}">
+        <div class="card card-md h-100">
+          <div class="card-stamp card-stamp-lg">
+            <div class="card-stamp-icon bg-primary">
+              <i class="ti {{ card.icon }}" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="card-body">
+            <h3 class="subheader text-muted fw-medium mb-1">{{ card.title }}</h3>
+            <p class="text-secondary mb-0">{{ card.text }}</p>
           </div>
         </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_1_title|default:"Rigor científico" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_1_text|default:"Fundamentamos cada pronóstico y aviso en la observación sistemática y el análisis técnico de los fenómenos atmosféricos." }}</p>
-        </div>
       </div>
-    </div>
-    <div class="col-12">
-      <div class="card card-md h-100">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <i class="ti ti-users" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_2_title|default:"Servicio a la comunidad" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_2_text|default:"Ponemos la información meteorológica al alcance de todos, con lenguaje claro y orientación oportuna para la toma de decisiones." }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-12">
-      <div class="card card-md h-100">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <i class="ti ti-users-group" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_3_title|default:"Trabajo en equipo" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_3_text|default:"Integramos especialistas de la vigilancia, el pronóstico y la investigación para ofrecer un servicio único y consistente." }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-12">
-      <div class="card card-md h-100">
-        <div class="card-stamp card-stamp-lg">
-          <div class="card-stamp-icon bg-primary">
-            <i class="ti ti-heart" aria-hidden="true"></i>
-          </div>
-        </div>
-        <div class="card-body">
-          <h3 class="subheader text-muted fw-medium mb-1">{{ content_blocks.card_4_title|default:"Compromiso social" }}</h3>
-          <p class="text-secondary mb-0">{{ content_blocks.card_4_text|default:"Velamos por reducir las pérdidas de bienes y proteger la vida ante desastres naturales de origen meteorológico." }}</p>
-        </div>
-      </div>
-    </div>
+    {% endfor %}
   </div>
 {% endblock %}

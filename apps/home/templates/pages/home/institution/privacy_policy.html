@@ -21,6 +21,9 @@
           <li><a href="#derechos">Derechos del titular</a></li>
           <li><a href="#seguridad">Medidas de seguridad</a></li>
           <li><a href="#actualizaciones">Actualizaciones</a></li>
+          {% for section in extra_sections %}
+            <li><a href="#extra-{{ section.index }}">{{ section.title|default:"Punto adicional" }}</a></li>
+          {% endfor %}
         </ol>
       </nav>
     </div>
@@ -113,6 +116,13 @@
           {% else %}
             <p class="mb-0">Esta política se revisa periódicamente. La versión vigente siempre está accesible en esta misma URL. Los cambios sustanciales se comunican por el boletín y en el panel de administración.</p>
           {% endif %}
+          {% for section in extra_sections %}
+            <h3 id="extra-{{ section.index }}"
+                class="subheader text-muted fw-medium mt-4 mb-3">{{ forloop.counter|add:8 }}. {{ section.title|default:"Punto adicional" }}</h3>
+            {% if section.content %}
+              <div class="richtext-content">{{ section.content|richtext }}</div>
+            {% endif %}
+          {% endfor %}
         </div>
       </div>
     </div>
