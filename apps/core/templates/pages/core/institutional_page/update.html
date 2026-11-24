@@ -3,51 +3,234 @@
 {% load utils_filters %}
 {% block extrahead %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'dist/libs/quill/quill.snow.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/richtext.css' %}">
 {% endblock %}
 {% block form %}
-  {% include 'includes/dashboard/form_card.html' with card_title=object.get_page_key_display %}
-  <div class="alert alert-info bg-blue-lt mb-4" role="alert">
-    <div class="d-flex">
-      <div class="me-2">
-        <i class="icon ti ti-info-circle"></i>
-      </div>
-      <div>
-        Edite solo los bloques necesarios. La estructura de la página se mantiene fija y los campos vacíos conservan el contenido original.
+  <div class="col-12">
+    <div class="alert alert-info bg-blue-lt mb-4" role="alert">
+      <div class="d-flex align-items-center">
+        <div class="me-2">
+          <i class="icon ti ti-info-circle"></i>
+        </div>
+        <div class="flex-fill">
+          Los campos aparecen en el mismo orden en que se muestran en la página pública. Edite solo los bloques necesarios; los campos vacíos conservan el contenido original. Para agregar enlaces, usá <code>[texto](url)</code>.
+        </div>
+        {% if public_page_url %}
+          <div class="ms-3">
+            <a href="{{ public_page_url }}"
+               target="_blank"
+               rel="noopener"
+               class="btn btn-sm btn-outline-primary">
+              <i class="icon ti ti-external-link me-1"></i>Ver página
+            </a>
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>
   {% for block in schema_blocks %}
     {% if block.group %}
       {% ifchanged block.group %}
-        {% if not forloop.first %}<hr class="my-4">{% endif %}
-        <h4 class="subheader text-muted mb-3">{{ block.group }}</h4>
+        {% if block.is_card_group %}
+          {% if block.card_grid_open %}
+            {% if not forloop.first and not block.prev_is_card_group %}
+              {% if collapsible_groups %}</div>{% endif %}
+              </div>
+              </div>
+            {% endif %}
+            <div class="col-12">
+              <div class="row g-3 mb-1">
+          {% endif %}
+          {% if block.card_col_open %}
+            <div class="{{ block.card_col_class }}">
+              <div class="institution-form-group mb-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                  <h4 class="subheader text-muted mb-0 border-bottom-0 pb-0">{{ block.group }}</h4>
+                  <button type="submit"
+                          name="remove_card"
+                          value="{{ block.card_index }}"
+                          class="btn btn-sm btn-outline-danger">
+                    <i class="icon ti ti-trash me-1"></i>Eliminar
+                  </button>
+                </div>
+          {% endif %}
+        {% else %}
+          {% if not forloop.first and not block.prev_is_card_group %}
+            {% if collapsible_groups %}</div>{% endif %}
+            </div>
+            </div>
+          {% endif %}
+          <div class="col-12">
+            <div class="institution-form-group mb-4">
+              {% if block.is_section_set %}
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                  {% if collapsible_groups %}
+                    <button class="btn btn-link p-0 text-reset text-decoration-none d-flex align-items-center gap-2"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#{{ block.group_id }}"
+                            aria-expanded="{% if block.group_id == 'group-0' %}true{% else %}false{% endif %}">
+                      <i class="icon ti ti-chevron-down"></i>
+                      <h4 class="subheader text-muted mb-0 border-bottom-0 pb-0">{{ block.group }}</h4>
+                    </button>
+                  {% else %}
+                    <h4 class="subheader text-muted mb-0 border-bottom-0 pb-0">{{ block.group }}</h4>
+                  {% endif %}
+                  <button type="submit"
+                          name="remove_section"
+                          value="{{ block.section_set }}:{{ block.section_index }}"
+                          class="btn btn-sm btn-outline-danger">
+                    <i class="icon ti ti-trash me-1"></i>Eliminar
+                  </button>
+                </div>
+              {% else %}
+                {% if collapsible_groups %}
+                  <button class="btn btn-link p-0 text-reset text-decoration-none d-flex align-items-center gap-2 mb-3 w-100 justify-content-start"
+                          type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#{{ block.group_id }}"
+                          aria-expanded="{% if block.group_id == 'group-0' %}true{% else %}false{% endif %}">
+                    <i class="icon ti ti-chevron-down"></i>
+                    <h4 class="subheader text-muted mb-0 border-bottom-0 pb-0">{{ block.group }}</h4>
+                  </button>
+                {% else %}
+                  <h4 class="subheader text-muted mb-3">{{ block.group }}</h4>
+                {% endif %}
+              {% endif %}
+              {% if block.group_note %}
+                <div class="alert alert-info bg-blue-lt py-2 mb-3" role="alert">
+                  <div class="d-flex align-items-center">
+                    <i class="icon ti ti-info-circle me-2"></i>
+                    <div>{{ block.group_note }}</div>
+                  </div>
+                </div>
+              {% endif %}
+              {% if collapsible_groups %}
+                <div id="{{ block.group_id }}"
+                     class="collapse
+                            {% if block.group_id == 'group-0' %}show{% endif %}">
+              {% endif %}
+        {% endif %}
       {% endifchanged %}
     {% endif %}
     {% with field=form|get_item:block.name %}
       {% if field %}
-        <div class="mb-3">
-          {% if block.group != block.label %}
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% if block.is_row_set %}
+          {% if block.row_set_start %}
+            <div class="table-responsive mb-3">
+              <table class="table table-vcenter card-table" style="table-layout: fixed;">
+                <thead>
+                  <tr>
+                    {% for col in block.row_columns %}
+                      {% if block.row_table_layout == 'auto' %}
+                        <th {% if col.suffix != 'descripcion' %}style="width: 16%;"{% endif %}>{{ col.label }}</th>
+                      {% else %}
+                        <th>{{ col.label }}</th>
+                      {% endif %}
+                    {% endfor %}
+                    <th style="width: 56px;"></th>
+                  </tr>
+                </thead>
+                <tbody>
           {% endif %}
-          {{ field }}
-          {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
-        </div>
+          {% if block.row_start %}<tr>{% endif %}
+          <td>
+            {{ field }}
+            {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
+          </td>
+          {% if block.row_end %}
+            <td class="w-1">
+              <button type="submit"
+                      name="remove_row"
+                      value="{{ block.row_set }}:{{ block.row_index }}"
+                      class="btn btn-sm btn-outline-danger btn-icon"
+                      aria-label="Eliminar fila">
+                <i class="icon ti ti-trash"></i>
+              </button>
+            </td>
+            </tr>
+          {% endif %}
+          {% if block.row_set_end %}
+            </tbody>
+            </table>
+            </div>
+            <button type="submit"
+                    name="add_row"
+                    value="{{ block.row_set }}"
+                    class="btn btn-outline-primary btn-sm mb-3">
+              <i class="icon ti ti-plus me-1"></i>Agregar fila
+            </button>
+          {% endif %}
+        {% else %}
+          {% if block.row_open %}<div class="row g-3 mb-3">{% endif %}
+          {% if block.col_class %}<div class="{{ block.col_class }}">{% endif %}
+          <div class="{% if block.col_class %}mb-0{% else %}mb-3{% endif %}">
+            {% if block.group != block.label %}
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% endif %}
+            {{ field }}
+            {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
+          </div>
+          {% if block.col_class %}</div>{% endif %}
+          {% if block.row_close %}</div>{% endif %}
+        {% endif %}
       {% endif %}
     {% endwith %}
+    {% if block.card_col_close %}
+      </div>
+      </div>
+    {% endif %}
+    {% if block.card_grid_close %}
+      </div>
+      </div>
+    {% endif %}
   {% endfor %}
-  {% if form.non_field_errors %}
-    <div class="alert alert-danger">
-      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  {% with last=schema_blocks|last %}
+    {% if last and not last.is_card_group %}
+      {% if collapsible_groups %}</div>{% endif %}
+      </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% if has_cards or has_sections %}
+    <div class="col-12 d-flex gap-2">
+      {% if has_cards %}
+        <button type="submit"
+                name="add_card"
+                value="1"
+                class="btn btn-outline-primary">
+          <i class="icon ti ti-plus me-1"></i>Agregar tarjeta
+        </button>
+      {% endif %}
+      {% if has_sections %}
+        <button type="submit"
+                name="add_section"
+                value="{{ section_set_name }}"
+                class="btn btn-outline-primary">
+          <i class="icon ti ti-plus me-1"></i>Agregar punto
+        </button>
+      {% endif %}
     </div>
   {% endif %}
-  </div>
-  </div>
-  </div>
+  {% if form.non_field_errors %}
+    <div class="col-12">
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}
 {% block extrajs %}
   {{ block.super }}
-  <script src="{% static 'dist/libs/quill/quill.js' %}"></script>
-  <script src="{% static 'dist/js/richtext-init.js' %}"></script>
+  <script src="{% static 'dist/js/icon-picker-init.js' %}"></script>
+  <script>
+    document.querySelectorAll('textarea.form-control:not([data-richtext])').forEach(function (t) {
+      const fit = function () {
+        t.style.height = 'auto';
+        t.style.height = t.scrollHeight + 2 + 'px';
+      };
+      t.addEventListener('input', fit);
+      fit();
+    });
+  </script>
 {% endblock %}

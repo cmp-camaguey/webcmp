@@ -3,7 +3,12 @@ from django.contrib import messages
 from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 
-from apps.core.institutional_pages import get_page_blocks
+from apps.core.institutional_pages import (
+    get_page_blocks,
+    get_page_cards,
+    get_page_row_sets,
+    get_row_items,
+)
 from apps.core.models import (
     CompanySettings,
     DataSubjectRequest,
@@ -21,6 +26,7 @@ class VisionView(TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'vision'
         context['content_blocks'] = get_page_blocks('vision')
+        context['card_items'] = get_page_cards('vision')
         return context
 
 
@@ -33,6 +39,7 @@ class MissionView(TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'mision'
         context['content_blocks'] = get_page_blocks('mission')
+        context['card_items'] = get_page_cards('mission')
         return context
 
 
@@ -45,6 +52,7 @@ class AboutView(TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'quienes_somos'
         context['content_blocks'] = get_page_blocks('about')
+        context['card_items'] = get_page_cards('about')
         return context
 
 
@@ -89,7 +97,14 @@ class PrivacyPolicyView(TermsChangeNoticeMixin, TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'privacy_policy'
         context['company'] = CompanySettings.get_instance()
-        context['content_blocks'] = get_page_blocks('privacy_policy')
+        blocks = get_page_blocks('privacy_policy')
+        context['content_blocks'] = blocks
+        context['extra_sections'] = get_row_items(
+            blocks,
+            'extra_sections',
+            [],
+            [{'suffix': 'title'}, {'suffix': 'content'}],
+        )
         return context
 
 
@@ -103,7 +118,16 @@ class CookiePolicyView(TermsChangeNoticeMixin, TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'cookie_policy'
         context['company'] = CompanySettings.get_instance()
-        context['content_blocks'] = get_page_blocks('cookie_policy')
+        blocks = get_page_blocks('cookie_policy')
+        context['content_blocks'] = blocks
+        context['cookie_rows'] = get_page_row_sets('cookie_policy').get('cookie_rows', [])
+        context['has_cookie_rows_data'] = any(k.startswith('cookie_rows_') for k in blocks)
+        context['extra_sections'] = get_row_items(
+            blocks,
+            'extra_sections',
+            [],
+            [{'suffix': 'title'}, {'suffix': 'content'}],
+        )
         return context
 
 
@@ -258,7 +282,12 @@ class InstitutionalInformationView(TemplateView):
         context['parent'] = 'institucion'
         context['segment'] = 'institutional_information'
         context['company'] = CompanySettings.get_instance()
-        context['content_blocks'] = get_page_blocks('institutional_information')
+        blocks = get_page_blocks('institutional_information')
+        context['content_blocks'] = blocks
+        context['directors_rows'] = get_page_row_sets('institutional_information').get(
+            'directors_rows', []
+        )
+        context['has_directors_rows_data'] = any(k.startswith('directors_rows_') for k in blocks)
         return context
 
 
