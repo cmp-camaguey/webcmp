@@ -141,9 +141,25 @@ jobs:
         if: github.event_name == 'push' || needs.detect.outputs.full == 'true'
         run: python manage.py test
 
+  # El nombre del job es el required check: cambiarlo deja el merge bloqueado.
+  # Cubre dos pasos que corren sobre el perfil de produccion:
+  # - `check --deploy`: configuracion de seguridad.
+  # - `collectstatic`: el storage con manifest resuelve cada referencia de los
+  #   estaticos (`sourceMappingURL` en JS y CSS, `url()` y `@import` en CSS) y
+  #   falla con MissingFileError si el destino no existe. Ese error aparece en
+  #   `deploy_apply`, despues de aplicar migraciones, y obliga a revertir el
+  #   deploy a mano; `check --deploy` por si solo no lo detecta.
   deploy-check:
     name: Deploy check (check --deploy)
     runs-on: ubuntu-26.04
+    env:
+      PRODUCTION: "1"
+      SITE_URL: https://www.meteocamaguey.cu/
+      DB_ENGINE: postgresql
+      DB_NAME: webcmp
+      DB_USER: webcmp
+      DB_HOST: localhost
+      DB_PASS: ci_placeholder_not_a_real_password  # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v7
 
@@ -163,15 +179,10 @@ jobs:
           rm -f "$RUNNER_TEMP/.env"
 
       - name: Run deployment checks (production profile)
-        env:
-          PRODUCTION: "1"
-          SITE_URL: https://www.meteocamaguey.cu/
-          DB_ENGINE: postgresql
-          DB_NAME: webcmp
-          DB_USER: webcmp
-          DB_HOST: localhost
-          DB_PASS: ci_placeholder_not_a_real_password  # pragma: allowlist secret
         run: python manage.py check --deploy --fail-level WARNING
+
+      - name: Run collectstatic (production storage)
+        run: python manage.py collectstatic --no-input
 
   lint:
     name: Lint (Ruff)
