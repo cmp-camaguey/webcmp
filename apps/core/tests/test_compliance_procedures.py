@@ -17,6 +17,11 @@ class ComplianceProcedureTests(TestCase):
             last_name='User',
         )
         self.client.force_login(self.user)
+        for procedure_type in ComplianceProcedure.ProcedureType.values:
+            ComplianceProcedure.objects.get_or_create(
+                procedure_type=procedure_type,
+                defaults={'title': procedure_type, 'body': ''},
+            )
 
     def test_update_compliance_procedure(self):
         procedure = ComplianceProcedure.objects.get(

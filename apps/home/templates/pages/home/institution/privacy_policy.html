@@ -48,11 +48,12 @@
           {% else %}
             <p class="mb-2">El portal trata las siguientes categorías de datos personales:</p>
             <ul class="list-unstyled list-separated gap-2 mb-3">
-              <li><strong>Suscriptores al boletín informativo:</strong> correo electrónico, origen de la suscripción (landing, registro, perfil, administración), fecha de confirmación y estado de la suscripción. Finalidad: envío de avisos meteorológicos, noticias y novedades del Centro. Base legal: consentimiento del interesado (art. 6.1.a GDPR / normativa cubana equivalente).</li>
+              <li><strong>Suscriptores al boletín informativo:</strong> correo electrónico, origen de la suscripción (landing, registro, perfil, administración), fecha de confirmación y estado de la suscripción. Finalidad: envío de avisos meteorológicos, noticias y novedades del Centro. Base legal: consentimiento del interesado, conforme a la Ley 149/2022 y su normativa complementaria.</li>
               <li><strong>Usuarios del panel de administración:</strong> nombre de usuario, correo, nombre y apellidos (perfil), avatar opcional, condición de usuario LDAP, preferencia de boletín. Finalidad: autenticación, autorización, gestión de contenidos, notificaciones internas. Base legal: ejecución de un contrato / obligación legal / interés legítimo.</li>
               <li><strong>Clientes comerciales:</strong> datos fiscales (REEUP, NIT, cuenta bancaria, agencia, registro comercial, dirección, teléfonos), tipo de cliente (natural/jurídica), representante legal. Finalidad: facturación, gestión de contratos, emisión de certificados, servicios contratados. Base legal: ejecución de contrato / obligación legal.</li>
               <li><strong>Facturación y pagos:</strong> datos de facturas (cliente, servicios, importes, fechas, estado), asignaciones de coste, cobros. Finalidad: cumplimiento de obligaciones tributarias y contables. Base legal: obligación legal.</li>
-              <li><strong>Log de acceso y métricas técnicas (RUM):</strong> dirección IP anonimizada, user-agent, ruta solicitada, tiempo de respuesta, errores HTTP. Finalidad: monitorización de disponibilidad, rendimiento y seguridad del servicio. Base legal: interés legítimo (seguridad y calidad del servicio).</li>
+              <li><strong>Métricas técnicas de rendimiento (RUM):</strong> identificador de sesión anonimizado, ruta solicitada, métricas de rendimiento, información del dispositivo/navegador y errores de JavaScript. No se almacenan direcciones IP. Finalidad: monitorización de disponibilidad, rendimiento y calidad del servicio. Base legal: consentimiento del titular cuando corresponda y, en lo demás, interés legítimo en la seguridad y calidad del servicio.</li>
+              <li><strong>Consentimiento de cookies:</strong> elección de consentimiento, categorías aceptadas, identificador de sesión anonimizado, hash de IP y agente de usuario. Finalidad: acreditar y gestionar el consentimiento de cookies. Base legal: obligación legal y responsabilidad proactiva en materia de protección de datos personales.</li>
             </ul>
           {% endif %}
           <h3 id="destinatarios" class="subheader text-muted fw-medium mt-4 mb-3">3. Destinatarios</h3>
@@ -108,7 +109,7 @@
           {% if content_blocks.section_seguridad %}
             <div class="richtext-content">{{ content_blocks.section_seguridad|richtext }}</div>
           {% else %}
-            <p class="mb-3">Se aplican medidas técnicas y organizativas adecuadas al riesgo: acceso por autenticación fuerte, control de accesos por roles, registro de accesos, cifrado en tránsito (TLS), copias de seguridad cifradas y procedimiento de notificación de incidentes.</p>
+            <p class="mb-3">Se aplican medidas técnicas y organizativas adecuadas al riesgo: control de accesos por roles, registro de actividad, cifrado en tránsito (TLS) y copias de seguridad periódicas de la base de datos.</p>
           {% endif %}
           <h3 id="actualizaciones" class="subheader text-muted fw-medium mt-4 mb-3">8. Actualizaciones</h3>
           {% if content_blocks.section_actualizaciones %}

@@ -18,7 +18,7 @@ Cargar al escribir o revisar modelos, vistas, serializers, queries, autenticaci�
 - Apps viven en `apps/`; importar siempre `from apps.<app>.models import ...`.
 - Modelos de negocio: `default_permissions = ()` + permisos custom `view_*`, `add_*`, `change_*`, `delete_*` en español.
 - `FileHandlerMixin` + `file_fields` obligatorio en todo modelo con FileField/ImageField.
-- Soft delete: usar el manager por defecto (filtra `record_active=True`), nunca `all_objects`.
+- Soft delete: filtrar `record_active=True` en las consultas; el manager por defecto no lo excluye automáticamente y no existe `all_objects`.
 - URLs de modelos con UUIDField usan kwarg `uuid` (nunca `pk`).
 - Vistas con DataTables cargan todos los registros (pagina el cliente); el resto usa `paginate_by = 20`.
 - DRF: `DjangoModelPermissionsOrAnonReadOnly`; schema via drf-spectacular.
@@ -58,7 +58,7 @@ Antes de presentar la solución:
 | Situación | Acción |
 |---|---|
 | Query N+1 o lento | `select_related`/`prefetch_related`; verificar con `connection.queries` en test |
-| Borrado lógico | `record_active=True` en manager por defecto |
+| Borrado lógico | Filtrar `record_active=True` en consultas; el manager por defecto no lo excluye automáticamente |
 | Archivos subidos | `FileHandlerMixin` con `file_fields` |
 | Migraciones | Generar y commitear; gate `makemigrations --check --dry-run` |
 
