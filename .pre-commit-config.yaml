@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.5
+    rev: v0.17.6
     hooks:
       - id: ruff
         args: [--fix]
@@ -24,7 +24,7 @@ repos:
         exclude: "static/|staticfiles/|\\.secrets\\.baseline$|.*\\.min\\.js$|.*\\.map$"
 
   - repo: https://github.com/djlint/djlint
-    rev: v1.50.0
+    rev: v1.54.0
     hooks:
       - id: djlint-django
       - id: djlint-reformat-django

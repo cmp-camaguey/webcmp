@@ -2,7 +2,6 @@ Django==5.2.17
 djangorestframework==3.18.3
 drf-spectacular==0.30.0
 drf-spectacular-sidecar==2026.10.1
-drf-redesign==0.6.0
 python-dotenv==1.2.4
 psycopg[binary]==3.3.9
 cryptography==50.0.2
@@ -12,9 +11,11 @@ huey==3.5.4
 ldap3==2.9.1
 django-cors-headers==4.9.0
 django-csp==4.0
-numpy==2.5.4
+numpy==2.5.5
 pandas==3.1.1
 python-calamine
 openpyxl==3.1.5
 weasyprint==70.0
 requests==2.34.2
+django-model-utils==5.0.0
+nh3==0.3.2

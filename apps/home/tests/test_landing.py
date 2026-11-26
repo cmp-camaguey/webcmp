@@ -41,9 +41,9 @@ def social_anchor_classes(html):
 class LandingFooterSocialTests(TestCase):
     """Socials plugin activation contract.
 
-    Both /home/ (which reuses the dashboard footer) and the
-    dashboard expose the four `social-gray` anchors and render them at the
-    smaller `social-sm` size.
+    The home page reuses the landing footer and the dashboard keeps its own
+    footer. Both expose the four `social-gray` anchors; the dashboard renders
+    them at `social-sm`, while the home landing footer keeps the default size.
     """
 
     def setUp(self):
@@ -75,11 +75,12 @@ class LandingFooterSocialTests(TestCase):
             self.assertIn(f'aria-label="{label}"', self.public, msg=label)
             self.assertIn(f'aria-label="{label}"', self.dashboard, msg=label)
 
-    def test_dashboard_and_public_socials_rendered_smaller(self):
-        for page in (self.public, self.dashboard):
-            anchors = social_anchor_classes(page)
-            for brand in BRANDS:
-                self.assertIn('social-sm', anchors[brand], msg=brand)
+    def test_dashboard_socials_rendered_smaller_and_home_default_size(self):
+        dashboard_anchors = social_anchor_classes(self.dashboard)
+        public_anchors = social_anchor_classes(self.public)
+        for brand in BRANDS:
+            self.assertIn('social-sm', dashboard_anchors[brand], msg=f'{brand} dashboard')
+            self.assertNotIn('social-sm', public_anchors[brand], msg=f'{brand} home')
 
     def test_socials_stylesheet_linked_site_wide(self):
         for page in (self.public, self.dashboard):
@@ -193,7 +194,6 @@ class LandingRenderTests(TestCase):
         sections = (
             ('ti-temperature-sun', 'El tiempo en su región'),
             ('ti-alert-triangle', 'Avisos y alertas meteorológicas'),
-            ('ti-atom', 'Física de la atmósfera'),
             ('ti-satellite', 'Imágenes satelitales'),
             ('ti-tools', 'Servicios meteorológicos'),
             ('ti-book', 'Publicaciones científicas'),
@@ -453,7 +453,7 @@ class LandingNavbarTests(TestCase):
         navbar = self._navbar_html(self.client.get('/').content.decode())
         self.assertEqual('/home/', self._anchor_href_by_text(navbar, 'Inicio'))
         self.assertNotIn('Iniciar sesión', navbar)
-        self.assertNotIn('dropdown', navbar, msg='sin menú de usuario')
+        self.assertEqual(1, navbar.count('dropdown-toggle'), msg='solo el menú de institución')
 
     def test_landing_navbar_has_theme_toggles(self):
         landing = self.client.get('/').content.decode()
@@ -494,12 +494,110 @@ class InstitutionPagesTests(TestCase):
             'Quiénes Somos',
             'quienes_somos',
         ),
+        (
+            'home:institution_budget',
+            'pages/home/institution/budget_information.html',
+            'Presupuesto',
+            'institution_budget',
+        ),
+        (
+            'home:institution_accountability',
+            'pages/home/institution/accountability_information.html',
+            'Rendición de cuenta',
+            'institution_accountability',
+        ),
+        (
+            'home:institution_incident_response',
+            'pages/home/institution/compliance_procedure.html',
+            'Notificación de incidentes de ciberseguridad',
+            'institution_incident_response',
+        ),
+        (
+            'home:institution_backup_restore',
+            'pages/home/institution/compliance_procedure.html',
+            'Respaldo y restauración de bases de datos',
+            'institution_backup_restore',
+        ),
+        (
+            'home:institution_public_information',
+            'pages/home/institution/public_information_request.html',
+            'Solicitud de información pública',
+            'public_information_request',
+        ),
     )
 
     def test_urls_reverse(self):
         self.assertEqual(reverse('home:institution_vision'), '/institucion/vision/')
         self.assertEqual(reverse('home:institution_mission'), '/institucion/mision/')
         self.assertEqual(reverse('home:institution_about'), '/institucion/quienes-somos/')
+        self.assertEqual(reverse('home:institution_budget'), '/institucion/presupuestos/')
+        self.assertEqual(
+            reverse('home:institution_accountability'), '/institucion/rendicion-cuentas/'
+        )
+        self.assertEqual(
+            reverse('home:institution_incident_response'),
+            '/institucion/incidentes-ciberseguridad/',
+        )
+        self.assertEqual(reverse('home:institution_backup_restore'), '/institucion/respaldo-datos/')
+        self.assertEqual(
+            reverse('home:institution_public_information'),
+            '/institucion/solicitud-informacion-publica/',
+        )
+
+    def test_public_information_page_explains_plazo_and_gratuidad(self):
+        response = self.client.get(reverse('home:institution_public_information'))
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, 'Quince días hábiles')
+        self.assertContains(response, 'salvo el costo de reproducción')
+
+    ALL_PAGES = (
+        'home:institution_vision',
+        'home:institution_mission',
+        'home:institution_about',
+        'home:institution_information',
+        'home:institution_budget',
+        'home:institution_accountability',
+        'home:institution_incident_response',
+        'home:institution_backup_restore',
+        'home:institution_public_information',
+        'home:institution_legal_notice',
+        'home:institution_privacy_policy',
+        'home:institution_cookie_policy',
+        'home:institution_data_subject_rights',
+    )
+
+    def test_institutional_and_legal_pages_share_one_layout(self):
+        """Todas las páginas del bloque usan el mismo esqueleto y la misma hoja de estilos."""
+        for name in self.ALL_PAGES:
+            with self.subTest(name=name):
+                response = self.client.get(reverse(name))
+                html = response.content.decode()
+                self.assertEqual(200, response.status_code)
+                self.assertTemplateUsed(response, 'layouts/institution.html')
+                self.assertIn('dist/css/institution-pages.css', html)
+                self.assertIn('institution-body', html)
+                self.assertIn('section-divider', html)
+                self.assertNotIn('hero-curve', html)
+                self.assertNotIn('section-tarjetas', html)
+
+    def test_pages_do_not_repeat_the_navigation_already_in_navbar_and_footer(self):
+        """El navbar y el footer ya listan estas páginas; el cuerpo no repite esos enlaces."""
+        for name in self.ALL_PAGES:
+            with self.subTest(name=name):
+                html = self.client.get(reverse(name)).content.decode()
+                self.assertNotIn('Enlaces relacionados', html)
+                self.assertNotIn('Contacto institucional', html)
+
+    def test_document_index_links_reach_their_sections(self):
+        """Cada entrada del índice apunta a una sección que existe en la página."""
+        for name in ('home:institution_privacy_policy', 'home:institution_cookie_policy'):
+            with self.subTest(name=name):
+                html = self.client.get(reverse(name)).content.decode()
+                self.assertIn('institution-toc', html)
+                anchors = re.findall(r'href="#([^"]+)"', html)
+                self.assertGreaterEqual(len(anchors), 7)
+                for anchor in anchors:
+                    self.assertIn(f'id="{anchor}"', html)
 
     def test_pages_render_with_context(self):
         for name, template, title, segment in self.PAGES:
@@ -518,6 +616,9 @@ class InstitutionPagesTests(TestCase):
             ('Visión', reverse('home:institution_vision')),
             ('Misión', reverse('home:institution_mission')),
             ('Quiénes Somos', reverse('home:institution_about')),
+            ('Información institucional', reverse('home:institution_information')),
+            ('Presupuestos', reverse('home:institution_budget')),
+            ('Rendición de cuenta', reverse('home:institution_accountability')),
         ):
             self.assertIn(label, html, msg=label)
             self.assertIn(path, html, msg=path)
@@ -526,9 +627,8 @@ class InstitutionPagesTests(TestCase):
 class LandingFooterLayoutTests(TestCase):
     """Footer layout contract.
 
-    The home (and dashboard) reuse the small transparent footer with `<li>`
-    socials rendered at social-sm; the big institutional footer (with the
-    'Síguenos' column) stays ONLY on the landing, socials at default size.
+    The landing and home pages use the big institutional footer. The dashboard
+    keeps its own transparent footer with smaller socials.
     """
 
     FOOTER_OPEN_RE = re.compile(r'<footer class="([^"]*)"')
@@ -538,19 +638,19 @@ class LandingFooterLayoutTests(TestCase):
         match = LandingFooterLayoutTests.FOOTER_OPEN_RE.search(html)
         return match.group(1) if match else ''
 
-    def test_home_uses_transparent_dashboard_footer(self):
+    def test_home_uses_landing_footer(self):
         html = self.client.get('/home/').content.decode()
-        self.assertIn('footer-transparent', self._footer_class(html))
+        self.assertNotIn('footer-transparent', self._footer_class(html))
         anchors = social_anchor_classes(html)
         self.assertEqual(set(BRANDS), set(anchors))
-        self.assertNotIn('Síguenos', html, msg='footer grande no debe estar en /home/')
+        self.assertIn('Síguenos', html, msg='home debe usar el footer grande del landing')
 
     def test_landing_keeps_big_footer(self):
         html = self.client.get('/').content.decode()
         self.assertNotIn('footer-transparent', self._footer_class(html))
         self.assertIn('Síguenos', html, msg='columna de redes del footer grande')
 
-    def test_dashboard_and_home_socials_rendered_smaller(self):
+    def test_dashboard_socials_smaller_and_home_default_size(self):
         home = self.client.get('/home/').content.decode()
         staff = User.objects.create_user(
             username='staff-footer-v3',
@@ -561,15 +661,13 @@ class LandingFooterLayoutTests(TestCase):
         )
         self.client.force_login(staff)
         dashboard = self.client.get(reverse('dashboard:index')).content.decode()
-        for page in (home, dashboard):
-            anchors = social_anchor_classes(page)
-            self.assertEqual(set(BRANDS), set(anchors))
-            for brand, classes in anchors.items():
-                self.assertIn(
-                    'social-sm',
-                    classes,
-                    msg=f'{brand} en {"home" if page is home else "dashboard"}',
-                )
+        dashboard_anchors = social_anchor_classes(dashboard)
+        home_anchors = social_anchor_classes(home)
+        self.assertEqual(set(BRANDS), set(dashboard_anchors))
+        self.assertEqual(set(BRANDS), set(home_anchors))
+        for brand in BRANDS:
+            self.assertIn('social-sm', dashboard_anchors[brand], msg=f'{brand} en dashboard')
+            self.assertNotIn('social-sm', home_anchors[brand], msg=f'{brand} en home')
 
     def test_landing_big_footer_socials_keep_default_size(self):
         html = self.client.get('/').content.decode()

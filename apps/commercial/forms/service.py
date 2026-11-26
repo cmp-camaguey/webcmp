@@ -15,10 +15,16 @@ class ServiceForm(forms.ModelForm):
             'image',
             'code',
             'price',
+            'requirements',
+            'procedure',
+            'delivery_time',
         ]
         widgets = {
             'pdf': forms.FileInput(attrs={'accept': '.pdf'}),
             'image': forms.FileInput(attrs={'accept': 'image/*'}),
+            'requirements': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'procedure': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'delivery_time': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):

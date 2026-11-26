@@ -1,0 +1,131 @@
+{% extends 'layouts/institution.html' %}
+{% load utils_filters %}
+{% block institution_body_class %}institution-body--wide{% endblock %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    {{ content_blocks.hero_description|default:"Cómo tratamos tus datos personales, con qué finalidad, durante cuánto tiempo y cómo puedes ejercer tus derechos." }}
+  </p>
+{% endblock %}
+{% block institution_content %}
+  <div class="row g-4 align-items-start">
+    <div class="col-lg-4">
+      <nav class="institution-toc institution-toc--rail"
+           aria-label="En esta página">
+        <div class="institution-label">En esta página</div>
+        <ol class="institution-toc__list">
+          <li><a href="#responsable">Responsable del tratamiento</a></li>
+          <li><a href="#datos">Datos que tratamos y finalidad</a></li>
+          <li><a href="#destinatarios">Destinatarios</a></li>
+          <li><a href="#transferencias">Transferencias internacionales</a></li>
+          <li><a href="#conservacion">Plazos de conservación</a></li>
+          <li><a href="#derechos">Derechos del titular</a></li>
+          <li><a href="#seguridad">Medidas de seguridad</a></li>
+          <li><a href="#actualizaciones">Actualizaciones</a></li>
+          {% for section in extra_sections %}
+            <li><a href="#extra-{{ section.index }}">{{ section.title|default:"Punto adicional" }}</a></li>
+          {% endfor %}
+        </ol>
+      </nav>
+    </div>
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <h3 id="responsable" class="subheader text-muted fw-medium mb-3">1. Responsable del tratamiento</h3>
+          {% if content_blocks.section_responsable %}
+            <div class="richtext-content">{{ content_blocks.section_responsable|richtext }}</div>
+          {% else %}
+            <p class="mb-1"><strong>Titular:</strong> {{ company.nombre }}</p>
+            <p class="mb-0">
+              <strong>Contacto:</strong>
+              <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
+              ·
+              <a href="{% url 'home:institution_legal_notice' %}" class="link-primary">Ver aviso legal</a>
+            </p>
+          {% endif %}
+          <h3 id="datos" class="subheader text-muted fw-medium mt-4 mb-3">2. Datos que tratamos y finalidad</h3>
+          {% if content_blocks.section_datos %}
+            <div class="richtext-content">{{ content_blocks.section_datos|richtext }}</div>
+          {% else %}
+            <p class="mb-2">El portal trata las siguientes categorías de datos personales:</p>
+            <ul class="list-unstyled list-separated gap-2 mb-3">
+              <li><strong>Suscriptores al boletín informativo:</strong> correo electrónico, origen de la suscripción (landing, registro, perfil, administración), fecha de confirmación y estado de la suscripción. Finalidad: envío de avisos meteorológicos, noticias y novedades del Centro. Base legal: consentimiento del interesado, conforme a la Ley 149/2022 y su normativa complementaria.</li>
+              <li><strong>Usuarios del panel de administración:</strong> nombre de usuario, correo, nombre y apellidos (perfil), avatar opcional, condición de usuario LDAP, preferencia de boletín. Finalidad: autenticación, autorización, gestión de contenidos, notificaciones internas. Base legal: ejecución de un contrato / obligación legal / interés legítimo.</li>
+              <li><strong>Clientes comerciales:</strong> datos fiscales (REEUP, NIT, cuenta bancaria, agencia, registro comercial, dirección, teléfonos), tipo de cliente (natural/jurídica), representante legal. Finalidad: facturación, gestión de contratos, emisión de certificados, servicios contratados. Base legal: ejecución de contrato / obligación legal.</li>
+              <li><strong>Facturación y pagos:</strong> datos de facturas (cliente, servicios, importes, fechas, estado), asignaciones de coste, cobros. Finalidad: cumplimiento de obligaciones tributarias y contables. Base legal: obligación legal.</li>
+              <li><strong>Métricas técnicas de rendimiento (RUM):</strong> identificador de sesión anonimizado, ruta solicitada, métricas de rendimiento, información del dispositivo/navegador y errores de JavaScript. No se almacenan direcciones IP. Finalidad: monitorización de disponibilidad, rendimiento y calidad del servicio. Base legal: consentimiento del titular cuando corresponda y, en lo demás, interés legítimo en la seguridad y calidad del servicio.</li>
+              <li><strong>Consentimiento de cookies:</strong> elección de consentimiento, categorías aceptadas, identificador de sesión anonimizado, hash de IP y agente de usuario. Finalidad: acreditar y gestionar el consentimiento de cookies. Base legal: obligación legal y responsabilidad proactiva en materia de protección de datos personales.</li>
+            </ul>
+          {% endif %}
+          <h3 id="destinatarios" class="subheader text-muted fw-medium mt-4 mb-3">3. Destinatarios</h3>
+          {% if content_blocks.section_destinatarios %}
+            <div class="richtext-content">{{ content_blocks.section_destinatarios|richtext }}</div>
+          {% else %}
+            <p class="mb-2">Los datos no se ceden a terceros salvo obligación legal o cuando sea necesario para la prestación del servicio contratado:</p>
+            <ul class="list-unstyled list-separated gap-2 mb-3">
+              <li>Entidades bancarias para la gestión de cobros y pagos.</li>
+              <li>Administración tributaria (ONAT) en cumplimiento de obligaciones fiscales.</li>
+              <li>Proveedores de infraestructura (alojamiento, correo) bajo cláusulas de encargado de tratamiento.</li>
+            </ul>
+          {% endif %}
+          <h3 id="transferencias"
+              class="subheader text-muted fw-medium mt-4 mb-3">4. Transferencias internacionales</h3>
+          {% if content_blocks.section_transferencias %}
+            <div class="richtext-content">{{ content_blocks.section_transferencias|richtext }}</div>
+          {% else %}
+            <p class="mb-3">No se realizan transferencias internacionales de datos personales. Todo el tratamiento se realiza en infraestructura nacional (Cuba).</p>
+          {% endif %}
+          <h3 id="conservacion" class="subheader text-muted fw-medium mt-4 mb-3">5. Plazos de conservación</h3>
+          {% if content_blocks.section_conservacion %}
+            <div class="richtext-content">{{ content_blocks.section_conservacion|richtext }}</div>
+          {% else %}
+            <ul class="list-unstyled list-separated gap-2 mb-3">
+              <li>Suscriptores: mientras la suscripción esté activa; tras la baja se conserva el correo y la prueba de consentimiento durante 4 años para acreditar el cumplimiento.</li>
+              <li>Usuarios del panel: mientras la cuenta exista; tras la baja se anonimizan los datos de perfil en 30 días.</li>
+              <li>Clientes y facturación: 10 años desde la finalización de la relación contractual, por obligación contable y tributaria.</li>
+              <li>Logs técnicos y métricas: 12 meses en bruto; agregados estadísticos sin datos personales se conservan indefinidamente.</li>
+            </ul>
+          {% endif %}
+          <h3 id="derechos" class="subheader text-muted fw-medium mt-4 mb-3">6. Derechos del titular</h3>
+          {% if content_blocks.section_derechos %}
+            <div class="richtext-content">{{ content_blocks.section_derechos|richtext }}</div>
+          {% else %}
+            <p class="mb-2">Tienes derecho a:</p>
+            <ul class="list-unstyled list-separated gap-2 mb-3">
+              <li>Acceder a tus datos personales.</li>
+              <li>Rectificar datos inexactos o incompletos.</li>
+              <li>Suprimir tus datos cuando ya no sean necesarios.</li>
+              <li>Limitar el tratamiento.</li>
+              <li>Oponerte al tratamiento (incluye marketing directo).</li>
+              <li>Portabilidad de los datos que nos hayas facilitado.</li>
+              <li>Retirar el consentimiento en cualquier momento (para tratamientos basados en consentimiento).</li>
+            </ul>
+            <p class="mb-3">
+              Para ejercer tus derechos, envía una solicitud a
+              <a href="mailto:{{ contact_email }}" class="link-primary">{{ contact_email }}</a>
+              indicando el derecho que ejercitas y adjuntando copia de tu documento de identidad.
+            </p>
+          {% endif %}
+          <h3 id="seguridad" class="subheader text-muted fw-medium mt-4 mb-3">7. Medidas de seguridad</h3>
+          {% if content_blocks.section_seguridad %}
+            <div class="richtext-content">{{ content_blocks.section_seguridad|richtext }}</div>
+          {% else %}
+            <p class="mb-3">Se aplican medidas técnicas y organizativas adecuadas al riesgo: control de accesos por roles, registro de actividad, cifrado en tránsito (TLS) y copias de seguridad periódicas de la base de datos.</p>
+          {% endif %}
+          <h3 id="actualizaciones" class="subheader text-muted fw-medium mt-4 mb-3">8. Actualizaciones</h3>
+          {% if content_blocks.section_actualizaciones %}
+            <div class="richtext-content">{{ content_blocks.section_actualizaciones|richtext }}</div>
+          {% else %}
+            <p class="mb-0">Esta política se revisa periódicamente. La versión vigente siempre está accesible en esta misma URL. Los cambios sustanciales se comunican por el boletín y en el panel de administración.</p>
+          {% endif %}
+          {% for section in extra_sections %}
+            <h3 id="extra-{{ section.index }}"
+                class="subheader text-muted fw-medium mt-4 mb-3">{{ forloop.counter|add:8 }}. {{ section.title|default:"Punto adicional" }}</h3>
+            {% if section.content %}
+              <div class="richtext-content">{{ section.content|richtext }}</div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

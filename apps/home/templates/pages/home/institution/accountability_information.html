@@ -1,0 +1,66 @@
+{% extends 'layouts/institution.html' %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    Informes de rendición de cuenta del Centro Meteorológico Provincial de Camagüey, publicados en cumplimiento de la Ley 168/2024 de Transparencia y Acceso a la Información Pública.
+  </p>
+{% endblock %}
+{% block institution_content %}
+  {% if reports %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h3 class="subheader text-muted fw-medium mb-3">Informes publicados</h3>
+        <div class="table-responsive">
+          <table class="table table-vcenter">
+            <thead>
+              <tr>
+                <th>Año</th>
+                <th>Título</th>
+                <th>Descripción</th>
+                <th class="text-end">Documento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for report in reports %}
+                <tr>
+                  <td>{{ report.year }}</td>
+                  <td>{{ report.title }}</td>
+                  <td>{{ report.description|default:'—' }}</td>
+                  <td class="text-end">
+                    {% if report.file %}
+                      <a href="{{ report.file.url }}"
+                         target="_blank"
+                         class="btn btn-sm bg-blue-lt">
+                        <i class="icon ti ti-file-type-pdf me-1"></i>Ver
+                      </a>
+                    {% else %}
+                      <span class="text-secondary">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h3 class="subheader text-muted fw-medium mb-3">Informes de rendición de cuenta</h3>
+        <p class="mb-0 text-secondary">
+          Los informes de rendición de cuenta se publicarán cuando estén disponibles los documentos aprobados.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+  <div class="card">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">Solicitar información adicional</h3>
+      <p class="mb-0">
+        Si necesita información adicional sobre la rendición de cuenta, puede solicitarla a través del procedimiento de
+        <a href="{% url 'home:institution_public_information' %}"
+           class="link-primary">solicitud de información pública</a>.
+      </p>
+    </div>
+  </div>
+{% endblock %}

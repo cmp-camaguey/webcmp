@@ -1,9 +1,22 @@
 from django.urls import path
 
 from apps.core.views import (
+    AccountabilityReportCreateView,
+    AccountabilityReportDeleteView,
+    AccountabilityReportListView,
+    AccountabilityReportUpdateView,
     ActivityLogListView,
+    BudgetPeriodCreateView,
+    BudgetPeriodDeleteView,
+    BudgetPeriodListView,
+    BudgetPeriodUpdateView,
     CompanySettingsAjaxUpdateView,
     CompanySettingsUpdateView,
+    ComplianceProcedureListView,
+    ComplianceProcedureUpdateView,
+    CookieConsentView,
+    DataSubjectRequestListView,
+    DataSubjectRequestUpdateView,
     EmailRecipientListCreateView,
     EmailRecipientListDeleteView,
     EmailRecipientListListView,
@@ -12,46 +25,166 @@ from apps.core.views import (
     EnvironmentConfigApplyView,
     EnvironmentConfigView,
     EnvironmentMaintenanceDisableView,
+    InstitutionalPageListView,
+    InstitutionalPageUpdateView,
+    PublicInformationRequestListView,
+    PublicInformationRequestUpdateView,
     SiteConfigurationUpdateView,
+    TermsChangeNoticeCreateView,
+    TermsChangeNoticeDeleteView,
+    TermsChangeNoticeListView,
+    TermsChangeNoticeUpdateView,
 )
 
 app_name = 'core'
 
 urlpatterns = [
-    path('empresa/', CompanySettingsUpdateView.as_view(), name='company_settings'),
-    path('empresa/ajax/', CompanySettingsAjaxUpdateView.as_view(), name='company_settings_ajax'),
-    path('configuracion-sitio/', SiteConfigurationUpdateView.as_view(), name='site_configuration'),
-    path('entorno/', EnvironmentConfigView.as_view(), name='environment_config'),
+    # Configuración
+    path('config/empresa/', CompanySettingsUpdateView.as_view(), name='company_settings'),
     path(
-        'entorno/aplicar/',
-        EnvironmentConfigApplyView.as_view(),
-        name='environment_apply',
+        'config/empresa/ajax/',
+        CompanySettingsAjaxUpdateView.as_view(),
+        name='company_settings_ajax',
     ),
     path(
-        'entorno/aplicar/estado/',
-        EnvironmentApplyStatusView.as_view(),
-        name='environment_apply_status',
+        'config/configuracion-sitio/',
+        SiteConfigurationUpdateView.as_view(),
+        name='site_configuration',
     ),
     path(
-        'entorno/mantenimiento/desactivar/',
-        EnvironmentMaintenanceDisableView.as_view(),
-        name='environment_maintenance_disable',
+        'config/listas-correo/',
+        EmailRecipientListListView.as_view(),
+        name='email_recipient_list',
     ),
-    path('listas-correo/', EmailRecipientListListView.as_view(), name='email_recipient_list'),
     path(
-        'listas-correo/crear/',
+        'config/listas-correo/crear/',
         EmailRecipientListCreateView.as_view(),
         name='email_recipient_create',
     ),
     path(
-        'listas-correo/<uuid:pk>/editar/',
+        'config/listas-correo/<uuid:pk>/editar/',
         EmailRecipientListUpdateView.as_view(),
         name='email_recipient_update',
     ),
     path(
-        'listas-correo/<uuid:pk>/eliminar/',
+        'config/listas-correo/<uuid:pk>/eliminar/',
         EmailRecipientListDeleteView.as_view(),
         name='email_recipient_delete',
     ),
-    path('auditoria/', ActivityLogListView.as_view(), name='activity_log'),
+    # Sistema
+    path('sistema/auditoria/', ActivityLogListView.as_view(), name='activity_log'),
+    path('sistema/entorno/', EnvironmentConfigView.as_view(), name='environment_config'),
+    path(
+        'sistema/entorno/aplicar/',
+        EnvironmentConfigApplyView.as_view(),
+        name='environment_apply',
+    ),
+    path(
+        'sistema/entorno/aplicar/estado/',
+        EnvironmentApplyStatusView.as_view(),
+        name='environment_apply_status',
+    ),
+    path(
+        'sistema/entorno/mantenimiento/desactivar/',
+        EnvironmentMaintenanceDisableView.as_view(),
+        name='environment_maintenance_disable',
+    ),
+    # Legal
+    path(
+        'legal/solicitudes-derechos/',
+        DataSubjectRequestListView.as_view(),
+        name='data_subject_request_list',
+    ),
+    path(
+        'legal/solicitudes-derechos/<int:pk>/editar/',
+        DataSubjectRequestUpdateView.as_view(),
+        name='data_subject_request_update',
+    ),
+    path(
+        'legal/solicitudes-informacion-publica/',
+        PublicInformationRequestListView.as_view(),
+        name='public_information_request_list',
+    ),
+    path(
+        'legal/solicitudes-informacion-publica/<int:pk>/editar/',
+        PublicInformationRequestUpdateView.as_view(),
+        name='public_information_request_update',
+    ),
+    path(
+        'legal/avisos-cambios-legales/',
+        TermsChangeNoticeListView.as_view(),
+        name='terms_change_notice_list',
+    ),
+    path(
+        'legal/avisos-cambios-legales/crear/',
+        TermsChangeNoticeCreateView.as_view(),
+        name='terms_change_notice_create',
+    ),
+    path(
+        'legal/avisos-cambios-legales/<uuid:pk>/editar/',
+        TermsChangeNoticeUpdateView.as_view(),
+        name='terms_change_notice_update',
+    ),
+    path(
+        'legal/avisos-cambios-legales/<uuid:pk>/eliminar/',
+        TermsChangeNoticeDeleteView.as_view(),
+        name='terms_change_notice_delete',
+    ),
+    path('legal/presupuestos/', BudgetPeriodListView.as_view(), name='budget_period_list'),
+    path(
+        'legal/presupuestos/crear/',
+        BudgetPeriodCreateView.as_view(),
+        name='budget_period_create',
+    ),
+    path(
+        'legal/presupuestos/<uuid:pk>/editar/',
+        BudgetPeriodUpdateView.as_view(),
+        name='budget_period_update',
+    ),
+    path(
+        'legal/presupuestos/<uuid:pk>/eliminar/',
+        BudgetPeriodDeleteView.as_view(),
+        name='budget_period_delete',
+    ),
+    path(
+        'legal/rendicion-cuentas/',
+        AccountabilityReportListView.as_view(),
+        name='accountability_report_list',
+    ),
+    path(
+        'legal/rendicion-cuentas/crear/',
+        AccountabilityReportCreateView.as_view(),
+        name='accountability_report_create',
+    ),
+    path(
+        'legal/rendicion-cuentas/<uuid:pk>/editar/',
+        AccountabilityReportUpdateView.as_view(),
+        name='accountability_report_update',
+    ),
+    path(
+        'legal/rendicion-cuentas/<uuid:pk>/eliminar/',
+        AccountabilityReportDeleteView.as_view(),
+        name='accountability_report_delete',
+    ),
+    path(
+        'legal/procedimientos-cumplimiento/',
+        ComplianceProcedureListView.as_view(),
+        name='compliance_procedure_list',
+    ),
+    path(
+        'legal/procedimientos-cumplimiento/<uuid:pk>/editar/',
+        ComplianceProcedureUpdateView.as_view(),
+        name='compliance_procedure_update',
+    ),
+    path(
+        'legal/paginas-institucionales/',
+        InstitutionalPageListView.as_view(),
+        name='institutional_page_list',
+    ),
+    path(
+        'legal/paginas-institucionales/<uuid:pk>/editar/',
+        InstitutionalPageUpdateView.as_view(),
+        name='institutional_page_update',
+    ),
+    path('cookies/consentimiento/', CookieConsentView.as_view(), name='cookie_consent'),
 ]

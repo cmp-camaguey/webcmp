@@ -1,0 +1,39 @@
+{% extends 'layouts/landing.html' %}
+{% load static %}
+{% comment %}
+  Esqueleto común de las páginas institucionales y legales del landing:
+  hero con título y descripción, transición de olas animadas de Tabler y
+  sección azul con tarjetas de cristal. Las páginas hijas solo aportan
+  `hero_description` e `institution_content`.
+{% endcomment %}
+{% block extrahead %}
+  <link href="{% static 'dist/css/institution-pages.css' %}?v=3"
+        rel="stylesheet" />
+  {% block institution_extrahead %}{% endblock %}
+{% endblock %}
+{% block hero_content %}
+  <div class="pb-4 pb-lg-6">
+    <h1 class="hero-title">{{ title }}</h1>
+    {% block hero_description %}{% endblock %}
+  </div>
+{% endblock %}
+{% block content %}
+  <section class="section section-institutional">
+    <svg class="section-divider"
+         xmlns="http://www.w3.org/2000/svg"
+         viewBox="0 24 150 28"
+         preserveAspectRatio="none"
+         aria-hidden="true">
+      <path class="wave-1" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+      <path class="wave-2" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+      <path class="wave-3" d="M-110 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+    </svg>
+    <div class="container position-relative">
+      <div class="institution-body
+                  {% block institution_body_class %}{% endblock %}">
+        {% include 'includes/landing/terms_change_notices.html' %}
+        {% block institution_content %}{% endblock %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

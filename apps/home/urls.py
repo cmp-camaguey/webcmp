@@ -6,7 +6,21 @@ from apps.home.views.avisos.alertas_tempranas.views import EarlyWarningListView
 from apps.home.views.avisos.ciclones_tropicales.views import TropicalCycloneListView
 from apps.home.views.avisos.tormentas.views import StormListView
 from apps.home.views.home.views import IndexView
-from apps.home.views.institucion.institucional.views import AboutView, MissionView, VisionView
+from apps.home.views.institucion.institucional.views import (
+    AboutView,
+    AccountabilityInformationView,
+    BudgetInformationView,
+    CookiePolicyView,
+    DataBackupProcedureView,
+    DataSubjectRightsView,
+    InstitutionalInformationView,
+    LegalNoticeView,
+    MissionView,
+    PrivacyPolicyView,
+    PublicInformationRequestView,
+    SecurityIncidentProcedureView,
+    VisionView,
+)
 from apps.home.views.institucion.publicaciones.views import ScientificPublicationListView
 from apps.home.views.landing.views import LandingView
 from apps.home.views.modelos.views import (
@@ -143,6 +157,56 @@ urlpatterns = [
     path('institucion/vision/', VisionView.as_view(), name='institution_vision'),
     path('institucion/mision/', MissionView.as_view(), name='institution_mission'),
     path('institucion/quienes-somos/', AboutView.as_view(), name='institution_about'),
+    path(
+        'institucion/informacion/',
+        InstitutionalInformationView.as_view(),
+        name='institution_information',
+    ),
+    path(
+        'institucion/presupuestos/',
+        BudgetInformationView.as_view(),
+        name='institution_budget',
+    ),
+    path(
+        'institucion/rendicion-cuentas/',
+        AccountabilityInformationView.as_view(),
+        name='institution_accountability',
+    ),
+    path(
+        'institucion/incidentes-ciberseguridad/',
+        SecurityIncidentProcedureView.as_view(),
+        name='institution_incident_response',
+    ),
+    path(
+        'institucion/respaldo-datos/',
+        DataBackupProcedureView.as_view(),
+        name='institution_backup_restore',
+    ),
+    path(
+        'institucion/solicitud-informacion-publica/',
+        PublicInformationRequestView.as_view(),
+        name='institution_public_information',
+    ),
+    path(
+        'institucion/aviso-legal/',
+        LegalNoticeView.as_view(),
+        name='institution_legal_notice',
+    ),
+    path(
+        'institucion/politica-privacidad/',
+        PrivacyPolicyView.as_view(),
+        name='institution_privacy_policy',
+    ),
+    path(
+        'institucion/politica-cookies/',
+        CookiePolicyView.as_view(),
+        name='institution_cookie_policy',
+    ),
+    path(
+        'institucion/derechos-titular/',
+        DataSubjectRightsView.as_view(),
+        name='institution_data_subject_rights',
+    ),
     # Otros
     path('proxy_image_modelo/', ImageProxyModeloView.as_view(), name='proxy_image_modelo'),
     # '/modelo/' desactivado entero (034-sondeo-api-externa).

@@ -23,6 +23,8 @@ def _get_grouped_permissions(group=None, permissions=None):
     excluded = getattr(settings, 'GROUP_PERMISSION_EXCLUDED_APPS', [])
     merge = getattr(settings, 'GROUP_PERMISSION_APP_MERGE', {})
     merge_models = getattr(settings, 'GROUP_PERMISSION_MODEL_MERGE', {})
+    model_app_override = getattr(settings, 'GROUP_PERMISSION_MODEL_APP_OVERRIDE', {})
+    app_verbose_names = getattr(settings, 'GROUP_PERMISSION_APP_VERBOSE_NAMES', {})
 
     qs = (
         Permission.objects.filter(
@@ -50,13 +52,6 @@ def _get_grouped_permissions(group=None, permissions=None):
         raw_app_label = perm.content_type.app_label
         app_label = merge.get(raw_app_label, raw_app_label)
 
-        if app_label not in grouped:
-            try:
-                verbose_name = apps.get_app_config(app_label).verbose_name
-            except LookupError:
-                verbose_name = raw_app_label.title()
-            grouped[app_label] = {'verbose_name': verbose_name, 'models': OrderedDict()}
-
         try:
             model_class = perm.content_type.model_class()
             model_name = (
@@ -68,6 +63,20 @@ def _get_grouped_permissions(group=None, permissions=None):
             model_name = perm.content_type.model.replace('_', ' ').title()
 
         model_name = merge_models.get(model_name, model_name)
+        display_app_label = model_app_override.get(model_name, app_label)
+
+        if display_app_label not in grouped:
+            if display_app_label in app_verbose_names:
+                verbose_name = app_verbose_names[display_app_label]
+            else:
+                try:
+                    verbose_name = apps.get_app_config(display_app_label).verbose_name
+                except LookupError:
+                    verbose_name = display_app_label.title()
+            grouped[display_app_label] = {
+                'verbose_name': verbose_name,
+                'models': OrderedDict(),
+            }
 
         codename = perm.codename.lower()
         if codename.startswith('view_'):
@@ -81,22 +90,31 @@ def _get_grouped_permissions(group=None, permissions=None):
         else:
             continue
 
-        if model_name not in grouped[app_label]['models']:
-            grouped[app_label]['models'][model_name] = {
+        models_group = grouped[display_app_label]['models']
+        if model_name not in models_group:
+            models_group[model_name] = {
                 'view': None,
                 'add': None,
                 'change': None,
                 'delete': None,
             }
 
-        if perm_type in grouped[app_label]['models'][model_name]:
-            grouped[app_label]['models'][model_name][perm_type] = {
+        if perm_type in models_group[model_name]:
+            models_group[model_name][perm_type] = {
                 'perm': perm,
                 'field_name': 'permissions',
                 'field_id': f'perm_{perm.id}',
                 'is_checked': perm in selected,
             }
 
+    app_order = getattr(settings, 'GROUP_PERMISSION_APP_ORDER', [])
+    if app_order:
+        ordered = OrderedDict()
+        for key in app_order:
+            if key in grouped:
+                ordered[key] = grouped.pop(key)
+        ordered.update(grouped)
+        return ordered
     return grouped
 
 

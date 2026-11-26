@@ -1,0 +1,84 @@
+{% extends 'layouts/institution.html' %}
+{% load utils_filters %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    {{ content_blocks.hero_description|default:"Información pública sobre la organización, dirección y estrategia de desarrollo del Centro Meteorológico Provincial de Camagüey." }}
+  </p>
+{% endblock %}
+{% block institution_content %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.org_title|default:"Estructura organizativa" }}</h3>
+      {% if content_blocks.org_description %}
+        <p class="mb-3">{{ content_blocks.org_description }}</p>
+      {% else %}
+        <p class="mb-3">La estructura organizativa del Centro responde a las funciones de dirección, vigilancia meteorológica, pronósticos, servicios, investigación y apoyo técnico-administrativo, en correspondencia con el sistema del INSMET.</p>
+      {% endif %}
+      {% if content_blocks.org_body %}
+        <div class="richtext-content mb-0">{{ content_blocks.org_body|richtext }}</div>
+      {% else %}
+        <ul class="mb-0 ps-3">
+          <li><strong>Dirección:</strong> conducción estratégica, representación institucional y toma de decisiones.</li>
+          <li><strong>Grupo de Pronósticos:</strong> elaboración de pronósticos, avisos y vigilancias meteorológicas.</li>
+          <li><strong>Red de Estaciones:</strong> observación meteorológica y mantenimiento de la red provincial.</li>
+          <li><strong>Servicios Científico-Técnicos:</strong> servicios comerciales, asesoría y productos especializados.</li>
+          <li><strong>Apoyo administrativo y técnico:</strong> gestión administrativa, informática y aseguramiento operativo.</li>
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.directors_title|default:"Directivos" }}</h3>
+      {% if content_blocks.directors_description %}
+        <p class="text-secondary mb-3">{{ content_blocks.directors_description }}</p>
+      {% else %}
+        <p class="text-secondary mb-3">Información de la dirección institucional según lo dispuesto en la Ley 168/2024. Para asuntos oficiales, utilice el correo institucional de contacto.</p>
+      {% endif %}
+      {% if has_directors_rows_data or not content_blocks.directors_body %}
+        <div class="table-responsive">
+          <table class="table table-vcenter">
+            <thead>
+              <tr>
+                <th>Cargo</th>
+                <th>Funciones principales</th>
+                <th>Correo institucional</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in directors_rows %}
+                <tr>
+                  <td>{{ row.cargo }}</td>
+                  <td>{{ row.funciones }}</td>
+                  <td>
+                    {% if row.correo and row.correo != '[correo institucional]' %}
+                      {% if '@' in row.correo %}
+                        <a href="mailto:{{ row.correo }}" class="text-reset">{{ row.correo }}</a>
+                      {% else %}
+                        {{ row.correo }}
+                      {% endif %}
+                    {% elif contact_email %}
+                      <a href="mailto:{{ contact_email }}" class="text-reset">{{ contact_email }}</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="richtext-content mb-0">{{ content_blocks.directors_body|richtext }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-3">{{ content_blocks.strategy_title|default:"Estrategia de desarrollo" }}</h3>
+      {% if content_blocks.strategy_body %}
+        <div class="richtext-content mb-0">{{ content_blocks.strategy_body|richtext }}</div>
+      {% else %}
+        <p class="mb-0">La estrategia de desarrollo del Centro se orienta a fortalecer la vigilancia meteorológica continua, modernizar los servicios de información y avisos a la población, elevar la calidad de los productos científicos y comerciales, y consolidar la transformación digital institucional para contribuir al desarrollo sostenible y la reducción de riesgos ante desastres meteorológicos en la provincia de Camagüey.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

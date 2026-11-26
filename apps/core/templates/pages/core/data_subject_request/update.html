@@ -1,0 +1,71 @@
+{% extends 'layouts/form.html' %}
+{% block form %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Datos de la solicitud</h3>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Tipo de solicitud</dt>
+          <dd class="col-sm-8">
+            {{ object.get_request_type_display }}
+          </dd>
+          <dt class="col-sm-4">Nombre del titular</dt>
+          <dd class="col-sm-8">
+            {{ object.subject_name }}
+          </dd>
+          <dt class="col-sm-4">Correo electrónico</dt>
+          <dd class="col-sm-8">
+            {{ object.subject_email }}
+          </dd>
+          <dt class="col-sm-4">Documento de identidad</dt>
+          <dd class="col-sm-8">
+            {{ object.subject_document|default:'No proporcionado' }}
+          </dd>
+          <dt class="col-sm-4">Fecha de recepción</dt>
+          <dd class="col-sm-8">
+            {{ object.created_at|date:"d/m/Y H:i" }}
+          </dd>
+          <dt class="col-sm-4">Estado actual</dt>
+          <dd class="col-sm-8">
+            {{ object.get_status_display }}
+          </dd>
+          {% if object.completed_at %}
+            <dt class="col-sm-4">Fecha de resolución</dt>
+            <dd class="col-sm-8">
+              {{ object.completed_at|date:"d/m/Y H:i" }}
+            </dd>
+          {% endif %}
+          <dt class="col-sm-4">Descripción</dt>
+          <dd class="col-sm-8">
+            {{ object.description|linebreaksbr }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Gestión</h3>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+          {{ form.status }}
+          {% if form.status.errors %}
+            <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.admin_notes.id_for_label }}">{{ form.admin_notes.label }}</label>
+          {{ form.admin_notes }}
+          {% if form.admin_notes.errors %}
+            <div class="invalid-feedback d-block">{{ form.admin_notes.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

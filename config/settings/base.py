@@ -210,7 +210,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'csp',
-    'drf_redesign',
     'rest_framework',
     'drf_spectacular',
     'drf_spectacular_sidecar',
@@ -393,7 +392,36 @@ GROUP_PERMISSION_MODEL_MERGE = {
     'Factura': 'Facturacion',
     'Item': 'Facturacion',
     'Correo': 'Lista de correo',
+    'Emailrecipient': 'Destinatario de correo',
 }
+GROUP_PERMISSION_MODEL_APP_OVERRIDE = {
+    'Registro de actividad': 'sistema',
+    'Registro de ejecución de tareas': 'sistema',
+    'Notificación': 'sistema',
+    'Preferencia de aviso': 'sistema',
+    'Consentimiento de cookies': 'legal',
+    'Solicitud de derechos ARCO/ARCOP': 'legal',
+    'Solicitud de información pública': 'legal',
+    'Aviso de cambio legal': 'legal',
+    'Período presupuestario': 'legal',
+    'Informe de rendición de cuenta': 'legal',
+    'Procedimiento de cumplimiento': 'legal',
+    'Contenido institucional': 'legal',
+}
+GROUP_PERMISSION_APP_VERBOSE_NAMES = {
+    'sistema': 'Sistema',
+    'legal': 'Legal',
+}
+GROUP_PERMISSION_APP_ORDER = [
+    'dashboard',
+    'meteo',
+    'commercial',
+    'publications',
+    'core',
+    'legal',
+    'sistema',
+    'monitoring',
+]
 
 MESSAGE_TAGS = {
     messages.DEBUG: 'debug',
@@ -410,6 +438,7 @@ USE_I18N = True
 USE_TZ = True
 
 TIME_INPUT_FORMATS = ['%H:%M:%S', '%H:%M:%S.%f', '%H:%M', '%I:%M %p', '%I:%M %P']
+DATE_INPUT_FORMATS = ['%d/%m/%Y', '%d/%m/%y', '%Y-%m-%d']
 DATETIME_INPUT_FORMATS = [
     '%d/%m/%Y %H:%M:%S',
     '%d/%m/%Y %H:%M:%S.%f',

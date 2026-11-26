@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
+from model_utils import FieldTracker
 
 from apps.core.validators import (
     validate_account,
@@ -30,6 +31,24 @@ def image_upload_path(instance, filename):
     uid = str(instance.uuid)
     safe_name = re.sub(r'[^\w\.\-]', '_', filename)
     return f'img/{cls_name}/{uid}_{safe_name}'
+
+
+def public_information_attachment_upload_path(instance, filename):
+    cls_name = instance.__class__.__name__.lower()
+    uid = str(instance.uuid)
+    safe_name = re.sub(r'[^\w\.\-]', '_', filename)
+    return f'attachments/{cls_name}/{uid}_{safe_name}'
+
+
+def add_business_days(start_date, days):
+    """Suma días hábiles saltando sábados y domingos."""
+    current = start_date
+    added = 0
+    while added < days:
+        current += datetime.timedelta(days=1)
+        if current.weekday() < 5:
+            added += 1
+    return current
 
 
 class FileHandlerMixin(models.Model):
@@ -522,6 +541,8 @@ class TaskExecutionLog(models.Model):
     func_args = models.TextField(blank=True)
 
     class Meta:
+        verbose_name = 'Registro de ejecución de tareas'
+        verbose_name_plural = 'Registros de ejecución de tareas'
         ordering = ['-enqueued_at']
         indexes = [models.Index(fields=['status', 'enqueued_at'])]
         default_permissions = ()
@@ -619,7 +640,7 @@ class Notification(models.Model):
         verbose_name='Destinatario',
     )
     severity = models.CharField(max_length=10, choices=Severity.choices, verbose_name='Severidad')
-    source = models.CharField(max_length=20, verbose_name='Origen')
+    source = models.CharField(max_length=40, verbose_name='Origen')
     title = models.CharField(max_length=200, verbose_name='Título')
     body = models.TextField(blank=True, verbose_name='Detalle')
     # Ruta relativa ('/facturas/<uuid>/'), nunca una URL absoluta: el dominio
@@ -710,7 +731,7 @@ class NotificationPreference(models.Model):
         related_name='notification_preferences',
         verbose_name='Usuario',
     )
-    source = models.CharField(max_length=20, verbose_name='Origen')
+    source = models.CharField(max_length=40, verbose_name='Origen')
     in_app = models.BooleanField(default=True, verbose_name='Aviso en la campana')
     email = models.BooleanField(default=True, verbose_name='Aviso por correo')
 
@@ -733,3 +754,592 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f'{self.user} · {self.source}'
+
+
+def hash_ip(ip: str) -> str:
+    """Devuelve un hash SHA-256 truncado a 16 caracteres de la IP.
+    Usado para anonimizar la IP en logs de consentimiento sin guardar el valor crudo.
+    """
+    import hashlib
+
+    return hashlib.sha256(ip.encode()).hexdigest()[:16]
+
+
+def get_client_ip(request):
+    """Obtiene la IP del cliente considerando proxies."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
+
+
+class CookieConsent(models.Model):
+    """Registro de consentimiento de cookies (cambio 040).
+
+    Guarda la decisión del visitante: qué categorías aceptó/rechazó, cuándo,
+    y una huella de sesión/IP anonimizada para auditoría. No vincula a usuario
+    autenticado porque el consentimiento es previo al login y aplica a
+    navegadores/anónimos.
+    """
+
+    class ConsentChoice(models.TextChoices):
+        ACCEPT_ALL = 'accept_all', 'Aceptar todo'
+        REJECT_ANALYTICS = 'reject_analytics', 'Rechazar analítica'
+        CUSTOM = 'custom', 'Configuración personalizada'
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    consent_choice = models.CharField(
+        max_length=20,
+        choices=ConsentChoice.choices,
+        verbose_name='Elección de consentimiento',
+    )
+    analytics = models.BooleanField(default=False, verbose_name='Analítica consentida')
+    functional = models.BooleanField(default=False, verbose_name='Funcionales consentidas')
+    session_hash = models.CharField(max_length=64, verbose_name='Hash de sesión/navegador')
+    ip_hash = models.CharField(max_length=16, verbose_name='Hash de IP anonimizada')
+    user_agent = models.TextField(blank=True, verbose_name='User-Agent')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado en')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado en')
+
+    class Meta:
+        verbose_name = 'Consentimiento de cookies'
+        verbose_name_plural = 'Consentimientos de cookies'
+        default_permissions = ()
+        permissions = [
+            ('view_cookieconsent', 'Ver'),
+            ('add_cookieconsent', 'Añadir'),
+            ('change_cookieconsent', 'Editar'),
+            ('delete_cookieconsent', 'Eliminar'),
+        ]
+        indexes = [
+            models.Index(fields=['session_hash'], name='idx_cookieconsent_session'),
+            models.Index(fields=['created_at'], name='idx_cookieconsent_created'),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        choice = self.consent_choice
+        session_short = self.session_hash[:12]
+        date_str = self.created_at.strftime('%Y-%m-%d %H:%M')
+        return f'{choice} · {session_short} · {date_str}'
+
+    @classmethod
+    def record_consent(cls, request, choice: str, analytics: bool, functional: bool):
+        """Crea o actualiza un registro de consentimiento a partir de la petición."""
+        session_hash = request.session.session_key or ''
+        if not session_hash:
+            request.session.create()
+            session_hash = request.session.session_key or ''
+        # Hash de la sesión para no guardar el valor crudo
+        import hashlib
+
+        session_hash = hashlib.sha256(session_hash.encode()).hexdigest()[:64]
+
+        ip = get_client_ip(request)
+        ip_hash = hash_ip(ip) if ip else ''
+
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+
+        return cls.objects.create(
+            consent_choice=choice,
+            analytics=analytics,
+            functional=functional,
+            session_hash=session_hash,
+            ip_hash=ip_hash,
+            user_agent=user_agent,
+        )
+
+
+class DataSubjectRequest(models.Model):
+    """Solicitud de ejercicio de derechos ARCO/ARCOP.
+
+    Cubre Acceso, Rectificación, Cancelación, Oposición y Portabilidad.
+    Canal público para que los titulares de datos ejerzan sus derechos según
+    Resolución 58/2022 y normativa cubana de protección de datos personales.
+    """
+
+    class RequestType(models.TextChoices):
+        ACCESO = 'acceso', 'Acceso'
+        RECTIFICACION = 'rectificacion', 'Rectificación'
+        CANCELACION = 'cancelacion', 'Cancelación (Supresión)'
+        OPOSICION = 'oposicion', 'Oposición'
+        PORTABILIDAD = 'portabilidad', 'Portabilidad'
+
+    class Status(models.TextChoices):
+        PENDIENTE = 'pendiente', 'Pendiente'
+        EN_PROCESO = 'en_proceso', 'En proceso'
+        COMPLETADA = 'completada', 'Completada'
+        RECHAZADA = 'rechazada', 'Rechazada'
+
+    tracker = FieldTracker()
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    request_type = models.CharField(
+        max_length=20,
+        choices=RequestType.choices,
+        verbose_name='Tipo de solicitud',
+    )
+    subject_email = models.EmailField(verbose_name='Correo del titular')
+    subject_name = models.CharField(max_length=255, verbose_name='Nombre del titular')
+    subject_document = models.CharField(
+        max_length=50, blank=True, verbose_name='Documento de identidad'
+    )
+    description = models.TextField(verbose_name='Descripción de la solicitud')
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDIENTE,
+        verbose_name='Estado',
+        db_index=True,
+    )
+    admin_notes = models.TextField(blank=True, verbose_name='Notas administrativas')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creada', db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizada')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Completada')
+
+    class Meta:
+        verbose_name = 'Solicitud de derechos ARCO/ARCOP'
+        verbose_name_plural = 'Solicitudes de derechos ARCO/ARCOP'
+        ordering = ['-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_datasubjectrequest', 'Ver'),
+            ('add_datasubjectrequest', 'Añadir'),
+            ('change_datasubjectrequest', 'Editar'),
+            ('delete_datasubjectrequest', 'Eliminar'),
+        ]
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['subject_email', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.request_type} - {self.subject_email} ({self.status})'
+
+    def save(self, *args, **kwargs):
+        from django.utils import timezone
+
+        terminal_statuses = {self.Status.COMPLETADA, self.Status.RECHAZADA}
+        update_fields = kwargs.get('update_fields')
+        if self.status in terminal_statuses and not self.completed_at:
+            self.completed_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        elif self.status not in terminal_statuses and self.completed_at:
+            self.completed_at = None
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        super().save(*args, **kwargs)
+
+    def mark_completed(self):
+        """Marca la solicitud como completada con la fecha actual."""
+        from django.utils import timezone
+
+        self.status = self.Status.COMPLETADA
+        self.completed_at = timezone.now()
+        self.save(update_fields=['status', 'completed_at', 'updated_at'])
+
+    def mark_in_progress(self):
+        """Marca la solicitud como en proceso."""
+        self.status = self.Status.EN_PROCESO
+        self.save(update_fields=['status', 'updated_at'])
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:data_subject_request_update', args=[self.pk])
+
+
+class PublicInformationRequest(FileHandlerMixin, models.Model):
+    """Solicitud de acceso a la información pública.
+
+    Canal público para ejercer el derecho de acceso a la información pública
+    conforme a la Ley 168/2024 de Transparencia y Acceso a la Información Pública.
+    """
+
+    class Status(models.TextChoices):
+        PENDIENTE = 'pendiente', 'Pendiente'
+        EN_PROCESO = 'en_proceso', 'En proceso'
+        COMPLETADA = 'completada', 'Completada'
+        RECHAZADA = 'rechazada', 'Rechazada'
+
+    class ResponseFormat(models.TextChoices):
+        EMAIL = 'email', 'Correo electrónico'
+        SEDE = 'sede', 'Consulta en sede'
+        COPIA = 'copia', 'Entrega de copia'
+
+    file_fields = ['response_attachment']
+
+    tracker = FieldTracker()
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    subject_name = models.CharField(max_length=255, verbose_name='Nombre del solicitante')
+    subject_email = models.EmailField(verbose_name='Correo electrónico')
+    subject_document = models.CharField(
+        max_length=50, blank=True, verbose_name='Documento de identidad'
+    )
+    description = models.TextField(verbose_name='Descripción de la información solicitada')
+    response_format = models.CharField(
+        max_length=10,
+        choices=ResponseFormat.choices,
+        default=ResponseFormat.EMAIL,
+        verbose_name='Forma de respuesta solicitada',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDIENTE,
+        verbose_name='Estado',
+        db_index=True,
+    )
+    responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='public_information_requests',
+        verbose_name='Responsable',
+    )
+    due_date = models.DateField(null=True, blank=True, verbose_name='Fecha límite')
+    delivery_date = models.DateField(null=True, blank=True, verbose_name='Fecha de entrega')
+    delivery_format = models.CharField(
+        max_length=10,
+        choices=ResponseFormat.choices,
+        blank=True,
+        verbose_name='Canal real de entrega',
+    )
+    response_attachment = models.FileField(
+        upload_to=public_information_attachment_upload_path,
+        blank=True,
+        null=True,
+        verbose_name='Adjunto de respuesta',
+    )
+    rejection_reason = models.TextField(blank=True, verbose_name='Causa de rechazo')
+    admin_notes = models.TextField(blank=True, verbose_name='Notas de gestión')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creada', db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizada')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Completada')
+
+    class Meta:
+        verbose_name = 'Solicitud de información pública'
+        verbose_name_plural = 'Solicitudes de información pública'
+        ordering = ['-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_publicinformationrequest', 'Ver'),
+            ('add_publicinformationrequest', 'Añadir'),
+            ('change_publicinformationrequest', 'Editar'),
+            ('delete_publicinformationrequest', 'Eliminar'),
+        ]
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['subject_email', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.subject_name} - {self.subject_email} ({self.get_status_display()})'
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.due_date:
+            self.due_date = add_business_days(timezone.localdate(), 15)
+
+        terminal_statuses = {self.Status.COMPLETADA, self.Status.RECHAZADA}
+        update_fields = kwargs.get('update_fields')
+        if self.status in terminal_statuses and not self.completed_at:
+            self.completed_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        elif self.status not in terminal_statuses and self.completed_at:
+            self.completed_at = None
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'completed_at'}
+        super().save(*args, **kwargs)
+
+    def mark_completed(self):
+        """Marca la solicitud como completada con la fecha actual."""
+        self.status = self.Status.COMPLETADA
+        self.completed_at = timezone.now()
+        self.save(update_fields=['status', 'completed_at', 'updated_at'])
+
+    def mark_in_progress(self):
+        """Marca la solicitud como en proceso."""
+        self.status = self.Status.EN_PROCESO
+        self.save(update_fields=['status', 'updated_at'])
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:public_information_request_update', args=[self.pk])
+
+
+class TermsChangeNotice(models.Model):
+    """Aviso previo de cambios en términos/condiciones o políticas legales.
+
+    Cumple Res. 58/2022 art. 8.d: comunicar cambios con al menos 3 meses de
+    antelación. Solo se muestra en sitio cuando está publicado.
+    """
+
+    class AffectedDocument(models.TextChoices):
+        LEGAL_NOTICE = 'legal_notice', 'Aviso legal'
+        PRIVACY_POLICY = 'privacy_policy', 'Política de privacidad'
+        COOKIE_POLICY = 'cookie_policy', 'Política de cookies'
+        DATA_SUBJECT_RIGHTS = 'data_subject_rights', 'Derechos del titular'
+        TERMS = 'terms', 'Términos y condiciones'
+        ALL = 'all', 'Todos los documentos legales'
+
+    tracker = FieldTracker()
+
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200, verbose_name='Título')
+    description = models.TextField(verbose_name='Descripción del cambio')
+    affected_document = models.CharField(
+        max_length=30,
+        choices=AffectedDocument.choices,
+        default=AffectedDocument.ALL,
+        verbose_name='Documento afectado',
+    )
+    effective_date = models.DateField(verbose_name='Fecha efectiva')
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Aviso de cambio legal'
+        verbose_name_plural = 'Avisos de cambios legales'
+        ordering = ['-effective_date', '-created_at']
+        default_permissions = ()
+        permissions = (
+            ('view_termschangenotice', 'Ver aviso de cambio legal'),
+            ('add_termschangenotice', 'Agregar aviso de cambio legal'),
+            ('change_termschangenotice', 'Editar aviso de cambio legal'),
+            ('delete_termschangenotice', 'Eliminar aviso de cambio legal'),
+        )
+
+    def __str__(self):
+        return f'{self.title} ({self.effective_date})'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if not self.is_published or not self.effective_date:
+            return
+
+        requires_notice = self._state.adding
+        if not self._state.adding:
+            became_published = self.tracker.has_changed('is_published') and self.is_published
+            effective_date_changed = self.tracker.has_changed('effective_date')
+            requires_notice = became_published or effective_date_changed
+
+        if requires_notice:
+            min_date = timezone.localdate() + datetime.timedelta(days=90)
+            if self.effective_date < min_date:
+                raise ValidationError(
+                    {
+                        'effective_date': (
+                            'La fecha efectiva debe ser al menos 90 días posterior '
+                            'a la fecha actual para cumplir el aviso con 3 meses de antelación.'
+                        )
+                    }
+                )
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:terms_change_notice_update', args=[self.pk])
+
+
+class BudgetPeriod(models.Model):
+    """Período presupuestario publicado en transparencia activa."""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    year = models.PositiveIntegerField(verbose_name='Año')
+    title = models.CharField(max_length=200, verbose_name='Título')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Período presupuestario'
+        verbose_name_plural = 'Períodos presupuestarios'
+        ordering = ['-year', '-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_budgetperiod', 'Ver'),
+            ('add_budgetperiod', 'Añadir'),
+            ('change_budgetperiod', 'Editar'),
+            ('delete_budgetperiod', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return f'{self.year} - {self.title}'
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:budget_period_update', args=[self.pk])
+
+
+class BudgetLine(models.Model):
+    """Partida presupuestaria dentro de un período."""
+
+    period = models.ForeignKey(
+        BudgetPeriod,
+        on_delete=models.CASCADE,
+        related_name='lines',
+        verbose_name='Período',
+    )
+    category = models.CharField(max_length=200, verbose_name='Partida')
+    planned_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0, verbose_name='Planificado'
+    )
+    executed_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0, verbose_name='Ejecutado'
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+
+    class Meta:
+        verbose_name = 'Partida presupuestaria'
+        verbose_name_plural = 'Partidas presupuestarias'
+        ordering = ['order', 'id']
+        default_permissions = ()
+
+    def __str__(self):
+        return self.category
+
+    @property
+    def execution_percent(self):
+        if self.planned_amount:
+            return (self.executed_amount / self.planned_amount) * 100
+        return 0
+
+
+class AccountabilityReport(FileHandlerMixin, models.Model):
+    """Informe de rendición de cuenta publicado en transparencia activa."""
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    year = models.PositiveIntegerField(verbose_name='Año')
+    title = models.CharField(max_length=255, verbose_name='Título')
+    description = models.TextField(blank=True, verbose_name='Descripción')
+    file = models.FileField(
+        upload_to=pdf_upload_path,
+        blank=True,
+        null=True,
+        verbose_name='Archivo',
+    )
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    file_fields = ['file']
+
+    class Meta:
+        verbose_name = 'Informe de rendición de cuenta'
+        verbose_name_plural = 'Informes de rendición de cuenta'
+        ordering = ['-year', '-created_at']
+        default_permissions = ()
+        permissions = [
+            ('view_accountabilityreport', 'Ver'),
+            ('add_accountabilityreport', 'Añadir'),
+            ('change_accountabilityreport', 'Editar'),
+            ('delete_accountabilityreport', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return f'{self.year} - {self.title}'
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:accountability_report_update', args=[self.pk])
+
+
+class ComplianceProcedure(models.Model):
+    """Procedimiento de cumplimiento editable desde dashboard y publicable en el portal."""
+
+    class ProcedureType(models.TextChoices):
+        INCIDENT_RESPONSE = (
+            'incident_response',
+            'Notificación de incidentes de ciberseguridad',
+        )
+        BACKUP_RESTORE = (
+            'backup_restore',
+            'Respaldo y restauración de bases de datos',
+        )
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    procedure_type = models.CharField(
+        max_length=30,
+        choices=ProcedureType.choices,
+        unique=True,
+        verbose_name='Tipo de procedimiento',
+    )
+    title = models.CharField(max_length=255, verbose_name='Título')
+    body = models.TextField(blank=True, verbose_name='Contenido')
+    is_published = models.BooleanField(default=False, verbose_name='Publicado')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Procedimiento de cumplimiento'
+        verbose_name_plural = 'Procedimientos de cumplimiento'
+        ordering = ['procedure_type']
+        default_permissions = ()
+        permissions = [
+            ('view_complianceprocedure', 'Ver'),
+            ('add_complianceprocedure', 'Añadir'),
+            ('change_complianceprocedure', 'Editar'),
+            ('delete_complianceprocedure', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return self.get_procedure_type_display()
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:compliance_procedure_update', args=[self.pk])
+
+
+class InstitutionalPage(models.Model):
+    """Editable content blocks for institutional/legal pages with fixed templates."""
+
+    class PageKey(models.TextChoices):
+        VISION = 'vision', 'Visión'
+        MISSION = 'mission', 'Misión'
+        ABOUT = 'about', 'Quiénes somos'
+        INSTITUTIONAL_INFORMATION = 'institutional_information', 'Información institucional'
+        LEGAL_NOTICE = 'legal_notice', 'Aviso legal'
+        DATA_SUBJECT_RIGHTS = 'data_subject_rights', 'Derechos del titular'
+        COOKIE_POLICY = 'cookie_policy', 'Política de cookies'
+        PRIVACY_POLICY = 'privacy_policy', 'Política de privacidad'
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    page_key = models.CharField(
+        max_length=50,
+        choices=PageKey.choices,
+        unique=True,
+        verbose_name='Página',
+    )
+    blocks = models.JSONField(default=dict, blank=True, verbose_name='Bloques')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        verbose_name = 'Contenido institucional'
+        verbose_name_plural = 'Contenidos institucionales'
+        ordering = ['page_key']
+        default_permissions = ()
+        permissions = [
+            ('view_institutionalpage', 'Ver'),
+            ('add_institutionalpage', 'Añadir'),
+            ('change_institutionalpage', 'Editar'),
+            ('delete_institutionalpage', 'Eliminar'),
+        ]
+
+    def __str__(self):
+        return self.get_page_key_display()
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse('core:institutional_page_update', args=[self.pk])

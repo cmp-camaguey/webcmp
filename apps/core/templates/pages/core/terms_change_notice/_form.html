@@ -1,0 +1,43 @@
+{% include 'includes/dashboard/form_card.html' with card_title='Información del aviso' %}
+<div class="row">
+  <div class="col-md-8 mb-3">
+    <label class="form-label required" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+    {{ form.title }}
+    {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>{% endif %}
+  </div>
+  <div class="col-md-4 mb-3">
+    <label class="form-label required"
+           for="{{ form.effective_date.id_for_label }}">{{ form.effective_date.label }}</label>
+    {{ form.effective_date }}
+    {% if form.effective_date.errors %}<div class="invalid-feedback d-block">{{ form.effective_date.errors.0 }}</div>{% endif %}
+    <small class="form-text text-muted">Debe ser al menos 90 días posterior a hoy si el aviso está publicado.</small>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <label class="form-label required"
+           for="{{ form.affected_document.id_for_label }}">{{ form.affected_document.label }}</label>
+    {{ form.affected_document }}
+    {% if form.affected_document.errors %}<div class="invalid-feedback d-block">{{ form.affected_document.errors.0 }}</div>{% endif %}
+  </div>
+  <div class="col-md-6 mb-3 d-flex align-items-end">
+    <label class="form-check form-switch mb-2">
+      {{ form.is_published }}
+      <span class="form-check-label">{{ form.is_published.label }}</span>
+    </label>
+    {% if form.is_published.errors %}<div class="invalid-feedback d-block">{{ form.is_published.errors.0 }}</div>{% endif %}
+  </div>
+</div>
+<div class="mb-3">
+  <label class="form-label required" for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+  {{ form.description }}
+  {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>{% endif %}
+</div>
+{% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+{% endif %}
+</div>
+</div>
+</div>

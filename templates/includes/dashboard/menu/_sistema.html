@@ -1,0 +1,38 @@
+{% load my_filters %}
+{% if request.user.is_superuser or request.user|has_permission:'core.view_activitylog' %}
+  <li class="nav-item dropdown
+             {% if segment == 'task_monitoring' or segment == 'site_monitoring' or 'core:activity_log' in segment or 'core:environment_config' in segment %}active{% endif %}">
+    <a class="nav-link dropdown-toggle"
+       href="#navbar-sistema"
+       data-bs-toggle="dropdown"
+       data-bs-auto-close="false"
+       role="button"
+       aria-expanded="false">
+      <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="icon ti ti-server-cog"></i></span>
+      <span class="nav-link-title">Sistema</span>
+    </a>
+    <div class="dropdown-menu
+                {% if segment == 'task_monitoring' or segment == 'site_monitoring' or 'core:activity_log' in segment or 'core:environment_config' in segment %}show{% endif %}">
+      <div class="dropdown-menu-columns">
+        <div class="dropdown-menu-column">
+          {% if request.user|has_permission:'core.view_activitylog' %}
+            <a class="dropdown-item
+                      {% if 'core:activity_log' in segment %}active{% endif %}"
+               href="{% url 'core:activity_log' %}">Auditoría</a>
+          {% endif %}
+          {% if request.user.is_superuser %}
+            <a class="dropdown-item
+                      {% if segment == 'task_monitoring' %}active{% endif %}"
+               href="{% url 'dashboard:tasks' %}">Monitoreo de tareas</a>
+            <a class="dropdown-item
+                      {% if segment == 'site_monitoring' %}active{% endif %}"
+               href="{% url 'dashboard:monitoring' %}">Monitoreo del sitio</a>
+            <a class="dropdown-item
+                      {% if 'core:environment_config' in segment %}active{% endif %}"
+               href="{% url 'core:environment_config' %}">Entorno del servidor</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </li>
+{% endif %}

@@ -48,18 +48,17 @@ class WarningListViewQueryCountTests(TestCase):
         # If select_related('user') is dropped, each of the 25 rendered rows
         # would add a user query -> count would scale with row count.
         self.client.force_login(self.admin)
-        # 11 (was 13): the context processor used to run three COUNT(*) over
-        # Warning (early / tropical / storm) to feed the navbar badges. It now
-        # reads the active warnings once and derives the three counts AND the
-        # emergency banner from that same SELECT: two constant queries fewer on
-        # every page.
+        # 12 (was 11): the site branding context processor now also reads the
+        # singleton CompanySettings row to expose global company/contact data to
+        # landing templates (+1 constant query on every page render).
         # History: 13 -> 11 (subscription badges became one conditional
         # aggregate) -> 13 (notification bell: unread COUNT + top-10 dropdown,
-        # change 026) -> 11 (single active-warning SELECT).
+        # change 026) -> 11 (single active-warning SELECT) -> 12 (CompanySettings
+        # in site_branding context processor).
         # Constant and indexed: neither the notification queries nor the warning
         # one scale with the number of rows on this page, which is what this
         # guard exists to catch.
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(12):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
 

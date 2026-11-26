@@ -1,0 +1,36 @@
+{% extends 'layouts/form.html' %}
+{% block form %}
+  {% include 'pages/core/budget/_form.html' %}
+{% endblock %}
+{% block extrajs %}
+  <script>
+document.addEventListener('DOMContentLoaded', function () {
+  const tbody = document.getElementById('line-tbody');
+  const totalForms = document.getElementById('id_lines-TOTAL_FORMS');
+  const addBtn = document.getElementById('add-line');
+  if (!tbody || !totalForms || !addBtn) return;
+  function buildRow(index) {
+    return `<tr>
+      <td><input type="text" class="form-control" name="lines-${index}-category" placeholder="Partida"></td>
+      <td><input type="number" class="form-control" name="lines-${index}-planned_amount" step="0.01" min="0" value="0"></td>
+      <td><input type="number" class="form-control" name="lines-${index}-executed_amount" step="0.01" min="0" value="0"></td>
+      <td><input type="number" class="form-control" name="lines-${index}-order" min="0" value="${index}"></td>
+      <td class="align-middle text-center"><button type="button" class="btn btn-icon bg-red-lt btn-sm delete-line" title="Eliminar partida"><i class="icon ti ti-trash"></i></button></td>
+    </tr>`;
+  }
+  addBtn.addEventListener('click', function () {
+    const index = parseInt(totalForms.value, 10);
+    tbody.insertAdjacentHTML('beforeend', buildRow(index));
+    totalForms.value = index + 1;
+  });
+  tbody.addEventListener('click', function (e) {
+    const btn = e.target.closest('.delete-line');
+    if (!btn) return;
+    const row = btn.closest('tr');
+    const del = row.querySelector('.line-delete');
+    if (del) { del.checked = true; row.style.display = 'none'; }
+    else { row.remove(); }
+  });
+});
+  </script>
+{% endblock %}

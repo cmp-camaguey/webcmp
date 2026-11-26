@@ -16,16 +16,16 @@
        aria-label="Ir al inicio">{% include 'includes/logo.html' with class='navbar-brand-image' %}</a>
     <div class="navbar-nav flex-row order-md-last gap-2">
       <!-- Tema Claro|Oscuro -->
-      <div class="nav-item d-none d-md-flex">
+      <div class="nav-item d-flex">
         <a href="?theme=dark"
-           class="nav-link px-0 hide-theme-dark"
+           class="nav-link px-2 hide-theme-dark"
            title="Habilitar el modo oscuro"
            data-bs-toggle="tooltip"
            data-bs-placement="bottom">
           <i class="icon ti ti-moon"></i>
         </a>
         <a href="?theme=light"
-           class="nav-link px-0 hide-theme-light"
+           class="nav-link px-2 hide-theme-light"
            title="Habilitar el modo claro"
            data-bs-toggle="tooltip"
            data-bs-placement="bottom">
@@ -33,8 +33,8 @@
         </a>
       </div>
       <!-- Menú Usuario -->
-      <div class="nav-item dropdown">
-        {% if request.user.is_authenticated %}
+      {% if request.user.is_authenticated %}
+        <div class="nav-item dropdown">
           <a href="#"
              class="nav-link d-flex lh-1 text-reset p-0"
              data-bs-toggle="dropdown"
@@ -62,23 +62,34 @@
               <button type="submit" class="dropdown-item">Cerrar Sesión</button>
             </form>
           </div>
-        {% else %}
-          <a href="{% url 'user_auth:login' %}"
-             class="nav-link d-flex lh-1 text-reset p-0"
-             data-bs-toggle="tooltip"
-             data-bs-placement="bottom"
-             title="Iniciar sesión">
-            <i class="icon ti ti-login-2"></i>
-          </a>
-        {% endif %}
-      </div>
+        </div>
+      {% else %}
+        <div class="nav-item d-none d-md-flex">
+          <div class="btn-list">
+            <a class="btn btn-outline-secondary"
+               href="{% url 'user_auth:customer_register' %}">Registrarse</a>
+            <a class="btn btn-primary" href="{% url 'user_auth:login' %}">Iniciar sesión</a>
+          </div>
+        </div>
+      {% endif %}
     </div>
   </div>
 </header>
 <header class="navbar-expand-md">
   <div class="collapse navbar-collapse" id="navbar-menu">
     <div class="navbar">
-      <div class="container-xl">{% include 'includes/home/menu-list.html' %}</div>
+      <div class="container-xl">
+        {% include 'includes/home/menu-list.html' %}
+        {% if not request.user.is_authenticated %}
+          <div class="d-md-none border-top mt-2 pt-3 pb-2">
+            <div class="btn-list justify-content-center">
+              <a class="btn btn-outline-secondary"
+                 href="{% url 'user_auth:customer_register' %}">Registrarse</a>
+              <a class="btn btn-primary" href="{% url 'user_auth:login' %}">Iniciar sesión</a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 </header>

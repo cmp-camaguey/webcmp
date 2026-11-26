@@ -1,0 +1,151 @@
+{% extends 'layouts/institution.html' %}
+{% block institution_body_class %}institution-body--wide{% endblock %}
+{% block hero_description %}
+  <p class="hero-description mt-4">
+    Procedimiento para ejercer el derecho de acceso a la información pública del Centro Meteorológico
+    Provincial de Camagüey, conforme a la Ley 168/2024 de Transparencia y Acceso a la Información Pública.
+  </p>
+{% endblock %}
+{% block institution_content %}
+  <div class="card mb-4">
+    <div class="card-body d-flex flex-column">
+      <h3 class="subheader text-muted fw-medium mb-3">Formulario de solicitud</h3>
+      <p class="text-secondary mb-4">
+        Complete el formulario para solicitar información pública producida o en poder del Centro.
+        También puede enviar su solicitud por escrito a
+        <a href="mailto:{{ contact_email }}?subject=Solicitud%20de%20informaci%C3%B3n%20p%C3%BAblica"
+           class="link-primary">{{ contact_email }}</a>
+        o entregarla en la sede institucional.
+      </p>
+      <form method="post" novalidate class="d-flex flex-column flex-fill">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="{{ form.subject_name.id_for_label }}"
+                     class="form-label fw-semibold">
+                {{ form.subject_name.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.subject_name }}
+              {% if form.subject_name.errors %}
+                <div class="text-danger small mt-1">{{ form.subject_name.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="{{ form.subject_email.id_for_label }}"
+                     class="form-label fw-semibold">
+                {{ form.subject_email.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.subject_email }}
+              {% if form.subject_email.help_text %}
+                <div class="form-text">{{ form.subject_email.help_text }}</div>
+              {% endif %}
+              {% if form.subject_email.errors %}
+                <div class="text-danger small mt-1">{{ form.subject_email.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="{{ form.subject_document.id_for_label }}"
+                     class="form-label fw-semibold">{{ form.subject_document.label }}</label>
+              {{ form.subject_document }}
+              {% if form.subject_document.help_text %}
+                <div class="form-text">{{ form.subject_document.help_text }}</div>
+              {% endif %}
+              {% if form.subject_document.errors %}
+                <div class="text-danger small mt-1">{{ form.subject_document.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="{{ form.response_format.id_for_label }}"
+                     class="form-label fw-semibold">
+                {{ form.response_format.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.response_format }}
+              {% if form.response_format.errors %}
+                <div class="text-danger small mt-1">{{ form.response_format.errors }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="{{ form.description.id_for_label }}"
+                 class="form-label fw-semibold">
+            {{ form.description.label }} <span class="text-danger">*</span>
+          </label>
+          {{ form.description }}
+          {% if form.description.help_text %}
+            <div class="form-text">{{ form.description.help_text }}</div>
+          {% endif %}
+          {% if form.description.errors %}
+            <div class="text-danger small mt-1">{{ form.description.errors }}</div>
+          {% endif %}
+        </div>
+        <div class="d-grid d-sm-flex gap-2 justify-content-sm-end mt-auto pt-3">
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-send me-2"></i> Enviar solicitud
+          </button>
+        </div>
+      </form>
+      <div class="institution-facts-block mt-4 pt-4">
+        <h3 class="subheader text-muted fw-medium mb-2">Qué pasa después de enviar</h3>
+        <dl class="institution-facts mb-0">
+          <div>
+            <dt>Plazo de respuesta</dt>
+            <dd>
+              Quince días hábiles desde la recepción de la solicitud.
+            </dd>
+          </div>
+          <div>
+            <dt>Prórroga</dt>
+            <dd>
+              Por igual período, cuando concurran circunstancias que hagan razonablemente difícil
+              reunir la información solicitada. Se le notificará.
+            </dd>
+          </div>
+          <div>
+            <dt>Gratuidad</dt>
+            <dd>
+              El acceso es gratuito, salvo el costo de reproducción cuando se soliciten copias.
+            </dd>
+          </div>
+          <div>
+            <dt>Resultado</dt>
+            <dd>
+              Se entrega la información solicitada o, si no puede brindarse, se indica la causa y,
+              cuando corresponda, el organismo competente.
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h3 class="subheader text-muted fw-medium mb-2">Información que puede solicitarse</h3>
+      <p class="mb-2">
+        Puede solicitarse información pública sobre la organización, funciones, servicios, presupuestos,
+        informes y demás contenido generado o conservado por el Centro en el ejercicio de sus competencias.
+      </p>
+      <p class="mb-2">
+        El acceso puede restringirse en los casos previstos por la ley, con la debida justificación y,
+        cuando corresponda, previa prueba de daño. En particular:
+      </p>
+      <ul class="mb-0 ps-3">
+        <li>Información cuya restricción se encuentre legalmente justificada.</li>
+        <li>Datos personales de terceros, salvo autorización o base legal para su entrega.</li>
+        <li>Información protegida por derechos de propiedad intelectual o industrial.</li>
+      </ul>
+      <p class="small text-secondary mt-3 mb-0">
+        Base legal: Ley 168/2024, artículos 11, 12 y 18; artículo 15 sobre gratuidad.
+      </p>
+    </div>
+  </div>
+{% endblock %}

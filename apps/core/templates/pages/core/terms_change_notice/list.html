@@ -1,0 +1,52 @@
+{% extends 'layouts/list.html' %}
+{% load my_filters %}
+{% block columns %}
+  <th>Título</th>
+  <th>Documento afectado</th>
+  <th>Fecha efectiva</th>
+  <th>Publicado</th>
+  <th class="text-end">Acciones</th>
+{% endblock %}
+{% block row %}
+  <td>{{ object.title }}</td>
+  <td>{{ object.get_affected_document_display }}</td>
+  <td>{{ object.effective_date|date:"d/m/Y" }}</td>
+  <td>
+    {% if object.is_published %}
+      <span class="badge bg-green-lt">Publicado</span>
+    {% else %}
+      <span class="badge bg-yellow-lt">Borrador</span>
+    {% endif %}
+  </td>
+  <td class="text-end">
+    {% if request.user|has_permission:'core.change_termschangenotice' %}
+      <a href="{% url 'core:terms_change_notice_update' object.uuid %}"
+         type="button"
+         class="btn btn-icon bg-orange-lt btn-sm"
+         data-bs-toggle="tooltip"
+         data-bs-placement="bottom"
+         aria-label="Editar"
+         data-bs-original-title="Editar">
+        <i class="icon ti ti-edit"></i>
+      </a>
+    {% endif %}
+    {% if request.user|has_permission:'core.delete_termschangenotice' %}
+      <button type="button"
+              class="btn btn-icon bg-red-lt btn-sm action-btn"
+              data-uuid="{{ object.uuid }}"
+              data-bs-toggle="tooltip"
+              data-bs-placement="bottom"
+              aria-label="Eliminar"
+              data-bs-original-title="Eliminar">
+        <i class="icon ti ti-trash"></i>
+      </button>
+    {% endif %}
+  </td>
+{% endblock %}
+{% block modal %}
+  {% include 'includes/dashboard/modal_delete.html' %}
+{% endblock %}
+{% block extrajs %}
+  {{ block.super }}
+  {% include 'includes/dashboard/modal_delete_js.html' with delete_url_name='core:terms_change_notice_delete' %}
+{% endblock %}

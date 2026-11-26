@@ -102,19 +102,15 @@ class ForecastSerializer(serializers.ModelSerializer):
 
 
 class WarningSerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source='user.username', read_only=True)
-
     class Meta:
         model = MeteoWarning
-        fields = ['uuid', 'warning_type', 'date', 'valid_until', 'summary', 'user']
+        fields = ['uuid', 'warning_type', 'date', 'valid_until', 'summary']
 
 
 class WeatherReportSerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source='user.username', read_only=True)
-
     class Meta:
         model = WeatherReport
-        fields = ['uuid', 'report_type', 'date', 'summary', 'content', 'user']
+        fields = ['uuid', 'report_type', 'date', 'summary', 'content']
 
 
 class ScientificPublicationSerializer(serializers.ModelSerializer):
@@ -129,4 +125,14 @@ class ScientificPublicationSerializer(serializers.ModelSerializer):
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
-        fields = ['uuid', 'title', 'summary', 'service_type', 'price', 'code']
+        fields = [
+            'uuid',
+            'title',
+            'summary',
+            'service_type',
+            'price',
+            'code',
+            'requirements',
+            'procedure',
+            'delivery_time',
+        ]
