@@ -41,9 +41,9 @@ def social_anchor_classes(html):
 class LandingFooterSocialTests(TestCase):
     """Socials plugin activation contract.
 
-    Both /home/ (which reuses the dashboard footer) and the
-    dashboard expose the four `social-gray` anchors and render them at the
-    smaller `social-sm` size.
+    The home page reuses the landing footer and the dashboard keeps its own
+    footer. Both expose the four `social-gray` anchors; the dashboard renders
+    them at `social-sm`, while the home landing footer keeps the default size.
     """
 
     def setUp(self):
@@ -75,11 +75,12 @@ class LandingFooterSocialTests(TestCase):
             self.assertIn(f'aria-label="{label}"', self.public, msg=label)
             self.assertIn(f'aria-label="{label}"', self.dashboard, msg=label)
 
-    def test_dashboard_and_public_socials_rendered_smaller(self):
-        for page in (self.public, self.dashboard):
-            anchors = social_anchor_classes(page)
-            for brand in BRANDS:
-                self.assertIn('social-sm', anchors[brand], msg=brand)
+    def test_dashboard_socials_rendered_smaller_and_home_default_size(self):
+        dashboard_anchors = social_anchor_classes(self.dashboard)
+        public_anchors = social_anchor_classes(self.public)
+        for brand in BRANDS:
+            self.assertIn('social-sm', dashboard_anchors[brand], msg=f'{brand} dashboard')
+            self.assertNotIn('social-sm', public_anchors[brand], msg=f'{brand} home')
 
     def test_socials_stylesheet_linked_site_wide(self):
         for page in (self.public, self.dashboard):
@@ -626,9 +627,8 @@ class InstitutionPagesTests(TestCase):
 class LandingFooterLayoutTests(TestCase):
     """Footer layout contract.
 
-    The home (and dashboard) reuse the small transparent footer with `<li>`
-    socials rendered at social-sm; the big institutional footer (with the
-    'Síguenos' column) stays ONLY on the landing, socials at default size.
+    The landing and home pages use the big institutional footer. The dashboard
+    keeps its own transparent footer with smaller socials.
     """
 
     FOOTER_OPEN_RE = re.compile(r'<footer class="([^"]*)"')
@@ -638,19 +638,19 @@ class LandingFooterLayoutTests(TestCase):
         match = LandingFooterLayoutTests.FOOTER_OPEN_RE.search(html)
         return match.group(1) if match else ''
 
-    def test_home_uses_transparent_dashboard_footer(self):
+    def test_home_uses_landing_footer(self):
         html = self.client.get('/home/').content.decode()
-        self.assertIn('footer-transparent', self._footer_class(html))
+        self.assertNotIn('footer-transparent', self._footer_class(html))
         anchors = social_anchor_classes(html)
         self.assertEqual(set(BRANDS), set(anchors))
-        self.assertNotIn('Síguenos', html, msg='footer grande no debe estar en /home/')
+        self.assertIn('Síguenos', html, msg='home debe usar el footer grande del landing')
 
     def test_landing_keeps_big_footer(self):
         html = self.client.get('/').content.decode()
         self.assertNotIn('footer-transparent', self._footer_class(html))
         self.assertIn('Síguenos', html, msg='columna de redes del footer grande')
 
-    def test_dashboard_and_home_socials_rendered_smaller(self):
+    def test_dashboard_socials_smaller_and_home_default_size(self):
         home = self.client.get('/home/').content.decode()
         staff = User.objects.create_user(
             username='staff-footer-v3',
@@ -661,15 +661,13 @@ class LandingFooterLayoutTests(TestCase):
         )
         self.client.force_login(staff)
         dashboard = self.client.get(reverse('dashboard:index')).content.decode()
-        for page in (home, dashboard):
-            anchors = social_anchor_classes(page)
-            self.assertEqual(set(BRANDS), set(anchors))
-            for brand, classes in anchors.items():
-                self.assertIn(
-                    'social-sm',
-                    classes,
-                    msg=f'{brand} en {"home" if page is home else "dashboard"}',
-                )
+        dashboard_anchors = social_anchor_classes(dashboard)
+        home_anchors = social_anchor_classes(home)
+        self.assertEqual(set(BRANDS), set(dashboard_anchors))
+        self.assertEqual(set(BRANDS), set(home_anchors))
+        for brand in BRANDS:
+            self.assertIn('social-sm', dashboard_anchors[brand], msg=f'{brand} en dashboard')
+            self.assertNotIn('social-sm', home_anchors[brand], msg=f'{brand} en home')
 
     def test_landing_big_footer_socials_keep_default_size(self):
         html = self.client.get('/').content.decode()
