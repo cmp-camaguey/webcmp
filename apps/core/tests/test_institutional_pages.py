@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.core.institutional_pages import PAGE_SCHEMAS
 from apps.core.models import InstitutionalPage
 
 User = get_user_model()
@@ -17,6 +18,8 @@ class InstitutionalPageTests(TestCase):
             last_name='User',
         )
         self.client.force_login(self.user)
+        for page_key in PAGE_SCHEMAS:
+            InstitutionalPage.objects.get_or_create(page_key=page_key, defaults={'blocks': {}})
 
     def test_list_view(self):
         response = self.client.get(reverse('core:institutional_page_list'))

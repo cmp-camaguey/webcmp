@@ -168,7 +168,7 @@ Dependabot apunta a `dev` en los tres ecosistemas (`target-branch: dev`).
 - **Auth**: LDAP opcional (`LDAP3Backend`) → fallback `ModelBackend`. `Profile` se crea por señal `post_save`; los usuarios LDAP llevan `is_ldap=True`.
 - **UUIDs** en URLs de modelos expuestos (no `pk`).
 - **FileHandlerMixin** obligatorio en todo modelo con `FileField`/`ImageField`.
-- **Soft delete** en modelos de negocio con datos sensibles: Customer, Service, ServiceSubscription, Invoice, Contract, Certificate. No forzarlo en modelos auxiliares o transaccionales (InvoiceItem, ForecastRegions, EmailRecipient). Se consulta por el manager por defecto, que filtra `record_active=True`.
+- **Soft delete** en modelos de negocio con datos sensibles: Customer, Service, ServiceSubscription, Invoice, Contract, Certificate. No forzarlo en modelos auxiliares o transaccionales (InvoiceItem, ForecastRegions, EmailRecipient). Las consultas deben filtrar `record_active=True`; el manager por defecto no lo excluye automáticamente y no existe `all_objects`.
 - **`Warning` se borra físicamente**: su protección es el permiso `delete_warning`, no `record_active`.
 - **Paginación**: `paginate_by = 10` en vistas sin DataTables (incluye el catálogo comercial y Mis Servicios). Las vistas con DataTables no llevan `paginate_by`: paginan en el cliente.
 - **Migrations** versionadas: `makemigrations` + commit en el mismo PR. El gate es `makemigrations --check --dry-run`.
@@ -217,7 +217,7 @@ Ningún lint detecta estos items. Verificarlos siempre:
 - [ ] `default_permissions = ()` + 4 permisos custom (view/add/change/delete) en español
 - [ ] Kwarg `uuid` (no `pk`) en URLs de modelos con UUIDField
 - [ ] FileHandlerMixin + `file_fields` definido si hay FileField/ImageField
-- [ ] Soft delete: filtrar `record_active=True` (manager por defecto, no `all_objects`)
+- [ ] Soft delete: filtrar `record_active=True` en las consultas (el manager por defecto no lo filtra automáticamente)
 - [ ] Tareas/imports Huey registrados en `AppConfig.ready()`
 - [ ] Migraciones versionadas y `makemigrations --check --dry-run` en verde
 

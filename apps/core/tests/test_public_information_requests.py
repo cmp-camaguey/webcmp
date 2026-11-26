@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.core.models import PublicInformationRequest
+from apps.core.models import Notification, PublicInformationRequest
 from apps.home.views.institucion.institucional.views import PublicInformationRequestForm
 
 User = get_user_model()
@@ -208,3 +208,27 @@ class PublicInformationRequestDashboardTests(TestCase):
         self.request_obj.refresh_from_db()
         self.assertEqual(self.request_obj.status, PublicInformationRequest.Status.PENDIENTE)
         self.assertIn('rejection_reason', response.context['form'].errors)
+
+
+class PublicInformationRequestNotificationRegressionTests(TestCase):
+    def test_create_request_with_superuser_inserts_full_notification_source(self):
+        User.objects.create_superuser(
+            username='admin',
+            email='admin@test.com',
+            password='pass12345',  # pragma: allowlist secret
+            first_name='Admin',
+            last_name='User',
+        )
+
+        PublicInformationRequest.objects.create(
+            subject_name='Juan Perez',
+            subject_email='juan@example.com',
+            description='Solicito informacion detallada sobre el presupuesto del centro.',
+            response_format=PublicInformationRequest.ResponseFormat.EMAIL,
+        )
+
+        notification = Notification.objects.get(
+            recipient__username='admin',
+            source='public_information_request',
+        )
+        self.assertEqual(notification.source, 'public_information_request')

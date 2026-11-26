@@ -55,12 +55,23 @@ ALLOWED_PREFIXES = _MANAGE_PREFIXES
 
 # Módulos alineados con las secciones del menú lateral. ``apps`` toma todos los
 # modelos de la app; ``models`` una lista explícita; ``exclude`` los descarta.
+LEGAL_MODELS = (
+    'core.datasubjectrequest',
+    'core.publicinformationrequest',
+    'core.termschangenotice',
+    'core.budgetperiod',
+    'core.accountabilityreport',
+    'core.complianceprocedure',
+    'core.institutionalpage',
+)
+
 MODULES = {
     'Meteorologia': {'apps': ('meteo',), 'exclude': ('meteo.observation',)},
     'Observaciones': {'models': ('meteo.observation',)},
     'Comercial': {'apps': ('commercial',)},
     'Publicaciones': {'apps': ('publications',)},
-    'Configuracion': {'apps': ('core',)},
+    'Configuracion': {'apps': ('core',), 'exclude': LEGAL_MODELS},
+    'Legal': {'models': LEGAL_MODELS},
     'Usuarios': {'apps': ('user_auth', 'auth')},
 }
 

@@ -640,7 +640,7 @@ class Notification(models.Model):
         verbose_name='Destinatario',
     )
     severity = models.CharField(max_length=10, choices=Severity.choices, verbose_name='Severidad')
-    source = models.CharField(max_length=20, verbose_name='Origen')
+    source = models.CharField(max_length=40, verbose_name='Origen')
     title = models.CharField(max_length=200, verbose_name='Título')
     body = models.TextField(blank=True, verbose_name='Detalle')
     # Ruta relativa ('/facturas/<uuid>/'), nunca una URL absoluta: el dominio
@@ -731,7 +731,7 @@ class NotificationPreference(models.Model):
         related_name='notification_preferences',
         verbose_name='Usuario',
     )
-    source = models.CharField(max_length=20, verbose_name='Origen')
+    source = models.CharField(max_length=40, verbose_name='Origen')
     in_app = models.BooleanField(default=True, verbose_name='Aviso en la campana')
     email = models.BooleanField(default=True, verbose_name='Aviso por correo')
 
