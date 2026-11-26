@@ -1432,9 +1432,12 @@ Sintomas que un `collectstatic` o un `manage.py check` en verde no detectan:
 | `[ERROR] Control server error: Permission denied: '/home/webcmp'` en cada arranque | El control socket de Gunicorn cae a `$HOME/.gunicorn/`, y `webcmp` no tiene home |
 | `the cache has been disabled` en cada deploy | `sudo` aplica `env_reset` y descarta `PIP_CACHE_DIR`: pasala con `sudo -u user env PIP_CACHE_DIR=... cmd` |
 
-Dos se detectan antes de tocar produccion:
+Tres se detectan antes de tocar produccion:
 
 - `manage.py check --deploy` con la configuracion real ya esta en el deploy.
+- `collectstatic` con el storage de manifest corre en el job `Deploy check` de
+  CI: cualquier referencia a un archivo ausente (`sourceMappingURL` en JS y CSS,
+  `url()` y `@import` en CSS) falla ahi, no en el servidor.
 - Las referencias del tag `static` se pueden revisar con un chequeo de dos
   segundos: todas las rutas de `{% static '...' %}` tienen que existir en disco,
   porque el manifest revienta en el **primer request** de esa pagina, no en el
