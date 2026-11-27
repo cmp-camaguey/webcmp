@@ -1,0 +1,50 @@
+/* Primitivas compartidas para dashboards tipo consola (042). */
+
+.dashboard-console,
+.monitoring-console {
+  border-top: 3px solid var(--tblr-primary);
+}
+
+.dashboard-eyebrow,
+.monitoring-eyebrow {
+  color: var(--tblr-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-figure,
+.monitoring-figure {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-card,
+.monitoring-card {
+  height: 100%;
+}
+
+.dashboard-card > .card-body,
+.monitoring-card > .card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-chart,
+.monitoring-chart {
+  width: 100%;
+  min-height: 130px;
+}
+
+.dashboard-chart-lg {
+  min-height: 320px;
+}
+
+.dashboard-kpi-card .dashboard-figure {
+  line-height: 1.1;
+}
+
+.dashboard-muted {
+  color: var(--tblr-secondary-color);
+}

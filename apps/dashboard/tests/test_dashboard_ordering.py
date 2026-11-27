@@ -33,7 +33,7 @@ class DashboardSubscriptionOrderTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         SiteConfiguration.objects.get_or_create(defaults={'maintenance_mode': False})
-        cls.url = reverse('dashboard:index')
+        cls.url = reverse('dashboard:commercial')
 
         admin = User.objects.create_superuser('ordenadmin', 'orden@example.com', 'pass')
         service = Service.objects.create(

@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.dashboard.views.dashboard.commercial import CommercialDashboardView
 from apps.dashboard.views.dashboard.dashboard import (
     DashboardView,
     TaskMonitoringActionView,
@@ -36,6 +37,7 @@ app_name = 'dashboard'
 urlpatterns = [
     # Dashboard
     path('', DashboardView.as_view(), name='index'),
+    path('comercial/', CommercialDashboardView.as_view(), name='commercial'),
     # Monitoreo de tareas asíncronas (Huey)
     path('tasks/', TaskMonitoringView.as_view(), name='tasks'),
     # Acciones sobre un registro de tarea (reintentar/limpiar)

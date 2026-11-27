@@ -1,6 +1,7 @@
 {% extends 'layouts/dashboard.html' %}
 {% load static monitoring_tags %}
 {% block extrastyle %}
+  <link href="{% static 'dist/css/dashboard-console.css' %}" rel="stylesheet">
   <style>
     /* La consola de estado es la firma de esta vista: la franja de
        disponibilidad manda y el resto de tarjetas acompaña en silencio. */
