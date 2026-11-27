@@ -1,5 +1,4 @@
 import hashlib
-import json
 import logging
 
 from django.contrib import messages
@@ -26,76 +25,18 @@ from apps.dashboard.services.commercial_dashboard import (
     has_commercial_dashboard_access,
 )
 from apps.dashboard.services.commercial_dashboard import serialize_sub as serialize_sub
-from apps.meteo.models import Forecasts, Warning
+from apps.dashboard.services.meteo_dashboard import (
+    build_alerts_block as _build_alerts_block,
+)
+from apps.dashboard.services.meteo_dashboard import (
+    build_forecast_series as _build_forecast_series,
+)
+from apps.dashboard.services.meteo_dashboard import (
+    has_meteo_dashboard_access,
+)
+from apps.meteo.models import Forecasts
 
 logger = logging.getLogger(__name__)
-
-
-def _region_temp(f, region_key, period):
-    data = getattr(f, region_key)
-    return (
-        float(data[period]['temp'])
-        if data and data.get(period) and data[period].get('temp')
-        else 0.0
-    )
-
-
-def _build_forecast_series(start_date):
-    """Expensive, user-agnostic forecast series. Cached by the caller."""
-    forecasts = Forecasts.objects.filter(date__gte=start_date).order_by('date')
-    total_forecasts = forecasts.count()
-    if total_forecasts > 30:
-        step = total_forecasts // 30
-        forecast_ids = forecasts.values_list('id', flat=True)
-        sampled_ids = forecast_ids[::step]
-        forecasts = Forecasts.objects.filter(id__in=sampled_ids).order_by('date')
-    has_forecasts = forecasts.exists()
-    if not has_forecasts:
-        return {'has_forecasts': False}
-    forecasts_list = list(forecasts)
-    return {
-        'has_forecasts': True,
-        'temperature_labels': json.dumps([f.date.strftime('%d/%m') for f in forecasts_list]),
-        'max_temperatures_north': json.dumps(
-            [_region_temp(f, 'north', 'afternoon') for f in forecasts_list]
-        ),
-        'min_temperatures_north': json.dumps(
-            [_region_temp(f, 'north', 'night') for f in forecasts_list]
-        ),
-        'max_temperatures_south': json.dumps(
-            [_region_temp(f, 'south', 'afternoon') for f in forecasts_list]
-        ),
-        'min_temperatures_south': json.dumps(
-            [_region_temp(f, 'south', 'night') for f in forecasts_list]
-        ),
-        'max_temperatures_inland': json.dumps(
-            [_region_temp(f, 'interior', 'afternoon') for f in forecasts_list]
-        ),
-        'min_temperatures_inland': json.dumps(
-            [_region_temp(f, 'interior', 'night') for f in forecasts_list]
-        ),
-    }
-
-
-def _build_alerts_block():
-    """Expensive, user-agnostic latest-alerts aggregation. Cached by the caller."""
-    now = timezone.now()
-    latest_early = (
-        Warning.objects.filter(warning_type='early', valid_until__gte=now).order_by('-date').first()
-    )
-    latest_cyclone = (
-        Warning.objects.filter(warning_type='tropical_cyclone', valid_until__gte=now)
-        .order_by('-date')
-        .first()
-    )
-    latest_storm = (
-        Warning.objects.filter(warning_type='storm', valid_until__gte=now).order_by('-date').first()
-    )
-    return {
-        'early_warnings': [latest_early] if latest_early else [],
-        'tropical_cyclones': [latest_cyclone] if latest_cyclone else [],
-        'storm_warnings': [latest_storm] if latest_storm else [],
-    }
 
 
 def build_shared_kpis(time_range, income_range, *, forecast=False, alerts=False, commercial=False):
@@ -134,18 +75,28 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         user = request.user
         if not (user.is_staff or user.groups.filter(name='Clientes').exists()):
             return self.handle_no_permission()
-        if self._should_redirect_commercial(user):
-            url = redirect('dashboard:commercial')
-            if request.META.get('QUERY_STRING'):
-                url['Location'] = f'{url["Location"]}?{request.META["QUERY_STRING"]}'
-            return url
+        profile_redirect = self._profile_dashboard_redirect(user, request)
+        if profile_redirect:
+            return profile_redirect
         return super().dispatch(request, *args, **kwargs)
 
     @staticmethod
-    def _should_redirect_commercial(user):
+    def _profile_dashboard_redirect(user, request):
         if user.is_superuser or user.groups.filter(name='Clientes').exists():
-            return False
-        return has_commercial_dashboard_access(user)
+            return None
+        commercial = has_commercial_dashboard_access(user)
+        meteo = has_meteo_dashboard_access(user)
+        target = None
+        if commercial and not meteo:
+            target = 'dashboard:commercial'
+        elif meteo and not commercial:
+            target = 'dashboard:meteorologia'
+        if not target:
+            return None
+        url = redirect(target)
+        if request.META.get('QUERY_STRING'):
+            url['Location'] = f'{url["Location"]}?{request.META["QUERY_STRING"]}'
+        return url
 
     def test_func(self):
         user = self.request.user

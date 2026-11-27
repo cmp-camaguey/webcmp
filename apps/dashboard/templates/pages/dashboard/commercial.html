@@ -33,58 +33,27 @@
       <div class="card dashboard-console">
         <div class="card-body">
           <div class="row g-3 align-items-center">
-            <div class="col-12 col-lg">
+            <div class="col-12 col-lg-4">
               <div class="dashboard-eyebrow mb-1">Estado comercial</div>
               <h3 class="h1 mb-1 dashboard-figure">${{ month_income|floatformat:0 }}</h3>
               <div class="text-secondary">Ingresos cobrados este mes</div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3">
+            <div class="col-6 col-sm-4 col-lg">
               <div class="dashboard-eyebrow mb-1">Activas</div>
               <div class="h2 mb-0 dashboard-figure text-green">{{ active_subs }}</div>
-              <div class="text-secondary small">Suscripciones vigentes</div>
+              <div class="text-secondary small">Vigentes</div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-              <div class="dashboard-eyebrow mb-1">Por atender</div>
-              <div class="h2 mb-0 dashboard-figure text-yellow">{{ pending_subs|add:requested_subs }}</div>
-              <div class="text-secondary small">{{ pending_subs }} pendientes · {{ requested_subs }} solicitadas</div>
+            <div class="col-6 col-sm-4 col-lg">
+              <div class="dashboard-eyebrow mb-1">Pendientes</div>
+              <div class="h2 mb-0 dashboard-figure text-yellow">{{ pending_subs }}</div>
+              <div class="text-secondary small">Por cobrar</div>
+            </div>
+            <div class="col-6 col-sm-4 col-lg">
+              <div class="dashboard-eyebrow mb-1">Solicitadas</div>
+              <div class="h2 mb-0 dashboard-figure text-azure">{{ requested_subs }}</div>
+              <div class="text-secondary small">Nuevas</div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card dashboard-card dashboard-kpi-card">
-        <div class="card-body">
-          <div class="dashboard-eyebrow mb-1">Ingresos del mes</div>
-          <div class="h1 mb-1 dashboard-figure text-primary">${{ month_income|floatformat:0 }}</div>
-          <div class="text-secondary small">Cobrados este mes</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card dashboard-card dashboard-kpi-card">
-        <div class="card-body">
-          <div class="dashboard-eyebrow mb-1">Suscripciones activas</div>
-          <div class="h1 mb-1 dashboard-figure text-green">{{ active_subs }}</div>
-          <div class="text-secondary small">Vigentes y al día</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card dashboard-card dashboard-kpi-card">
-        <div class="card-body">
-          <div class="dashboard-eyebrow mb-1">Pendientes de pago</div>
-          <div class="h1 mb-1 dashboard-figure text-yellow">{{ pending_subs }}</div>
-          <div class="text-secondary small">Sin confirmación</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card dashboard-card dashboard-kpi-card">
-        <div class="card-body">
-          <div class="dashboard-eyebrow mb-1">Solicitadas</div>
-          <div class="h1 mb-1 dashboard-figure text-azure">{{ requested_subs }}</div>
-          <div class="text-secondary small">Solicitudes nuevas</div>
         </div>
       </div>
     </div>

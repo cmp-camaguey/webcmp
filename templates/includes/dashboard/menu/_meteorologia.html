@@ -1,7 +1,7 @@
 {% load my_filters %}
 {% if request.user|has_permission:'meteo.view_province' or request.user|has_permission:'meteo.view_town' or request.user|has_permission:'meteo.view_station' or request.user|has_permission:'meteo.view_forecast' or request.user|has_permission:'meteo.view_weatherreport' or request.user|has_permission:'meteo.view_warning' or request.user|has_permission:'meteo.view_observation' %}
   <li class="nav-item dropdown
-             {% if 'provincia' in segment or 'municipio' in segment or 'town' in segment or 'estacion' in segment or 'pronostico' in segment or 'observacion' in segment or 'tiempo' in parent or 'comentario' in parent or 'avisos' in parent %}active{% endif %}">
+             {% if 'provincia' in segment or 'municipio' in segment or 'town' in segment or 'estacion' in segment or 'pronostico' in segment or 'observacion' in segment or 'tiempo' in parent or 'comentario' in parent or 'avisos' in parent or 'dashboard_meteo' in segment %}active{% endif %}">
     <a class="nav-link dropdown-toggle"
        href="#navbar-base"
        data-bs-toggle="dropdown"
@@ -12,7 +12,7 @@
       <span class="nav-link-title">Meteorología</span>
     </a>
     <div class="dropdown-menu
-                {% if 'provincia' in segment or 'municipio' in segment or 'town' in segment or 'estacion' in segment or 'pronostico' in segment or 'observacion' in segment or 'tiempo' in parent or 'comentario' in parent or 'avisos' in parent %}show{% endif %}">
+                {% if 'provincia' in segment or 'municipio' in segment or 'town' in segment or 'estacion' in segment or 'pronostico' in segment or 'observacion' in segment or 'tiempo' in parent or 'comentario' in parent or 'avisos' in parent or 'dashboard_meteo' in segment %}show{% endif %}">
       <div class="dropdown-menu-columns">
         <div class="dropdown-menu-column">
           {% if request.user|has_permission:'meteo.view_province' or request.user|has_permission:'meteo.view_town' or request.user|has_permission:'meteo.view_station' %}
