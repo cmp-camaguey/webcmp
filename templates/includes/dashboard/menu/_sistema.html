@@ -1,7 +1,7 @@
 {% load my_filters %}
 {% if request.user.is_superuser or request.user|has_permission:'core.view_activitylog' %}
   <li class="nav-item dropdown
-             {% if segment == 'task_monitoring' or segment == 'site_monitoring' or segment == 'database_backup' or 'core:activity_log' in segment or 'core:environment_config' in segment %}active{% endif %}">
+             {% if segment == 'task_monitoring' or segment == 'site_monitoring' or segment == 'database_backup' or 'dashboard_sistema' in segment or 'core:activity_log' in segment or 'core:environment_config' in segment %}active{% endif %}">
     <a class="nav-link dropdown-toggle"
        href="#navbar-sistema"
        data-bs-toggle="dropdown"
