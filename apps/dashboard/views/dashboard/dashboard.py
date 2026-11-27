@@ -34,6 +34,7 @@ from apps.dashboard.services.meteo_dashboard import (
 from apps.dashboard.services.meteo_dashboard import (
     has_meteo_dashboard_access,
 )
+from apps.dashboard.services.system_dashboard import has_system_dashboard_access
 from apps.meteo.models import Forecasts
 
 logger = logging.getLogger(__name__)
@@ -86,14 +87,19 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             return None
         commercial = has_commercial_dashboard_access(user)
         meteo = has_meteo_dashboard_access(user)
-        target = None
-        if commercial and not meteo:
-            target = 'dashboard:commercial'
-        elif meteo and not commercial:
-            target = 'dashboard:meteorologia'
-        if not target:
+        system = has_system_dashboard_access(user)
+        matches = [
+            name
+            for name, ok in (
+                ('dashboard:commercial', commercial),
+                ('dashboard:meteorologia', meteo),
+                ('dashboard:sistema', system),
+            )
+            if ok
+        ]
+        if len(matches) != 1:
             return None
-        url = redirect(target)
+        url = redirect(matches[0])
         if request.META.get('QUERY_STRING'):
             url['Location'] = f'{url["Location"]}?{request.META["QUERY_STRING"]}'
         return url
