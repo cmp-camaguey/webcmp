@@ -15,6 +15,7 @@ from apps.dashboard.views.dashboard.database import (
     DatabaseRestoreRequestView,
     DatabaseUploadRestoreView,
 )
+from apps.dashboard.views.dashboard.meteo import MeteoDashboardView
 from apps.dashboard.views.dashboard.notifications import (
     NotificationDeleteAllView,
     NotificationDeleteView,
@@ -38,6 +39,7 @@ urlpatterns = [
     # Dashboard
     path('', DashboardView.as_view(), name='index'),
     path('comercial/', CommercialDashboardView.as_view(), name='commercial'),
+    path('meteorologia/', MeteoDashboardView.as_view(), name='meteorologia'),
     # Monitoreo de tareas asíncronas (Huey)
     path('tasks/', TaskMonitoringView.as_view(), name='tasks'),
     # Acciones sobre un registro de tarea (reintentar/limpiar)

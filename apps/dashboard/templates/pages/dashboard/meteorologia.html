@@ -1,0 +1,334 @@
+{% extends 'layouts/dashboard.html' %}
+{% load static my_filters %}
+{% block extrastyle %}
+  <link href="{% static 'dist/css/dashboard-console.css' %}" rel="stylesheet">
+  <link href="{% static 'dist/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+{% block page_header %}
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="page-pretitle">{{ parent }}</div>
+      <h2 class="page-title">{{ title }}</h2>
+    </div>
+    <div class="col-12 col-md-auto d-flex justify-content-end">
+      <div class="btn-list">
+        {% if request.user|has_permission:'meteo.view_forecast' %}
+          <a href="{% url 'meteo:pronostico_list' %}" class="btn bg-blue-lt">
+            <i class="icon ti ti-cloud me-1" aria-hidden="true"></i>Pronósticos
+          </a>
+        {% endif %}
+        {% if request.user|has_permission:'meteo.view_warning' %}
+          <a href="{% url 'meteo:alerta_temprana_list' %}"
+             class="btn bg-yellow-lt">
+            <i class="icon ti ti-alert-triangle me-1" aria-hidden="true"></i>Avisos
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="row row-deck row-cards">
+    <!-- Estado operativo -->
+    <div class="col-12">
+      <div class="card dashboard-console">
+        <div class="card-body">
+          <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-4">
+              <div class="dashboard-eyebrow mb-1">Estado operativo</div>
+              <h3 class="h1 mb-1 dashboard-figure">
+                {% if latest_forecast %}
+                  {{ latest_forecast.date|date:"d/m/Y" }}
+                {% else %}
+                  Sin pronóstico
+                {% endif %}
+              </h3>
+              <div class="text-secondary">
+                {% if latest_forecast %}
+                  {% if forecast_is_current %}
+                    Pronóstico emitido hoy
+                  {% else %}
+                    Último pronóstico · hace {{ forecast_age_days }} día{{ forecast_age_days|pluralize }}
+                  {% endif %}
+                {% else %}
+                  No hay pronósticos registrados
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-6 col-sm-4 col-lg">
+              <div class="dashboard-eyebrow mb-1">Alertas activas</div>
+              <div class="h2 mb-0 dashboard-figure
+                          {% if active_alerts_count %}text-yellow{% else %}text-green{% endif %}">
+                {{ active_alerts_count }}
+              </div>
+              <div class="text-secondary small">Avisos vigentes</div>
+            </div>
+            <div class="col-6 col-sm-4 col-lg">
+              <div class="dashboard-eyebrow mb-1">Pronóstico</div>
+              <div class="h2 mb-0 dashboard-figure
+                          {% if forecast_is_current %}text-green{% elif latest_forecast %}text-yellow{% else %}text-red{% endif %}">
+                {% if forecast_is_current %}
+                  Al día
+                {% elif latest_forecast %}
+                  Atrasado
+                {% else %}
+                  Falta
+                {% endif %}
+              </div>
+              <div class="text-secondary small">Estado de emisión</div>
+            </div>
+            <div class="col-6 col-sm-4 col-lg">
+              <div class="dashboard-eyebrow mb-1">Rango</div>
+              <div class="h2 mb-0 dashboard-figure">{{ selected_range }}</div>
+              <div class="text-secondary small">Tendencia térmica</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Atención -->
+    {% if not forecast_is_current or active_alerts_count %}
+      <div class="col-12">
+        <div class="card">
+          <div class="card-status-top
+                      {% if not latest_forecast or active_alerts_count %}bg-warning{% else %}bg-yellow{% endif %}">
+          </div>
+          <div class="card-body">
+            <div class="dashboard-eyebrow mb-3">Requiere atención</div>
+            <div class="row g-3">
+              {% if not forecast_is_current %}
+                <div class="col-12 col-md-6">
+                  <div class="d-flex align-items-start gap-3">
+                    <span class="avatar bg-yellow-lt"><i class="icon ti ti-cloud-off"></i></span>
+                    <div>
+                      <div class="fw-medium">Pronóstico no actualizado hoy</div>
+                      <div class="text-secondary small">
+                        {% if latest_forecast %}
+                          El último pronóstico es del {{ latest_forecast.date|date:"d/m/Y" }}.
+                        {% else %}
+                          No existe un pronóstico registrado.
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+              {% if active_alerts_count %}
+                <div class="col-12 col-md-6">
+                  <div class="d-flex align-items-start gap-3">
+                    <span class="avatar bg-orange-lt"><i class="icon ti ti-alert-triangle"></i></span>
+                    <div>
+                      <div class="fw-medium">{{ active_alerts_count }} aviso{{ active_alerts_count|pluralize }} activo{{ active_alerts_count|pluralize }}</div>
+                      <div class="text-secondary small">
+                        Tempranas: {{ early_count }} · Tropicales: {{ cyclone_count }} · Tormentas: {{ storm_count }}.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    <!-- Alertas Activas -->
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-header">
+          <h3 class="card-title">Alertas Activas</h3>
+          <div class="card-actions">
+            {% if active_alerts_count %}
+              <span class="badge bg-yellow-lt">{{ active_alerts_count }}</span>
+            {% else %}
+              <span class="badge bg-green-lt">Sin avisos</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="list-group list-group-flush">
+          <div class="list-group-item">
+            <div class="d-flex align-items-center">
+              <span class="avatar avatar-sm bg-blue-lt me-3"><i class="icon ti ti-alert-circle"></i></span>
+              <div class="flex-fill">
+                <div class="fw-medium">Alertas tempranas</div>
+                <div class="text-secondary small">
+                  {% if latest_alerts.early_warnings %}
+                    {% for w in latest_alerts.early_warnings %}
+                      Válida hasta {{ w.valid_until|date:"d/m/Y H:i" }}
+                    {% endfor %}
+                  {% else %}
+                    Sin alerta activa
+                  {% endif %}
+                </div>
+              </div>
+              {% if latest_alerts.early_warnings %}
+                <span class="badge bg-yellow-lt">Activa</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="list-group-item">
+            <div class="d-flex align-items-center">
+              <span class="avatar avatar-sm bg-red-lt me-3"><i class="icon ti ti-wind"></i></span>
+              <div class="flex-fill">
+                <div class="fw-medium">Ciclones tropicales</div>
+                <div class="text-secondary small">
+                  {% if latest_alerts.tropical_cyclones %}
+                    {% for w in latest_alerts.tropical_cyclones %}
+                      Válida hasta {{ w.valid_until|date:"d/m/Y H:i" }}
+                    {% endfor %}
+                  {% else %}
+                    Sin alerta activa
+                  {% endif %}
+                </div>
+              </div>
+              {% if latest_alerts.tropical_cyclones %}
+                <span class="badge bg-red-lt">Activa</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="list-group-item">
+            <div class="d-flex align-items-center">
+              <span class="avatar avatar-sm bg-orange-lt me-3"><i class="icon ti ti-cloud-storm"></i></span>
+              <div class="flex-fill">
+                <div class="fw-medium">Tormentas</div>
+                <div class="text-secondary small">
+                  {% if latest_alerts.storm_warnings %}
+                    {% for w in latest_alerts.storm_warnings %}
+                      Válida hasta {{ w.valid_until|date:"d/m/Y H:i" }}
+                    {% endfor %}
+                  {% else %}
+                    Sin alerta activa
+                  {% endif %}
+                </div>
+              </div>
+              {% if latest_alerts.storm_warnings %}
+                <span class="badge bg-orange-lt">Activa</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Pronóstico del día -->
+    <div class="col-12 col-lg-7">
+      <div class="card h-100">
+        <div class="card-header">
+          <h3 class="card-title">Pronóstico por regiones</h3>
+          <div class="card-actions text-secondary small">
+            {% if latest_forecast %}{{ latest_forecast.date|date:"d/m/Y" }}{% else %}Sin datos{% endif %}
+          </div>
+        </div>
+        {% if latest_forecast %}
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+              <thead>
+                <tr>
+                  <th>Región</th>
+                  <th>Mañana</th>
+                  <th>Tarde</th>
+                  <th>Noche</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% with m=latest_forecast.north.morning a=latest_forecast.north.afternoon n=latest_forecast.north.night %}
+                  <tr>
+                    <td class="fw-medium">Costa Norte</td>
+                    <td>{% if m %}{{ m.temp }}°C · {{ m.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                    <td>{% if a %}{{ a.temp }}°C · {{ a.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                    <td>{% if n %}{{ n.temp }}°C · {{ n.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                  </tr>
+                {% endwith %}
+                {% with m=latest_forecast.interior.morning a=latest_forecast.interior.afternoon n=latest_forecast.interior.night %}
+                  <tr>
+                    <td class="fw-medium">Interior</td>
+                    <td>{% if m %}{{ m.temp }}°C · {{ m.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                    <td>{% if a %}{{ a.temp }}°C · {{ a.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                    <td>{% if n %}{{ n.temp }}°C · {{ n.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                  </tr>
+                {% endwith %}
+                {% with m=latest_forecast.south.morning a=latest_forecast.south.afternoon n=latest_forecast.south.night %}
+                  <tr>
+                    <td class="fw-medium">Costa Sur</td>
+                    <td>{% if m %}{{ m.temp }}°C · {{ m.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                    <td>{% if a %}{{ a.temp }}°C · {{ a.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                    <td>{% if n %}{{ n.temp }}°C · {{ n.weather|get_tiempo_description }}{% else %}-{% endif %}</td>
+                  </tr>
+                {% endwith %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="card-body">
+            <div class="empty">
+              <div class="empty-icon">
+                <i class="icon ti ti-cloud-off"></i>
+              </div>
+              <p class="empty-title">Sin pronóstico disponible</p>
+              <p class="empty-subtitle text-secondary">Cuando se registre un pronóstico, aparecerá aquí el resumen por regiones.</p>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <!-- Tendencia de temperatura -->
+    <div class="col-12">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div>
+              <div class="dashboard-eyebrow mb-1">Tendencia</div>
+              <h3 class="card-title mb-0">Temperaturas por región</h3>
+            </div>
+            <div class="ms-auto">
+              <div class="dropdown">
+                <a class="dropdown-toggle text-secondary"
+                   href="#"
+                   data-bs-toggle="dropdown"
+                   aria-haspopup="true"
+                   aria-expanded="false">
+                  {% if selected_range == '30d' %}
+                    Últimos 30 días
+                  {% elif selected_range == '3m' %}
+                    Últimos 3 meses
+                  {% else %}
+                    Últimos 7 días
+                  {% endif %}
+                </a>
+                <div class="dropdown-menu dropdown-menu-end">
+                  <a class="dropdown-item
+                            {% if selected_range == '7d' %}active{% endif %}"
+                     href="?range=7d">Últimos 7 días</a>
+                  <a class="dropdown-item
+                            {% if selected_range == '30d' %}active{% endif %}"
+                     href="?range=30d">Últimos 30 días</a>
+                  <a class="dropdown-item
+                            {% if selected_range == '3m' %}active{% endif %}"
+                     href="?range=3m">Últimos 3 meses</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% if has_forecasts %}
+            <div id="temperatureTrendChart"
+                 class="dashboard-chart dashboard-chart-lg mt-3"
+                 data-labels="{{ temperature_labels }}"
+                 data-series-north-max="{{ max_temperatures_north }}"
+                 data-series-north-min="{{ min_temperatures_north }}"
+                 data-series-inland-max="{{ max_temperatures_inland }}"
+                 data-series-inland-min="{{ min_temperatures_inland }}"
+                 data-series-south-max="{{ max_temperatures_south }}"
+                 data-series-south-min="{{ min_temperatures_south }}"></div>
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="icon icon-lg text-muted mb-2 ti ti-temperature"></i>
+              <div>No hay datos de temperatura para el rango seleccionado.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block extrajs %}
+  <script src="{% static 'dist/libs/apexcharts/dist/apexcharts.min.js' %}"></script>
+  <script src="{% static 'dist/js/dashboard.js' %}"></script>
+{% endblock %}
