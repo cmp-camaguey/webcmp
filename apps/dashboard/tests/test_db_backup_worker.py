@@ -22,6 +22,12 @@ class DbBackupWorkerTests(SimpleTestCase):
         self.restore = self.root / 'restore-request'
         self.status = self.root / 'backup-status.json'
         self.manifest = self.root / 'backup-manifest.json'
+        self.download_request = self.root / 'download-request'
+        self.download_status = self.root / 'download-status.json'
+        self.download_staging = self.root / 'downloads'
+        self.upload_staging = self.root / 'uploads'
+        self.download_staging.mkdir()
+        self.upload_staging.mkdir()
         self.override = override_settings(
             DB_BACKUP_DIR=str(self.dir),
             DB_BACKUP_KEEP=10,
@@ -29,6 +35,10 @@ class DbBackupWorkerTests(SimpleTestCase):
             DB_RESTORE_REQUEST_FILE=str(self.restore),
             DB_BACKUP_STATUS_FILE=str(self.status),
             DB_BACKUP_MANIFEST_FILE=str(self.manifest),
+            DB_DOWNLOAD_REQUEST_FILE=str(self.download_request),
+            DB_DOWNLOAD_STATUS_FILE=str(self.download_status),
+            DB_DOWNLOAD_STAGING_DIR=str(self.download_staging),
+            DB_UPLOAD_STAGING_DIR=str(self.upload_staging),
         )
         self.override.enable()
         self.addCleanup(self.override.disable)
