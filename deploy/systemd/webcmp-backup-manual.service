@@ -1,0 +1,23 @@
+[Unit]
+Description=Respaldo de la base pedido desde el panel (change 040-respaldo-base-datos)
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Service]
+Type=oneshot
+# root, y solo por dos cosas: leer /etc/webcmp/deploy.env y escribir en
+# DB_BACKUP_DIR (0700 root:root). El script no acepta argumentos: el modo esta
+# fijo en la unidad y el nombre del dump lo genera el ejecutor.
+User=root
+Group=root
+# Misma implementacion que el respaldo diario, con otro sufijo (`-manual`).
+# Una copia aparte se desincronizaria de `db_dump` sin que nada falle.
+ExecStart=/usr/local/sbin/webcmp-deploy --backup-manual
+# Un pg_dump de esta base tarda segundos. El tope evita que una base bloqueada
+# deje el boton del panel en "en curso" hasta el timeout global de systemd.
+TimeoutStartSec=1800
+ProtectSystem=full
+ProtectHome=yes
+# Sin PrivateTmp, por el mismo motivo que webcmp-backup.service: `db_dump` corre
+# el dump en una unidad transitoria que no hereda este namespace y su stderr
+# quedaria en el /tmp real, invisible para el journal de esta unidad.
+NoNewPrivileges=yes

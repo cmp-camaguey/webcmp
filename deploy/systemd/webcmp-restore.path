@@ -1,0 +1,13 @@
+[Unit]
+Description=Vigila la peticion de restauracion del panel (change 040-respaldo-base-datos)
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Path]
+# El panel (usuario `webcmp`) escribe el nombre del dump y se desentiende. El
+# archivo es ENTRADA NO CONFIABLE: el ejecutor valida el nombre contra
+# DB_BACKUP_DIR antes de tocar la base y falla cerrado si no encaja.
+PathExists=/var/lib/webcmp/restore-request
+Unit=webcmp-restore.service
+
+[Install]
+WantedBy=multi-user.target

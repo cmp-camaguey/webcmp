@@ -1,0 +1,12 @@
+[Unit]
+Description=Vigila la peticion de descarga del panel (change 041-respaldo-import-export)
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Path]
+# El panel escribe el nombre del dump a descargar. El ejecutor root copia a un
+# staging temporal con token y TTL; el proceso web nunca lee DB_BACKUP_DIR.
+PathExists=/var/lib/webcmp/download-request
+Unit=webcmp-download.service
+
+[Install]
+WantedBy=multi-user.target

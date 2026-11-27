@@ -25,6 +25,13 @@ deploy/systemd/webcmp-autodeploy.service                                  /etc/s
 deploy/systemd/webcmp-autodeploy.path                                     /etc/systemd/system/webcmp-autodeploy.path                  0644    root:root
 deploy/systemd/webcmp-backup.service                                      /etc/systemd/system/webcmp-backup.service                   0644    root:root
 deploy/systemd/webcmp-backup.timer                                        /etc/systemd/system/webcmp-backup.timer                     0644    root:root
+# Panel de respaldo/restauracion/descarga (040/041)
+deploy/systemd/webcmp-backup.path                                         /etc/systemd/system/webcmp-backup.path                      0644    root:root
+deploy/systemd/webcmp-backup-manual.service                               /etc/systemd/system/webcmp-backup-manual.service            0644    root:root
+deploy/systemd/webcmp-restore.path                                        /etc/systemd/system/webcmp-restore.path                     0644    root:root
+deploy/systemd/webcmp-restore.service                                     /etc/systemd/system/webcmp-restore.service                  0644    root:root
+deploy/systemd/webcmp-download.path                                       /etc/systemd/system/webcmp-download.path                    0644    root:root
+deploy/systemd/webcmp-download.service                                    /etc/systemd/system/webcmp-download.service                 0644    root:root
 
 # Paginas de error de Nginx (502/503/504)
 # Las sirve el vhost con error_page; install.sh las escribe en una instalacion

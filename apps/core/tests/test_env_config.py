@@ -157,12 +157,12 @@ class EnvFileTests(TestCase):
 
 
 class EnvConfigTests(SimpleTestCase):
-    def test_readonly_groups_are_only_the_boot_critical_ones(self):
+    def test_readonly_groups_include_reference_sections(self):
         environment = build_environment(environ={}, file_values={})
         # La info de "Aplicación" viaja dentro de la tarjeta editable "Sitio".
         self.assertEqual(
             [group['key'] for group in environment['groups']],
-            ['domain', 'database', 'cache'],
+            ['domain', 'database', 'cache', 'backup'],
         )
 
     def test_editable_sections_have_no_lone_half_width_field(self):
@@ -186,12 +186,14 @@ class EnvConfigTests(SimpleTestCase):
             for run in runs:
                 self.assertEqual(run % 2, 0, msg=f'{group}: {run} campo(s) suelto(s)')
 
-    def test_editable_groups_cover_email_ldap_updates_and_ftp(self):
+    def test_editable_groups_cover_expected_sections(self):
         groups = []
         for spec in EDITABLE_FIELDS:
             if spec.group not in groups:
                 groups.append(spec.group)
-        self.assertEqual(groups, ['app', 'notifications', 'email', 'ldap', 'updates', 'ftp'])
+        self.assertEqual(
+            groups, ['app', 'notifications', 'email', 'ldap', 'updates', 'ftp', 'backup']
+        )
 
     def test_email_ldap_and_updates_are_editable(self):
         editable = {spec.key for spec in EDITABLE_FIELDS}

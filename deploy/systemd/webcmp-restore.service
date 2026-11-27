@@ -1,0 +1,21 @@
+[Unit]
+Description=Restauracion de la base pedida desde el panel (change 040-respaldo-base-datos)
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Service]
+Type=oneshot
+# root: hay que leer el dump (0700 root:root), correr `pg_restore` y parar los
+# servicios. El script no acepta argumentos ni comandos desde el archivo de
+# peticion: de ahi solo toma un nombre de archivo, que valida.
+User=root
+Group=root
+ExecStart=/usr/local/sbin/webcmp-deploy --restore-request
+# El tope cubre el respaldo de seguridad + el restore. Si se pasa, systemd mata
+# la unidad y el `trap EXIT` del script ya levanto los servicios: el panel
+# muestra el estado `stale` y el operador puede reintentar.
+TimeoutStartSec=3600
+ProtectSystem=full
+ProtectHome=yes
+# Sin PrivateTmp, por el mismo motivo que webcmp-backup.service: `db_dump` corre
+# en una unidad transitoria que no hereda este namespace.
+NoNewPrivileges=yes

@@ -1,0 +1,207 @@
+{% extends 'layouts/dashboard.html' %}
+{% load static %}
+{% block page_header %}
+  <div class="row g-2 align-items-center">
+    <div class="col">
+      <div class="page-pretitle">{{ parent }}</div>
+      <h2 class="page-title">{{ title }}</h2>
+    </div>
+    <div class="col-auto ms-auto d-print-none">
+      <div class="btn-list">
+        <button type="button" class="btn bg-azure-lt" id="db-upload-button">
+          <i class="icon ti ti-upload me-1"></i>
+          Subir y restaurar
+        </button>
+        <button type="button" class="btn bg-blue-lt" id="db-backup-button">
+          <i class="icon ti ti-database-export me-1"></i>
+          Respaldar ahora
+        </button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div id="database-backup"
+       data-data-url="{{ data_url }}"
+       data-backup-url="{{ backup_url }}"
+       data-restore-url="{{ restore_url }}"
+       data-download-request-url="{{ download_request_url }}"
+       data-upload-url="{{ upload_url }}"
+       data-confirmation="{{ confirmation }}"
+       data-download-confirmation="{{ download_confirmation }}"
+       data-upload-max-size="{{ upload_max_size }}"
+       data-csrf-token="{{ csrf_token }}">
+    <div id="db-status" class="alert d-none" role="status" aria-live="polite"></div>
+    <div id="db-pending" class="alert alert-warning d-none" role="alert"></div>
+    <div id="db-download" class="alert alert-success d-none" role="status"></div>
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Respaldos disponibles</h3>
+        <div class="card-actions text-secondary small">
+          Se conservan los últimos
+          <span id="db-keep">—</span>.
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Archivo</th>
+              <th>Fecha</th>
+              <th>Tamaño</th>
+              <th>Origen</th>
+              <th class="w-1"></th>
+            </tr>
+          </thead>
+          <tbody id="db-backups-body">
+            <tr>
+              <td colspan="5" class="text-secondary text-center py-4">Cargando…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="text-secondary small mt-3 mb-0">
+      El respaldo se guarda en el servidor y no se descarga salvo que lo pidas. Restaurar detiene el sitio unos
+      segundos; antes se guarda un respaldo de seguridad automático.
+    </p>
+  </div>
+  <!-- Modal restaurar -->
+  <div class="modal modal-blur fade"
+       id="db-restore-modal"
+       tabindex="-1"
+       role="dialog"
+       aria-hidden="true"
+       aria-labelledby="db-restore-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="db-restore-title">Restaurar la base de datos</h5>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger" role="alert">
+            <i class="icon ti ti-alert-triangle me-1"></i>
+            Restaurar borra y recrea los objetos de la base. El sitio se detiene y vuelve solo.
+          </div>
+          <p class="mb-2">Va a restaurar <strong id="db-restore-file" class="font-monospace"></strong>.</p>
+          <label class="form-label"
+                 for="db-confirm-input">Escriba <code id="db-confirm-word"></code> para confirmar</label>
+          <input type="text"
+                 class="form-control font-monospace"
+                 id="db-confirm-input"
+                 autocomplete="off"
+                 spellcheck="false">
+          <div class="form-text text-danger d-none" id="db-confirm-error"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-link link-secondary me-auto"
+                  data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn bg-red-lt" id="db-confirm-button" disabled>Restaurar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal descargar -->
+  <div class="modal modal-blur fade"
+       id="db-download-modal"
+       tabindex="-1"
+       role="dialog"
+       aria-hidden="true"
+       aria-labelledby="db-download-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title" id="db-download-title">Descargar respaldo</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning" role="alert">
+            <i class="icon ti ti-alert-triangle me-1"></i>
+            El dump contiene la base completa. Guárdalo en un lugar seguro (USB cifrado).
+          </div>
+          <p class="mb-2">Va a descargar <strong id="db-download-file" class="font-monospace"></strong>.</p>
+          <label class="form-label"
+                 for="db-download-confirm-input">Escriba <code id="db-download-confirm-word"></code> para confirmar</label>
+          <input type="text"
+                 class="form-control font-monospace"
+                 id="db-download-confirm-input"
+                 autocomplete="off"
+                 spellcheck="false">
+          <div class="form-text text-danger d-none" id="db-download-error"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-link link-secondary me-auto"
+                  data-bs-dismiss="modal">Cancelar</button>
+          <button type="button"
+                  class="btn bg-azure-lt"
+                  id="db-download-confirm-button"
+                  disabled>Preparar descarga</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal subir -->
+  <div class="modal modal-blur fade"
+       id="db-upload-modal"
+       tabindex="-1"
+       role="dialog"
+       aria-hidden="true"
+       aria-labelledby="db-upload-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="db-upload-title">Subir y restaurar respaldo</h5>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger" role="alert">
+            <i class="icon ti ti-alert-triangle me-1"></i>
+            El dump subido reemplazará la base. Se validará el formato y se tomará un respaldo de seguridad antes de restaurar.
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="db-upload-file">Archivo .dump</label>
+            <input type="file" class="form-control" id="db-upload-file" accept=".dump">
+          </div>
+          <label class="form-label"
+                 for="db-upload-confirm-input">Escriba <code id="db-upload-confirm-word"></code> para confirmar</label>
+          <input type="text"
+                 class="form-control font-monospace"
+                 id="db-upload-confirm-input"
+                 autocomplete="off"
+                 spellcheck="false">
+          <div class="form-text text-danger d-none" id="db-upload-error"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-link link-secondary me-auto"
+                  data-bs-dismiss="modal">Cancelar</button>
+          <button type="button"
+                  class="btn bg-red-lt"
+                  id="db-upload-confirm-button"
+                  disabled>Subir y restaurar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block extrajs %}
+  <script src="{% static 'dist/js/dashboard-database.js' %}?v=6"></script>
+{% endblock %}
