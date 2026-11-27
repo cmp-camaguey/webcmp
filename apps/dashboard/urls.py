@@ -27,6 +27,7 @@ from apps.dashboard.views.dashboard.site_monitoring import (
     SiteMonitoringDataView,
     SiteMonitoringView,
 )
+from apps.dashboard.views.dashboard.system import SystemDashboardView
 from apps.dashboard.views.dashboard.update import (
     UpdateLogView,
     UpdateRequestView,
@@ -40,6 +41,7 @@ urlpatterns = [
     path('', DashboardView.as_view(), name='index'),
     path('comercial/', CommercialDashboardView.as_view(), name='commercial'),
     path('meteorologia/', MeteoDashboardView.as_view(), name='meteorologia'),
+    path('sistema/', SystemDashboardView.as_view(), name='sistema'),
     # Monitoreo de tareas asíncronas (Huey)
     path('tasks/', TaskMonitoringView.as_view(), name='tasks'),
     # Acciones sobre un registro de tarea (reintentar/limpiar)
