@@ -15,6 +15,7 @@ setup: ## Create .venv, install dev+test deps, generate the .env and activate th
 	$(PY) -m pip install -r requirements/dev.txt
 	$(PY) -m pip install -r requirements/test.txt
 	@$(MAKE) --no-print-directory env
+	mkdir -p tmp/db-backups
 	@if git config --get core.hooksPath >/dev/null 2>&1; then \
 		git config --unset-all core.hooksPath; \
 	fi

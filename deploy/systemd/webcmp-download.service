@@ -1,0 +1,14 @@
+[Unit]
+Description=Preparacion de descarga de respaldo pedida desde el panel (change 041-respaldo-import-export)
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+# Copia un dump existente a staging temporal con token; no toca la BD ni para servicios.
+ExecStart=/usr/local/sbin/webcmp-deploy --download-request
+TimeoutStartSec=900
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=yes

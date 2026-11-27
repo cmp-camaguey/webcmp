@@ -68,6 +68,33 @@ Los hooks de pre-commit (`ruff`, `djlint`, `detect-secrets`) corren solos en cad
 commit. Cómo se activan y por qué `pre-commit install` y `core.hooksPath` no se
 combinan está en [AGENTS.md](../AGENTS.md#pre-commit).
 
+## Respaldo de BD en desarrollo
+
+El panel **Sistema → Respaldo de BD** usa el mismo contrato en dev y prod
+(peticiones/estado/manifiesto). En producción lo ejecuta systemd como root; en
+desarrollo lo consume un worker:
+
+```bash
+# .env (rutas escribibles por tu usuario)
+DB_BACKUP_DIR=tmp/db-backups
+DB_BACKUP_MANIFEST_FILE=tmp/db-backups/backup-manifest.json
+DB_BACKUP_STATUS_FILE=tmp/db-backups/backup-status.json
+DB_BACKUP_REQUEST_FILE=tmp/db-backups/backup-request
+DB_RESTORE_REQUEST_FILE=tmp/db-backups/restore-request
+DB_DOWNLOAD_REQUEST_FILE=tmp/db-backups/download-request
+DB_DOWNLOAD_STATUS_FILE=tmp/db-backups/download-status.json
+DB_DOWNLOAD_STAGING_DIR=tmp/db-backups/downloads
+DB_UPLOAD_STAGING_DIR=tmp/db-backups/uploads
+
+mkdir -p tmp/db-backups/downloads tmp/db-backups/uploads
+./run_db_backup_worker.sh   # o: python manage.py db_backup_worker --watch
+```
+
+Necesitas `pg_dump` y `pg_restore` en el PATH y una base PostgreSQL accesible con
+la configuración de Django. El worker no detiene servicios; la restauración es
+destructiva y deja un dump `-pre-restore`. La descarga prepara un token temporal
+en staging y la subida valida con `pg_restore --list` antes de restaurar.
+
 ## Worker y correos
 
 El flujo de factura (PDF + correo) depende de tres cosas que fallan en silencio: el
