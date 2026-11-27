@@ -120,10 +120,10 @@ el sitio parado y como root.
 
 ### Respaldo y restauracion desde el panel
 
-El menu **Sistema → Respaldo de BD** (solo superusuarios) permite pedir un
-respaldo y restaurar uno existente sin entrar por SSH. El dump **no se descarga
-ni se sube**: sigue siendo `root:root 0600` dentro de `DB_BACKUP_DIR`
-(`0700 root:root`) y el proceso web no puede abrirlo.
+El menu **Sistema → Respaldo de BD** (solo superusuarios) permite crear,
+restaurar, descargar y subir respaldos sin SSH. Los dumps originales siguen
+siendo `root:root 0600` dentro de `DB_BACKUP_DIR` (`0700 root:root`); el
+proceso web no los lee.
 
 El mecanismo es el mismo del boton «Actualizar»: el panel escribe una peticion y
 una unidad systemd la recoge. El proceso `webcmp` no gana privilegios.
@@ -132,39 +132,37 @@ una unidad systemd la recoge. El proceso `webcmp` no gana privilegios.
 | --- | --- | --- |
 | `/var/lib/webcmp/backup-request` | panel | `webcmp-backup.path` |
 | `/var/lib/webcmp/restore-request` | panel | `webcmp-restore.path` |
+| `/var/lib/webcmp/download-request` | panel | `webcmp-download.path` |
 | `/var/lib/webcmp/backup-status.json` | ejecutor root | panel |
 | `/var/lib/webcmp/backup-manifest.json` | ejecutor root | panel |
+| `/var/lib/webcmp/download-status.json` | ejecutor root | panel |
 
-- **Respaldar ahora** escribe `backup-request`; `webcmp-backup.path` arranca
-  `webcmp-backup-manual.service`, que corre `webcmp-deploy --backup-manual`. El
-  archivo se llama `…-manual.dump` para distinguirlo del diario.
-- **Restaurar** exige escribir `RESTAURAR` y el nombre de un dump del
-  manifiesto. `webcmp-restore.path` arranca `webcmp-restore.service`, que corre
-  `webcmp-deploy --restore-request`.
+- **Respaldar ahora**: `webcmp-backup.path` corre `webcmp-deploy --backup-manual`.
+- **Restaurar**: exige `RESTAURAR`; `webcmp-restore.path` corre `webcmp-deploy --restore-request`.
+- **Descargar**: exige `DESCARGAR`; el ejecutor copia el dump a staging temporal con token/TTL (`/var/lib/webcmp/downloads`, 0770 root:webcmp). El panel sirve el archivo solo por token autenticado y lo invalida al consumirlo. El web nunca lee `DB_BACKUP_DIR`.
+- **Subir y restaurar**: el web guarda el `.dump` en staging de subidas (`/var/lib/webcmp/uploads`, 0770 root:webcmp), escribe `restore-request` con `source=upload`. El ejecutor valida el formato con `pg_restore --list`, mueve el archivo a `DB_BACKUP_DIR` como `*-uploaded.dump` y ejecuta el flujo normal de restauración con respaldo de seguridad.
 
 Una restauracion:
 
-1. valida el nombre contra `DB_BACKUP_DIR` (sin traversal, sin symlink, archivo
-   regular de root) y falla cerrado si no encaja;
-2. toma un dump de seguridad `…-pre-restore.dump` — si falla, no toca la base;
-3. para `webcmp` y `webcmp-huey`;
-4. corre `pg_restore --clean --if-exists --single-transaction`;
-5. vuelve a levantar los servicios **siempre**, aunque el restore falle;
-6. deja el resultado en `backup-status.json` y refresca el manifiesto.
+1. valida el nombre/origen (sin traversal, sin symlink) y falla cerrado;
+2. si es subida, valida `pg_restore --list` antes de mover a `DB_BACKUP_DIR`;
+3. toma un dump de seguridad `…-pre-restore.dump` — si falla, no toca la base;
+4. para `webcmp` y `webcmp-huey`;
+5. corre `pg_restore --clean --if-exists --single-transaction`;
+6. vuelve a levantar los servicios **siempre**, aunque el restore falle;
+7. deja el resultado en `backup-status.json` y refresca el manifiesto.
 
 Si el restore falla, el dump de seguridad queda listado en el panel y se puede
-restaurar desde ahi: no hace falta SSH para volver atras.
+restaurar desde ahí.
 
 ```bash
-sudo bash deploy/install-backup-units.sh         # instala las cuatro unidades
-systemctl status webcmp-backup.path webcmp-restore.path
-journalctl -u webcmp-backup-manual -u webcmp-restore
+sudo bash deploy/install-backup-units.sh
+systemctl status webcmp-backup.path webcmp-restore.path webcmp-download.path
+journalctl -u webcmp-backup-manual -u webcmp-restore -u webcmp-download
 sudo webcmp-deploy --restore /var/backups/webcmp/db/<archivo>.dump  # a mano
 ```
 
-`webcmp-deploy --check` falla si falta alguna de las dos unidades `.path`: sin
-ellas el panel escribe una peticion que nadie recoge y el boton parece no hacer
-nada.
+`webcmp-deploy --check` falla si falta alguna unidad `.path` del panel.
 
 #### En desarrollo
 
@@ -179,6 +177,10 @@ worker de desarrollo en vez de una unidad `.path`.
    DB_BACKUP_STATUS_FILE=tmp/db-backups/backup-status.json
    DB_BACKUP_REQUEST_FILE=tmp/db-backups/backup-request
    DB_RESTORE_REQUEST_FILE=tmp/db-backups/restore-request
+   DB_DOWNLOAD_REQUEST_FILE=tmp/db-backups/download-request
+   DB_DOWNLOAD_STATUS_FILE=tmp/db-backups/download-status.json
+   DB_DOWNLOAD_STAGING_DIR=tmp/db-backups/downloads
+   DB_UPLOAD_STAGING_DIR=tmp/db-backups/uploads
    ```
 2. Crea el directorio: `mkdir -p tmp/db-backups`.
 3. Con `runserver` corriendo, procesa peticiones:

@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -59,6 +60,12 @@ class BackupFilesMixin:
         self.restore_request = os.path.join(self.tmpdir, 'restore-request')
         self.status_file = os.path.join(self.tmpdir, 'backup-status.json')
         self.manifest_file = os.path.join(self.tmpdir, 'backup-manifest.json')
+        self.download_request = os.path.join(self.tmpdir, 'download-request')
+        self.download_status_file = os.path.join(self.tmpdir, 'download-status.json')
+        self.download_staging = os.path.join(self.tmpdir, 'downloads')
+        self.upload_staging = os.path.join(self.tmpdir, 'uploads')
+        os.makedirs(self.download_staging, exist_ok=True)
+        os.makedirs(self.upload_staging, exist_ok=True)
 
         override = override_settings(
             DB_BACKUP_REQUEST_FILE=self.backup_request,
@@ -67,6 +74,12 @@ class BackupFilesMixin:
             DB_BACKUP_MANIFEST_FILE=self.manifest_file,
             DB_BACKUP_DIR=os.path.join(self.tmpdir, 'db'),
             DB_BACKUP_KEEP=10,
+            DB_DOWNLOAD_REQUEST_FILE=self.download_request,
+            DB_DOWNLOAD_STATUS_FILE=self.download_status_file,
+            DB_DOWNLOAD_STAGING_DIR=self.download_staging,
+            DB_UPLOAD_STAGING_DIR=self.upload_staging,
+            DB_DOWNLOAD_TTL_SECONDS=1800,
+            DB_UPLOAD_MAX_SIZE=10 * 1024 * 1024,
         )
         override.enable()
         self.addCleanup(override.disable)
@@ -373,3 +386,106 @@ class DatabaseViewTests(BackupFilesMixin, TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertFalse(Path(self.restore_request).exists())
+
+
+class DatabaseDownloadUploadTests(BackupFilesMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.admin = _superuser()
+        self.regular = _user()
+
+    def _write_download_status(self, **payload):
+        Path(self.download_status_file).write_text(json.dumps(payload), encoding='utf-8')
+
+    def test_download_request_requires_confirmation(self):
+        self.write_manifest([{'name': BACKUP_NAME, 'size': 1, 'kind': 'manual'}])
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse('dashboard:database_download_request'),
+            data=json.dumps({'filename': BACKUP_NAME, 'confirm': 'no'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Path(self.download_request).exists())
+
+    def test_download_request_creates_file(self):
+        self.write_manifest([{'name': BACKUP_NAME, 'size': 1, 'kind': 'manual'}])
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse('dashboard:database_download_request'),
+            data=json.dumps(
+                {'filename': BACKUP_NAME, 'confirm': backup_service.DOWNLOAD_CONFIRMATION}
+            ),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 202)
+        stored = json.loads(Path(self.download_request).read_text(encoding='utf-8'))
+        self.assertEqual(stored['file'], BACKUP_NAME)
+
+    def test_download_request_forbidden_for_non_superuser(self):
+        self.client.force_login(self.regular)
+        response = self.client.post(
+            reverse('dashboard:database_download_request'),
+            data=json.dumps(
+                {'filename': BACKUP_NAME, 'confirm': backup_service.DOWNLOAD_CONFIRMATION}
+            ),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_download_serves_staged_file_and_consumes(self):
+        token = 'a' * 64
+        staged = Path(self.download_staging) / f'{token}.dump'
+        staged.write_bytes(b'dump-content')
+        self._write_download_status(
+            status='ok',
+            file=BACKUP_NAME,
+            download_name=BACKUP_NAME,
+            token=token,
+            requested_by='admin',
+            started_at=datetime.now(UTC).isoformat(),
+            finished_at=datetime.now(UTC).isoformat(),
+            expires_at='2099-01-01T00:00:00+00:00',
+        )
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse('dashboard:database_download', args=[token]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b''.join(response.streaming_content), b'dump-content')
+        self.assertFalse(staged.exists())
+
+    def test_download_rejects_invalid_token(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse('dashboard:database_download', args=['bad']))
+        self.assertEqual(response.status_code, 404)
+
+    def test_upload_requires_confirmation(self):
+        self.client.force_login(self.admin)
+        f = SimpleUploadedFile('test.dump', b'data')
+        response = self.client.post(
+            reverse('dashboard:database_upload'), {'file': f, 'confirm': 'no'}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Path(self.restore_request).exists())
+
+    def test_upload_rejects_non_dump(self):
+        self.client.force_login(self.admin)
+        f = SimpleUploadedFile('test.sql', b'data')
+        response = self.client.post(
+            reverse('dashboard:database_upload'),
+            {'file': f, 'confirm': backup_service.RESTORE_CONFIRMATION},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_upload_creates_restore_request(self):
+        self.client.force_login(self.admin)
+        f = SimpleUploadedFile('backup.dump', b'PGDMP-test')
+        response = self.client.post(
+            reverse('dashboard:database_upload'),
+            {'file': f, 'confirm': backup_service.RESTORE_CONFIRMATION},
+        )
+        self.assertEqual(response.status_code, 202)
+        stored = json.loads(Path(self.restore_request).read_text(encoding='utf-8'))
+        self.assertEqual(stored['source'], 'upload')
+        self.assertTrue(stored['file'].startswith('upload-'))
+        staged = Path(self.upload_staging) / stored['file']
+        self.assertTrue(staged.exists())

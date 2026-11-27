@@ -3456,10 +3456,11 @@ setup_backup() {
 setup_database_panel() {
     local piece tmp
 
-    log "Panel de respaldo y restauracion de la base"
+    log "Panel de respaldo, restauracion y descarga de la base"
 
     for piece in webcmp-backup.path webcmp-backup-manual.service \
-        webcmp-restore.path webcmp-restore.service
+        webcmp-restore.path webcmp-restore.service \
+        webcmp-download.path webcmp-download.service
     do
         if [ -f "$APP_DIR/deploy/systemd/$piece" ] \
             || need_checkout "se renderizaria $piece"
@@ -3474,13 +3475,13 @@ setup_database_panel() {
         fi
     done
 
+    run install -d -m 0770 -o root -g "$DEPLOY_USER" /var/lib/webcmp/downloads
+    run install -d -m 0770 -o root -g "$DEPLOY_USER" /var/lib/webcmp/uploads
     run systemctl daemon-reload
-    # Los `.path` se arrancan ahora: `enable` sin `--now` recien los activa en el
-    # proximo arranque, o sea que los botones no funcionarian hasta reiniciar.
-    run systemctl enable --now webcmp-backup.path webcmp-restore.path
+    run systemctl enable --now webcmp-backup.path webcmp-restore.path webcmp-download.path
 
-    echo "  panel:   webcmp-backup.path y webcmp-restore.path"
-    echo "  logs:    journalctl -u webcmp-backup-manual -u webcmp-restore"
+    echo "  panel:   webcmp-backup.path, webcmp-restore.path, webcmp-download.path"
+    echo "  logs:    journalctl -u webcmp-backup-manual -u webcmp-restore -u webcmp-download"
 }
 
 # --- C.11d Sync de artefactos root (deploy-runner-y-sync) ------------------

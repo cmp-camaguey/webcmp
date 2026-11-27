@@ -207,12 +207,20 @@
       </div>
     </div>
   </div>
-  {# Zona 3: integraciones. FTP a lo ancho; LDAP y Actualizaciones en paralelo. #}
-  <div class="col-12">
-    <div class="card">
+  {# Zona 3: integraciones. FTP y Respaldo en paralelo; LDAP y Actualizaciones en paralelo. #}
+  <div class="col-lg-6">
+    <div class="card h-100">
       <div class="card-body">
         <div class="environment-eyebrow mb-3">Observaciones (FTP)</div>
         {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.ftp %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="environment-eyebrow mb-3">Respaldo de BD</div>
+        {% include 'pages/core/site/environment_fields.html' with section=sections_by_key.backup %}
       </div>
     </div>
   </div>

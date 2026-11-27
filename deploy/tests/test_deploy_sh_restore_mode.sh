@@ -25,6 +25,11 @@ printf '%s\n' "$*" >> "$STUB_LOG"
 exit 0
 STUB
 chmod +x "$restore_tmp/bin/systemctl"
+cat > "$restore_tmp/bin/pg_restore" <<'STUB'
+#!/usr/bin/env bash
+exit 0
+STUB
+chmod +x "$restore_tmp/bin/pg_restore"
 
 restore_env() {
     DB_BACKUP_DIR=$restore_tmp/db
@@ -36,7 +41,8 @@ restore_env() {
     HUEY_UNIT=webcmp-huey
     SYSTEMCTL=$restore_tmp/bin/systemctl
     STUB_LOG=$restore_tmp/systemctl.log
-    export STUB_LOG
+    PATH=$restore_tmp/bin:$PATH
+    export STUB_LOG PATH
     log() { printf 'LOG:%s\n' "$*"; }
     warn() { printf 'WARN:%s\n' "$*"; }
     die() { printf 'DIE:%s\n' "$*"; exit 1; }
@@ -95,7 +101,7 @@ assert_not_contains 'restore: sin respaldo de seguridad no restaura' 'NO-DEBE-CO
 assert_not_contains 'restore: sin respaldo de seguridad no para servicios' 'stop' \
     "$(cat "$restore_tmp/systemctl.log")"
 assert_contains 'restore: lo deja escrito en el estado' \
-    'No se pudo tomar el respaldo de seguridad' "$safety_log"
+    'STATUS:restore:failed' "$safety_log"
 
 # --- Camino feliz: seguridad, parar, restaurar, levantar ------------------
 

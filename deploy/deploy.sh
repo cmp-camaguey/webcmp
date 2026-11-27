@@ -12,6 +12,7 @@
 #   sudo /usr/local/sbin/webcmp-deploy --backup       # respaldo de la base (timer diario)
 #   sudo /usr/local/sbin/webcmp-deploy --backup-manual # respaldo pedido desde el panel
 #   sudo /usr/local/sbin/webcmp-deploy --backup-list   # refresca el manifiesto del panel
+#   sudo /usr/local/sbin/webcmp-deploy --download-request # prepara descarga pedida por el panel
 #   sudo /usr/local/sbin/webcmp-deploy --restore-request # restaura el dump pedido por el panel
 #   sudo /usr/local/sbin/webcmp-deploy --restore <dump>  # restaura un dump a mano
 #
@@ -112,7 +113,7 @@ progress() {
 
 # --------------------------------------------------------------------------
 # Modos: deploy (por defecto, el camino de CI) | --configure | --check | --backup
-#         | --backup-manual | --backup-list | --restore | --restore-request
+#         | --backup-manual | --backup-list | --download-request | --restore | --restore-request
 # --------------------------------------------------------------------------
 #
 # Se resuelve ANTES de sourcear la config y antes de todo preflight, y por una
@@ -135,6 +136,7 @@ while [ $# -gt 0 ]; do
         --backup)      MODE=backup; BACKUP_KIND=scheduled; shift; break ;;
         --backup-manual) MODE=backup; BACKUP_KIND=manual; shift; break ;;
         --backup-list) MODE=backup-list; shift; break ;;
+        --download-request) MODE=download-request; shift; break ;;
         --restore)
             MODE=restore
             shift
@@ -415,14 +417,19 @@ fi
 # `install-backup-units.sh` (o `install.sh`) y `--check` la busca con este nombre:
 # una unidad instalada con otro nombre deja el respaldo sin correr y sin error.
 : "${BACKUP_TIMER:=webcmp-backup}"
-# Panel de respaldo/restauracion (change 040). Los tres archivos viven en
+# Panel de respaldo/restauracion (change 040/041). Los archivos viven en
 # /var/lib/webcmp, el mismo directorio que ya comparten deploy y apply. El
 # ejecutor root los escribe; el proceso web solo lee el manifiesto y el estado,
-# y escribe las dos peticiones.
+# y escribe las peticiones.
 : "${DB_BACKUP_MANIFEST_FILE:=/var/lib/webcmp/backup-manifest.json}"
 : "${DB_BACKUP_STATUS_FILE:=/var/lib/webcmp/backup-status.json}"
 : "${DB_BACKUP_REQUEST_FILE:=/var/lib/webcmp/backup-request}"
 : "${DB_RESTORE_REQUEST_FILE:=/var/lib/webcmp/restore-request}"
+: "${DB_DOWNLOAD_REQUEST_FILE:=/var/lib/webcmp/download-request}"
+: "${DB_DOWNLOAD_STATUS_FILE:=/var/lib/webcmp/download-status.json}"
+: "${DB_DOWNLOAD_STAGING_DIR:=/var/lib/webcmp/downloads}"
+: "${DB_UPLOAD_STAGING_DIR:=/var/lib/webcmp/uploads}"
+: "${DB_DOWNLOAD_TTL_SECONDS:=1800}"
 
 readonly APP_DIR DEPLOY_USER GUNICORN_UNIT HUEY_UNIT ENCRYPTION_ENV PYTHON
 readonly PUBLIC_HOSTNAME PROXY_MODE HEALTHCHECK_URL HEALTHCHECK_RESOLVE
@@ -432,6 +439,8 @@ readonly PIP_CACHE_DIR MPLCONFIGDIR
 readonly DB_BACKUP_DIR DB_BACKUP_KEEP BACKUP_TIMER
 readonly DB_BACKUP_MANIFEST_FILE DB_BACKUP_STATUS_FILE
 readonly DB_BACKUP_REQUEST_FILE DB_RESTORE_REQUEST_FILE
+readonly DB_DOWNLOAD_REQUEST_FILE DB_DOWNLOAD_STATUS_FILE
+readonly DB_DOWNLOAD_STAGING_DIR DB_UPLOAD_STAGING_DIR DB_DOWNLOAD_TTL_SECONDS
 # El array se congela aparte: `readonly PIP_CMD` sin `-a` no protege el contenido
 # de un array en bash < 5.0.
 readonly -a PIP_CMD
@@ -508,6 +517,7 @@ write_db_manifest() {
                 *-scheduled.dump)   kind=scheduled ;;
                 *-manual.dump)      kind=manual ;;
                 *-pre-restore.dump) kind=pre-restore ;;
+                *-uploaded.dump)    kind=uploaded ;;
                 *-to-*.dump)        kind=pre-migrate ;;
                 *)                  kind=unknown ;;
             esac
@@ -532,6 +542,50 @@ read_requested_by() {
         "$1" 2>/dev/null | head -n1
 }
 # <<< TEST-BLOCK: db-request-reader
+
+# >>> TEST-BLOCK: download-status
+DOWNLOAD_OP_STARTED_AT=''
+
+write_download_status() {
+    local status=$1 message=${2:-} file=${3:-} token=${4:-} download_name=${5:-} tmp finished
+    local dir expires_at
+    dir=$(dirname "$DB_DOWNLOAD_STATUS_FILE")
+    [ -d "$dir" ] || return 0
+    [ -n "$DOWNLOAD_OP_STARTED_AT" ] || DOWNLOAD_OP_STARTED_AT=$(date -Is)
+    if [ "$status" = running ]; then
+        finished=null
+        expires_at=null
+    else
+        finished="\"$(date -Is)\""
+        if [ "$status" = ok ]; then
+            expires_at="\"$(date -u -d "+${DB_DOWNLOAD_TTL_SECONDS} seconds" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)\""
+            [ "$expires_at" = '""' ] && expires_at=null
+        else
+            expires_at=null
+        fi
+    fi
+    tmp=$(mktemp "${DB_DOWNLOAD_STATUS_FILE}.XXXXXX") || return 0
+    printf '{"kind":"download","status":"%s","message":"%s","file":%s,"download_name":%s,"token":%s,"requested_by":"%s","started_at":"%s","finished_at":%s,"expires_at":%s}\n' \
+        "$(json_escape "$status")" \
+        "$(json_escape "$message")" \
+        "$([ -n "$file" ] && printf '"%s"' "$(json_escape "$file")" || printf 'null')" \
+        "$([ -n "$download_name" ] && printf '"%s"' "$(json_escape "$download_name")" || printf 'null')" \
+        "$([ -n "$token" ] && printf '"%s"' "$(json_escape "$token")" || printf 'null')" \
+        "$(json_escape "$REQUESTED_BY")" \
+        "$(json_escape "$DOWNLOAD_OP_STARTED_AT")" \
+        "$finished" \
+        "$expires_at" > "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$DB_DOWNLOAD_STATUS_FILE"
+}
+
+cleanup_download_staging() {
+    [ -d "$DB_DOWNLOAD_STAGING_DIR" ] || return 0
+    # Borra .dump con mtime mayor al TTL; no toca otros archivos.
+    find "$DB_DOWNLOAD_STAGING_DIR" -maxdepth 1 -type f -name '*.dump' \
+        -mmin "+$(( (DB_DOWNLOAD_TTL_SECONDS + 59) / 60 ))" -delete 2>/dev/null || true
+}
+# <<< TEST-BLOCK: download-status
 
 # >>> TEST-BLOCK: restore-validation
 valid_backup_name() {
@@ -567,6 +621,18 @@ resolve_backup_file() {
 read_restore_file() {
     [ -e "$1" ] || return 0
     sed -n 's/.*"file"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$1" 2>/dev/null | head -n1
+}
+
+read_restore_source() {
+    [ -e "$1" ] || return 0
+    sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$1" 2>/dev/null | head -n1
+}
+
+read_restore_original_name() {
+    [ -e "$1" ] || return 0
+    sed -n 's/.*"original_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
         "$1" 2>/dev/null | head -n1
 }
 # <<< TEST-BLOCK: restore-validation
@@ -1082,14 +1148,14 @@ check_db_backup() {
     else
         check_fail "No hay pg_restore: el panel no podria restaurar un respaldo."
     fi
-    # Las unidades del panel (change 040) se instalan aparte del timer. Sin
+    # Las unidades del panel (040/041) se instalan aparte del timer. Sin
     # ellas el boton escribe una peticion que nadie recoge.
     local panel_unit
-    for panel_unit in webcmp-backup.path webcmp-restore.path; do
+    for panel_unit in webcmp-backup.path webcmp-restore.path webcmp-download.path; do
         if [ -f "$SYSTEMD_UNIT_DIR/$panel_unit" ]; then
             check_ok "Panel de respaldo: $panel_unit instalado."
         else
-            check_fail "Falta $panel_unit: los botones de respaldo y restauracion del panel no funcionan. Instalalo con: sudo bash deploy/install-backup-units.sh"
+            check_fail "Falta $panel_unit: los botones de respaldo/restauracion/descarga del panel no funcionan. Instalalo con: sudo bash deploy/install-backup-units.sh"
         fi
     done
 }
@@ -1146,9 +1212,8 @@ exec 9>"$LOCKFILE"
 if [ "$MODE" = backup ]; then
     flock -w 900 9 \
         || die "Hay un despliegue en curso (lock $LOCKFILE) desde hace mas de 15 minutos. No se respalda mientras se migra."
-elif [ "$MODE" = backup-list ]; then
-    # Leer el directorio de respaldos no compite con un deploy: no se toma el
-    # lock para no dejar el manifiesto viejo por un deploy en curso.
+elif [ "$MODE" = backup-list ] || [ "$MODE" = download-request ]; then
+    # Leer/copiar respaldos no compite con un deploy: no se toma el lock.
     :
 elif [ "$MODE" = restore ] || [ "$MODE" = restore-request ]; then
     # Una restauracion NO espera a un deploy: si hay uno en curso, se aborta.
@@ -1493,6 +1558,42 @@ fi
 # <<< TEST-BLOCK: backup-list-mode
 
 # --------------------------------------------------------------------------
+# Modo --download-request: prepara una copia temporal para descargar (041)
+# --------------------------------------------------------------------------
+# >>> TEST-BLOCK: download-mode
+if [ "$MODE" = download-request ]; then
+    [ -e "$DB_DOWNLOAD_REQUEST_FILE" ] \
+        || die "No existe $DB_DOWNLOAD_REQUEST_FILE: no hay nada que descargar."
+    REQUESTED_BY=$(read_requested_by "$DB_DOWNLOAD_REQUEST_FILE")
+    download_name=$(read_restore_file "$DB_DOWNLOAD_REQUEST_FILE")
+    rm -f "$DB_DOWNLOAD_REQUEST_FILE"
+    DOWNLOAD_OP_STARTED_AT=$(date -Is)
+    cleanup_download_staging
+
+    write_download_status running 'Preparando descarga.' "$download_name"
+    if ! download_file=$(resolve_backup_file "$download_name"); then
+        write_download_status failed 'El respaldo pedido no existe o no es valido.' "$download_name"
+        die "Respaldo invalido para descarga: '$download_name'."
+    fi
+
+    install -d -m 0770 -o root -g "$DEPLOY_USER" "$DB_DOWNLOAD_STAGING_DIR"
+    token=$(python3 -c 'import secrets; print(secrets.token_hex(32))') \
+        || { write_download_status failed 'No se pudo generar el token.' "$download_name"; die 'No se pudo generar token de descarga.'; }
+    staging_file="$DB_DOWNLOAD_STAGING_DIR/${token}.dump"
+    if ! cp -- "$download_file" "$staging_file"; then
+        rm -f "$staging_file"
+        write_download_status failed 'No se pudo preparar la copia de descarga.' "$download_name"
+        die "No se pudo copiar $download_file a staging."
+    fi
+    chmod 0640 "$staging_file"
+    chown root:"$DEPLOY_USER" "$staging_file"
+    write_download_status ok 'Descarga lista.' "$download_name" "$token" "$download_name"
+    log "Descarga preparada: $download_name (token temporal)"
+    exit 0
+fi
+# <<< TEST-BLOCK: download-mode
+
+# --------------------------------------------------------------------------
 # Modos --restore y --restore-request: restaurar un dump
 # --------------------------------------------------------------------------
 #
@@ -1508,6 +1609,7 @@ fi
 # recuperable en una salida por SSH.
 # >>> TEST-BLOCK: restore-mode
 restore_services_stopped=0
+upload_staged_file=''
 
 restart_stopped_services() {
     [ "$restore_services_stopped" -eq 1 ] || return 0
@@ -1516,29 +1618,34 @@ restart_stopped_services() {
         || warn "No se pudieron levantar $GUNICORN_UNIT y $HUEY_UNIT. Levantalos a mano: systemctl start $GUNICORN_UNIT $HUEY_UNIT"
 }
 
+resolve_upload_staged_file() {
+    local name=$1 dir file
+    valid_backup_name "$name" || return 1
+    dir=$(realpath -e "$DB_UPLOAD_STAGING_DIR" 2>/dev/null) || return 1
+    file=$(realpath -e "$DB_UPLOAD_STAGING_DIR/$name" 2>/dev/null) || return 1
+    [ "$(dirname "$file")" = "$dir" ] || return 1
+    [ -f "$file" ] || return 1
+    [ ! -L "$DB_UPLOAD_STAGING_DIR/$name" ] || return 1
+    printf '%s\n' "$file"
+}
+
 if [ "$MODE" = restore ] || [ "$MODE" = restore-request ]; then
     REQUESTED_BY=''
+    restore_source=''
+    restore_original_name=''
     if [ "$MODE" = restore-request ]; then
         [ -e "$DB_RESTORE_REQUEST_FILE" ] \
             || die "No existe $DB_RESTORE_REQUEST_FILE: no hay nada que restaurar."
         REQUESTED_BY=$(read_requested_by "$DB_RESTORE_REQUEST_FILE")
         restore_name=$(read_restore_file "$DB_RESTORE_REQUEST_FILE")
-        # Se borra antes de trabajar: si el archivo sigue en disco, el panel lo
-        # reporta como peticion sin recoger aunque esta corriendo.
+        restore_source=$(read_restore_source "$DB_RESTORE_REQUEST_FILE" 2>/dev/null || true)
+        restore_original_name=$(read_restore_original_name "$DB_RESTORE_REQUEST_FILE" 2>/dev/null || true)
         rm -f "$DB_RESTORE_REQUEST_FILE"
     else
-        # La consola acepta tanto el nombre como la ruta completa; lo que se
-        # valida despues es el nombre, resuelto dentro de DB_BACKUP_DIR.
         restore_name=$(basename "$RESTORE_FILE")
     fi
 
     DB_OP_STARTED_AT=$(date -Is)
-
-    if ! restore_file=$(resolve_backup_file "$restore_name"); then
-        write_db_status restore failed 'El respaldo pedido no existe o no es valido.'
-        write_db_manifest
-        die "Respaldo invalido: '$restore_name'. Tiene que ser un .dump de root dentro de $DB_BACKUP_DIR."
-    fi
 
     if ! command -v pg_restore >/dev/null 2>&1; then
         write_db_status restore failed 'No hay pg_restore en el servidor.'
@@ -1547,16 +1654,42 @@ if [ "$MODE" = restore ] || [ "$MODE" = restore-request ]; then
   Instalalo con: apt-get install -y postgresql-client"
     fi
 
-    write_db_status restore running 'Restauracion en curso: el sitio se reinicia y vuelve solo.'
+    if [ "$restore_source" = upload ]; then
+        if ! upload_staged_file=$(resolve_upload_staged_file "$restore_name"); then
+            write_db_status restore failed 'El dump subido no es valido.'
+            write_db_manifest
+            die "Dump subido invalido: '$restore_name'."
+        fi
+        if ! pg_restore --list "$upload_staged_file" >/dev/null 2>&1; then
+            rm -f "$upload_staged_file"
+            write_db_status restore failed 'El archivo subido no es un dump PostgreSQL valido.'
+            write_db_manifest
+            die "El archivo subido no es un dump PostgreSQL custom valido."
+        fi
+        install -d -m 0700 -o root -g root "$DB_BACKUP_DIR"
+        restore_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-uploaded.dump"
+        mv -f "$upload_staged_file" "$restore_file"
+        chown root:root "$restore_file"
+        chmod 0600 "$restore_file"
+        upload_staged_file=''
+        restore_name=$(basename "$restore_file")
+        log "Dump subido validado: ${restore_original_name:-$restore_name}"
+    else
+        if ! restore_file=$(resolve_backup_file "$restore_name"); then
+            write_db_status restore failed 'El respaldo pedido no existe o no es valido.'
+            write_db_manifest
+            die "Respaldo invalido: '$restore_name'. Tiene que ser un .dump de root dentro de $DB_BACKUP_DIR."
+        fi
+    fi
+
+    write_db_status restore running 'Restauracion en curso: el sitio se reinicia y vuelve solo.' "$restore_name"
     log "Restauracion de $(basename "$restore_file")"
 
-    # Dump de seguridad ANTES de parar nada. `--single-transaction` ya hace el
-    # restore atomico, pero el dump cubre el otro fallo: una migracion de codigo
-    # posterior que deje la base inservible.
     safety_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-pre-restore.dump"
     if ! db_dump "$safety_file"; then
         rm -f "$safety_file"
-        write_db_status restore failed 'No se pudo tomar el respaldo de seguridad; no se restauro nada.'
+        [ -n "$upload_staged_file" ] && rm -f "$upload_staged_file"
+        write_db_status restore failed 'No se pudo tomar el respaldo de seguridad; no se restauro nada.' "$restore_name"
         write_db_manifest
         die "Fallo el respaldo de seguridad. No se toco la base."
     fi

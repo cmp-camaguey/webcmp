@@ -383,6 +383,42 @@ EDITABLE_FIELDS = (
         required=False,
         secret=True,
     ),
+    EnvField(
+        key='DB_BACKUP_KEEP',
+        label='Respaldos a conservar',
+        kind='int',
+        group='backup',
+        width='half',
+        placeholder='Ej.: 10',
+        min_value=1,
+        max_value=365,
+        default='10',
+        help_text='Cantidad de dumps que se conservan por rotación.',
+    ),
+    EnvField(
+        key='DB_DOWNLOAD_TTL_SECONDS',
+        label='TTL de descarga (s)',
+        kind='int',
+        group='backup',
+        width='half',
+        placeholder='Ej.: 1800',
+        min_value=60,
+        max_value=86400,
+        default='1800',
+        help_text='Tiempo que el enlace de descarga permanece válido.',
+    ),
+    EnvField(
+        key='DB_UPLOAD_MAX_SIZE',
+        label='Tamaño máximo de subida (bytes)',
+        kind='int',
+        group='backup',
+        width='full',
+        placeholder='Ej.: 536870912',
+        min_value=1048576,
+        max_value=5368709120,
+        default=str(512 * 1024 * 1024),
+        help_text='Límite del dump subido desde el panel (512 MiB por defecto).',
+    ),
 )
 
 _SPEC_BY_KEY = {spec.key: spec for spec in EDITABLE_FIELDS}
@@ -393,6 +429,7 @@ GROUP_TITLES = {
     'domain': 'Dominio y orígenes',
     'database': 'Base de datos',
     'cache': 'Caché',
+    'backup': 'Respaldo de BD',
 }
 
 # Títulos de las secciones editables. `app` se llama distinto acá porque la
@@ -404,6 +441,7 @@ EDITABLE_GROUP_TITLES = {
     'ldap': 'LDAP',
     'updates': 'Actualizaciones del panel',
     'ftp': 'Observaciones (FTP)',
+    'backup': 'Respaldo de BD',
 }
 
 # Secretos que NO se administran desde el panel. Los de correo, LDAP y FTP sí
@@ -604,6 +642,26 @@ def _readonly_groups(settings_obj, environ) -> dict[str, list[dict]]:
             _item('Motor', _friendly_backend(cache.get('BACKEND'))),
             _item('Redis habilitado', _yes_no(getattr(settings_obj, 'USE_REDIS_CACHE', False))),
             _item('URL de Redis', strip_url_credentials(getattr(settings_obj, 'REDIS_URL', ''))),
+        ],
+        'backup': [
+            _item('Directorio de respaldos', getattr(settings_obj, 'DB_BACKUP_DIR', '—')),
+            _item('Respaldos a conservar', getattr(settings_obj, 'DB_BACKUP_KEEP', '—')),
+            _item(
+                'Staging de descargas',
+                getattr(settings_obj, 'DB_DOWNLOAD_STAGING_DIR', '—'),
+            ),
+            _item(
+                'Staging de subidas',
+                getattr(settings_obj, 'DB_UPLOAD_STAGING_DIR', '—'),
+            ),
+            _item(
+                'TTL de descarga (s)',
+                getattr(settings_obj, 'DB_DOWNLOAD_TTL_SECONDS', '—'),
+            ),
+            _item(
+                'Tamaño máximo de subida (bytes)',
+                getattr(settings_obj, 'DB_UPLOAD_MAX_SIZE', '—'),
+            ),
         ],
     }
 

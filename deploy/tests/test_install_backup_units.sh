@@ -107,12 +107,13 @@ assert_contains 'backup: nombra la pieza que falta' 'webcmp-backup.service' \
 mkdir -p "$backup_tmp/app/deploy/systemd" "$backup_tmp/units"
 cp "$REPO_ROOT/deploy/systemd/webcmp-backup.service" "$backup_tmp/app/deploy/systemd/"
 cp "$REPO_ROOT/deploy/systemd/webcmp-backup.timer" "$backup_tmp/app/deploy/systemd/"
-# Las cuatro unidades del panel (change 040). Van con el respaldo diario: el
-# instalador las exige todas y una copia parcial moriria en la primera que falte.
+# Las unidades del panel (040/041). Van con el respaldo diario.
 cp "$REPO_ROOT/deploy/systemd/webcmp-backup.path" "$backup_tmp/app/deploy/systemd/"
 cp "$REPO_ROOT/deploy/systemd/webcmp-backup-manual.service" "$backup_tmp/app/deploy/systemd/"
 cp "$REPO_ROOT/deploy/systemd/webcmp-restore.path" "$backup_tmp/app/deploy/systemd/"
 cp "$REPO_ROOT/deploy/systemd/webcmp-restore.service" "$backup_tmp/app/deploy/systemd/"
+cp "$REPO_ROOT/deploy/systemd/webcmp-download.path" "$backup_tmp/app/deploy/systemd/"
+cp "$REPO_ROOT/deploy/systemd/webcmp-download.service" "$backup_tmp/app/deploy/systemd/"
 
 (
     eval "$backup_pure"
@@ -145,6 +146,9 @@ chmod +x "$backup_tmp/deploy"
     SYSTEMCTL=true
     CONFIG=$backup_tmp/deploy.env
     DRY_RUN=1
+    DEPLOY_USER=webcmp
+    DB_DOWNLOAD_STAGING_DIR=$backup_tmp/downloads
+    DB_UPLOAD_STAGING_DIR=$backup_tmp/uploads
     install_backup_units
 ) >"$backup_tmp/dry.log" 2>&1
 assert_eq 'backup: dry-run sale 0' 0 "$?"
@@ -175,6 +179,9 @@ STUB
             SYSTEMCTL=$backup_tmp/bin/systemctl
             CONFIG=$backup_tmp/deploy.env
             DRY_RUN=0
+            DEPLOY_USER=webcmp
+            DB_DOWNLOAD_STAGING_DIR=$backup_tmp/downloads
+            DB_UPLOAD_STAGING_DIR=$backup_tmp/uploads
             STUB_LOG=$backup_tmp/systemctl.log
             export STUB_LOG
             eval "$backup_pure"
@@ -198,7 +205,7 @@ STUB
     # Los `.path` del panel se arrancan, no solo se habilitan: sin `--now` los
     # botones quedarian inertes hasta el proximo reinicio del servidor.
     assert_contains 'instalacion: arranca los path del panel' \
-        'enable --now webcmp-backup.path webcmp-restore.path' \
+        'enable --now webcmp-backup.path webcmp-restore.path webcmp-download.path' \
         "$(cat "$backup_tmp/systemctl.log")"
     assert_eq 'instalacion: el path del respaldo queda instalado' '1' \
         "$(find "$backup_tmp/units" -name 'webcmp-backup.path' -type f | wc -l | tr -d ' ')"
@@ -208,6 +215,10 @@ STUB
         "$(find "$backup_tmp/units" -name 'webcmp-restore.path' -type f | wc -l | tr -d ' ')"
     assert_eq 'instalacion: el servicio de restauracion queda instalado' '1' \
         "$(find "$backup_tmp/units" -name 'webcmp-restore.service' -type f | wc -l | tr -d ' ')"
+    assert_eq 'instalacion: el path de descarga queda instalado' '1' \
+        "$(find "$backup_tmp/units" -name 'webcmp-download.path' -type f | wc -l | tr -d ' ')"
+    assert_eq 'instalacion: el servicio de descarga queda instalado' '1' \
+        "$(find "$backup_tmp/units" -name 'webcmp-download.service' -type f | wc -l | tr -d ' ')"
 
     before=$(stat -c '%Y %s' "$backup_tmp/units/webcmp-backup.timer")
     sleep 1

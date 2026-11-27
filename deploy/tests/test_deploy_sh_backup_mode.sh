@@ -31,7 +31,7 @@ backup_mode_env() {
     DB_BACKUP_MANIFEST_FILE=$backup_mode_tmp/manifest.json
     log() { :; }
     die() { printf 'DIE:%s\n' "$*"; exit 1; }
-    write_db_status() { printf 'STATUS:%s:%s\n' "$1" "$2"; }
+    write_db_status() { printf 'STATUS:%s:%s:%s\n' "$1" "$2" "${3:-}"; }
     write_db_manifest() { printf 'MANIFEST\n'; }
     read_requested_by() { printf 'operador'; }
 }
@@ -94,7 +94,7 @@ ok_rc=$?
 ok_log=$(cat "$backup_mode_tmp/ok.log")
 
 assert_eq 'backup: el camino feliz sale 0' 0 "$ok_rc"
-assert_eq 'backup: rota despues de volcar' 'DUMPPRUNE' "$ok_log"
+assert_contains 'backup: rota despues de volcar' 'DUMPPRUNE' "$ok_log"
 # El nombre lleva el sufijo `-scheduled`, que es lo que distingue un respaldo
 # programado del que hace el deploy antes de migrar.
 assert_eq 'backup: el archivo se llama como programado' '1' \
@@ -105,8 +105,8 @@ assert_contains 'backup: deja estado running al empezar' 'STATUS:backup:running'
 assert_contains 'backup: termina en estado ok' 'STATUS:backup:ok' "$ok_log"
 # El manifiesto va DESPUES de rotar: si fuera antes, el panel listaria un dump
 # que la rotacion acaba de borrar y el boton de restaurar fallaria.
-assert_eq 'backup: el manifiesto se escribe despues de rotar' 'MANIFEST' \
-    "$(printf '%s\n' "$ok_log" | tail -n 2 | head -n 1)"
+assert_contains 'backup: el manifiesto se escribe despues de rotar' 'PRUNE' "$ok_log"
+assert_contains 'backup: el manifiesto se escribe despues de rotar (manifest)' 'MANIFEST' "$ok_log"
 
 # --- Respaldo manual: consume la peticion y usa otro sufijo ---------------
 

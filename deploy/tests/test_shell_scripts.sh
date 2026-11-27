@@ -115,12 +115,11 @@ assert_eq 'la restauracion corre antes del primer paso del deploy' 'antes' \
 # Sin este orden, un deploy en curso se lleva por delante la restauracion.
 assert_contains 'la restauracion no espera a un deploy en curso' 'flock -n 9' "$backup_src"
 
-# Las cuatro unidades del panel tienen que estar en el manifiesto del sync: una
-# unidad instalada a mano y ausente del manifiesto se queda con la version vieja
-# en el proximo deploy, sin que nadie lo note.
+# Las unidades del panel tienen que estar en el manifiesto del sync.
 root_manifest=$(cat "$REPO_ROOT/deploy/root-bundle.manifest")
 for panel_unit in webcmp-backup.path webcmp-backup-manual.service \
-    webcmp-restore.path webcmp-restore.service
+    webcmp-restore.path webcmp-restore.service \
+    webcmp-download.path webcmp-download.service
 do
     assert_contains "root-bundle.manifest incluye $panel_unit" \
         "/etc/systemd/system/$panel_unit" "$root_manifest"

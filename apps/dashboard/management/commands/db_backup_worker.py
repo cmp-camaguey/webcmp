@@ -19,6 +19,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
+import shutil
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -72,15 +74,21 @@ class Command(BaseCommand):
             settings.DB_BACKUP_DIR,
             Path(settings.DB_BACKUP_MANIFEST_FILE).parent,
             Path(settings.DB_BACKUP_STATUS_FILE).parent,
+            getattr(settings, 'DB_DOWNLOAD_STAGING_DIR', ''),
+            getattr(settings, 'DB_UPLOAD_STAGING_DIR', ''),
         ):
-            Path(path).mkdir(parents=True, exist_ok=True)
+            if path:
+                Path(path).mkdir(parents=True, exist_ok=True)
 
     def _run_once(self):
         restore = Path(settings.DB_RESTORE_REQUEST_FILE)
         backup = Path(settings.DB_BACKUP_REQUEST_FILE)
-        # Restaurar primero: es la petición más delicada y la más rara.
+        download = Path(getattr(settings, 'DB_DOWNLOAD_REQUEST_FILE', ''))
         if restore.exists():
             self._handle_restore(restore)
+            return True
+        if download and download.exists():
+            self._handle_download(download)
             return True
         if backup.exists():
             self._handle_backup(backup)
@@ -124,6 +132,40 @@ class Command(BaseCommand):
             },
         )
 
+    def _download_status(
+        self,
+        *,
+        status,
+        message='',
+        file=None,
+        token=None,
+        download_name=None,
+        requested_by='',
+        started_at=None,
+    ):
+        now = datetime.now(UTC).isoformat()
+        expires_at = None
+        if status == 'ok':
+            ttl = int(getattr(settings, 'DB_DOWNLOAD_TTL_SECONDS', 1800))
+            expires_at = datetime.fromtimestamp(
+                datetime.now(UTC).timestamp() + ttl, tz=UTC
+            ).isoformat()
+        self._write_json(
+            settings.DB_DOWNLOAD_STATUS_FILE,
+            {
+                'kind': 'download',
+                'status': status,
+                'message': message,
+                'file': file,
+                'download_name': download_name,
+                'token': token,
+                'requested_by': requested_by,
+                'started_at': started_at or now,
+                'finished_at': None if status == 'running' else now,
+                'expires_at': expires_at,
+            },
+        )
+
     def _manifest(self):
         backup_dir = Path(settings.DB_BACKUP_DIR)
         entries = []
@@ -159,6 +201,8 @@ class Command(BaseCommand):
             return 'manual'
         if name.endswith('-pre-restore.dump'):
             return 'pre-restore'
+        if name.endswith('-uploaded.dump'):
+            return 'uploaded'
         if re.search(r'-to-[^.]+\.dump$', name):
             return 'pre-migrate'
         return 'unknown'
@@ -229,6 +273,51 @@ class Command(BaseCommand):
             return {}
         return data if isinstance(data, dict) else {}
 
+    def _handle_download(self, request_path):
+        raw = self._read_request(request_path)
+        requested_by = str(raw.get('requested_by') or '').strip()
+        name = raw.get('file')
+        started_at = datetime.now(UTC).isoformat()
+        request_path.unlink(missing_ok=True)
+        self._download_status(
+            status='running',
+            message='Preparando descarga (dev).',
+            file=name,
+            requested_by=requested_by,
+            started_at=started_at,
+        )
+        try:
+            if not backup_service.valid_backup_name(name):
+                raise CommandError('Nombre de respaldo invalido.')
+            src = Path(settings.DB_BACKUP_DIR) / name
+            if not src.is_file():
+                raise CommandError('El respaldo no existe.')
+            staging = Path(settings.DB_DOWNLOAD_STAGING_DIR)
+            staging.mkdir(parents=True, exist_ok=True)
+            token = secrets.token_hex(32)
+            dest = staging / f'{token}.dump'
+            shutil.copy2(src, dest)
+            self._download_status(
+                status='ok',
+                message='Descarga lista (dev).',
+                file=name,
+                token=token,
+                download_name=name,
+                requested_by=requested_by,
+                started_at=started_at,
+            )
+            if self.verbosity:
+                self.stdout.write(self.style.SUCCESS(f'Descarga preparada: {name}'))
+        except Exception as error:
+            self._download_status(
+                status='failed',
+                message='No se pudo preparar la descarga.',
+                file=name if isinstance(name, str) else None,
+                requested_by=requested_by,
+                started_at=started_at,
+            )
+            self.stderr.write(self.style.ERROR(f'Descarga fallida: {error}'))
+
     def _handle_backup(self, request_path):
         raw = self._read_request(request_path)
         requested_by = str(raw.get('requested_by') or '').strip()
@@ -275,6 +364,8 @@ class Command(BaseCommand):
         raw = self._read_request(request_path)
         requested_by = str(raw.get('requested_by') or '').strip()
         name = raw.get('file')
+        source = str(raw.get('source') or '').strip()
+        original_name = str(raw.get('original_name') or name or '').strip()
         started_at = datetime.now(UTC).isoformat()
         request_path.unlink(missing_ok=True)
 
@@ -290,23 +381,60 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f'Nombre de respaldo inválido: {name!r}'))
             return
 
-        src = Path(settings.DB_BACKUP_DIR) / name
-        if not src.is_file():
-            self._status(
-                kind='restore',
-                status='failed',
-                message='El respaldo pedido no existe.',
-                requested_by=requested_by,
-                started_at=started_at,
+        if source == 'upload':
+            src = Path(getattr(settings, 'DB_UPLOAD_STAGING_DIR', '')) / name
+            if not src.is_file():
+                self._status(
+                    kind='restore',
+                    status='failed',
+                    message='El dump subido no existe.',
+                    requested_by=requested_by,
+                    started_at=started_at,
+                )
+                self._manifest()
+                self.stderr.write(self.style.ERROR(f'No existe upload: {src}'))
+                return
+            # Validar formato custom antes de tocar la BD.
+            check = subprocess.run(
+                ['pg_restore', '--list', str(src)], capture_output=True, text=True
             )
-            self._manifest()
-            self.stderr.write(self.style.ERROR(f'No existe: {src}'))
-            return
+            if check.returncode != 0:
+                src.unlink(missing_ok=True)
+                self._status(
+                    kind='restore',
+                    status='failed',
+                    message='El archivo subido no es un dump PostgreSQL valido.',
+                    requested_by=requested_by,
+                    started_at=started_at,
+                )
+                self._manifest()
+                self.stderr.write(self.style.ERROR('Upload inválido: pg_restore --list falló'))
+                return
+            stamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')
+            final_name = f'webcmp-{stamp}-uploaded.dump'
+            final = Path(settings.DB_BACKUP_DIR) / final_name
+            shutil.move(str(src), str(final))
+            src = final
+            name = final_name
+        else:
+            src = Path(settings.DB_BACKUP_DIR) / name
+            if not src.is_file():
+                self._status(
+                    kind='restore',
+                    status='failed',
+                    message='El respaldo pedido no existe.',
+                    requested_by=requested_by,
+                    started_at=started_at,
+                )
+                self._manifest()
+                self.stderr.write(self.style.ERROR(f'No existe: {src}'))
+                return
 
         self._status(
             kind='restore',
             status='running',
             message='Restauración en curso (dev): no se detienen servicios.',
+            file=name,
             requested_by=requested_by,
             started_at=started_at,
         )
@@ -332,7 +460,7 @@ class Command(BaseCommand):
             )
             if self.verbosity:
                 self.stdout.write(
-                    self.style.SUCCESS(f'Restaurado: {name} (seguridad: {safety_name})')
+                    self.style.SUCCESS(f'Restaurado: {original_name} (seguridad: {safety_name})')
                 )
         except Exception as error:
             self._manifest()

@@ -284,6 +284,18 @@ def build_env(*, production: bool, encrypted_secret_key: str, encryption_key: st
         parts.append(
             'DB_RESTORE_REQUEST_FILE=tmp/db-backups/restore-request\n'  # pragma: allowlist secret
         )
+        parts.append(
+            'DB_DOWNLOAD_REQUEST_FILE=tmp/db-backups/download-request\n'  # pragma: allowlist secret
+        )
+        parts.append(
+            'DB_DOWNLOAD_STATUS_FILE=tmp/db-backups/download-status.json\n'  # noqa: E501  # pragma: allowlist secret
+        )
+        parts.append(
+            'DB_DOWNLOAD_STAGING_DIR=tmp/db-backups/downloads\n'  # pragma: allowlist secret
+        )
+        parts.append('DB_UPLOAD_STAGING_DIR=tmp/db-backups/uploads\n')  # pragma: allowlist secret
+        parts.append('DB_DOWNLOAD_TTL_SECONDS=1800\n')
+        parts.append('DB_UPLOAD_MAX_SIZE=536870912\n')  # pragma: allowlist secret
         parts.append('\n')
 
     return ''.join(parts)

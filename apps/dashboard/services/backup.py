@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import re
+import secrets
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -43,15 +44,17 @@ PENDING_GRACE_SECONDS = 30
 # Lo que el operador tiene que escribir para confirmar una restauracion. No es
 # un "OK" de un clic: restaurar borra y recrea los objetos de la base.
 RESTORE_CONFIRMATION = 'RESTAURAR'
+DOWNLOAD_CONFIRMATION = 'DESCARGAR'
 
 # El nombre lo escribe el panel, pero el ejecutor lo trata como entrada no
 # confiable. Se valida en las dos capas: aca y en `deploy.sh`.
 BACKUP_NAME_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*\.dump$')
+DOWNLOAD_TOKEN_RE = re.compile(r'^[a-f0-9]{64}$')
 
 # Origenes que entiende el manifiesto. Un valor desconocido se muestra como
 # `unknown` en vez de descartar el respaldo: el archivo existe y se puede
 # restaurar aunque su nombre no siga la convencion.
-MANIFEST_KINDS = {'scheduled', 'manual', 'pre-restore', 'pre-migrate', 'unknown'}
+MANIFEST_KINDS = {'scheduled', 'manual', 'pre-restore', 'pre-migrate', 'uploaded', 'unknown'}
 
 
 class BackupRequestPendingError(Exception):
@@ -288,6 +291,7 @@ _TONES = {
     'ok': 'success',
     'failed': 'danger',
     'stale': 'warning',
+    'expired': 'warning',
 }
 
 # Mismos nombres de color que los badges del panel (bg-*-lt).
@@ -303,6 +307,7 @@ _ICONS = {
     'ok': 'circle-check',
     'failed': 'alert-triangle',
     'stale': 'clock-exclamation',
+    'expired': 'clock-exclamation',
 }
 
 
@@ -379,3 +384,104 @@ def _instant(value: datetime) -> str:
 
 def _clock(value: datetime) -> str:
     return timezone.localtime(value).strftime('%H:%M')
+
+
+# ---------------------------------------------------------------------------
+# Descarga (041) — el web nunca lee DB_BACKUP_DIR; sirve solo staging
+# ---------------------------------------------------------------------------
+
+
+def valid_download_token(token) -> bool:
+    return isinstance(token, str) and bool(DOWNLOAD_TOKEN_RE.match(token))
+
+
+def request_download(path, user, filename) -> dict:
+    if not valid_backup_name(filename):
+        raise ValueError(f'Nombre de respaldo invalido: {filename!r}')
+    return _write_request(
+        path,
+        {
+            'file': filename,
+            'requested_by': user.get_username(),
+            'requested_at': datetime.now(UTC).isoformat(),
+        },
+    )
+
+
+def download_status(path, now=None) -> dict | None:
+    raw = _read_json(path)
+    if raw is None:
+        return None
+    state = str(raw.get('status') or '').strip().lower()
+    if state not in ('running', 'ok', 'failed', 'expired'):
+        return None
+
+    token = raw.get('token')
+    token = token if valid_download_token(token) else None
+    file = raw.get('file')
+    file = file if valid_backup_name(file) else None
+    download_name = raw.get('download_name')
+    if not valid_backup_name(download_name):
+        download_name = file
+    expires = _parse_instant(raw.get('expires_at'))
+    now_dt = now or datetime.now(UTC)
+
+    if state == 'ok' and token and expires and now_dt >= expires:
+        state = 'expired'
+
+    return {
+        'state': state,
+        'kind': 'download',
+        'tone': _TONES.get(state, 'info'),
+        'color': _COLORS.get(_TONES.get(state, 'info'), 'blue'),
+        'icon': _ICONS.get(state, 'download'),
+        'text': _download_text(state, file=file, requested_by=raw.get('requested_by')),
+        'file': file,
+        'download_name': download_name,
+        'token': token if state == 'ok' else None,
+        'expires_at': expires.isoformat() if expires else None,
+        'requested_by': str(raw.get('requested_by') or '').strip(),
+    }
+
+
+def _download_text(state, *, file, requested_by) -> str:
+    who = f' (solicitado por {requested_by})' if requested_by else ''
+    if state == 'running':
+        return f'Preparando descarga{who}…'
+    if state == 'ok':
+        return f'Descarga lista{who}: {file}.'
+    if state == 'failed':
+        return 'No se pudo preparar la descarga. Revise el journal de webcmp-download.'
+    if state == 'expired':
+        return 'El enlace de descarga venció. Solicítelo de nuevo.'
+    return 'Descarga sin confirmar.'
+
+
+# ---------------------------------------------------------------------------
+# Subida (041) — el web guarda en staging; el ejecutor valida y mueve
+# ---------------------------------------------------------------------------
+
+
+def valid_upload_name(name) -> bool:
+    return valid_backup_name(name)
+
+
+def make_staged_upload_name() -> str:
+    return f'upload-{secrets.token_hex(16)}.dump'
+
+
+def request_upload_restore(path, user, staged_file, original_name) -> dict:
+    if not isinstance(staged_file, str) or not re.match(
+        r'^[A-Za-z0-9][A-Za-z0-9._-]*\.dump$', staged_file
+    ):
+        raise ValueError(f'Nombre staged invalido: {staged_file!r}')
+    return _write_request(
+        path,
+        {
+            'file': staged_file,
+            'original_name': str(original_name or staged_file)[:255],
+            'source': 'upload',
+            'requested_by': user.get_username(),
+            'requested_at': datetime.now(UTC).isoformat(),
+        },
+    )

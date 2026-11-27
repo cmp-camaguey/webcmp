@@ -1711,6 +1711,14 @@ class DashboardUpdateScriptTest(TestCase):
                 'apps/dashboard/templates/pages/dashboard/database.html',
                 'db-restore-modal',
             ),
+            (
+                'apps/dashboard/templates/pages/dashboard/database.html',
+                'db-download-modal',
+            ),
+            (
+                'apps/dashboard/templates/pages/dashboard/database.html',
+                'db-upload-modal',
+            ),
             ('apps/core/templates/pages/core/site/environment.html', 'apply-changes-modal'),
             ('apps/core/templates/pages/core/site/settings.html', 'reset-theme-modal'),
             (
