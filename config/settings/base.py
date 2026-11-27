@@ -655,6 +655,20 @@ UPDATE_SYNC_MAX_AGE = int(os.getenv('UPDATE_SYNC_MAX_AGE', str(36 * 3600)))
 ENV_APPLY_REQUEST_FILE = os.getenv('ENV_APPLY_REQUEST_FILE', '/var/lib/webcmp/apply-request')
 # El ejecutor escribe aca el resultado del reinicio (JSON), que la pagina lee.
 ENV_APPLY_STATUS_FILE = os.getenv('ENV_APPLY_STATUS_FILE', '/var/lib/webcmp/apply-status.json')
+
+# --- Respaldo y restauracion de la base desde el panel (change 040) ---------
+# El dump completo vive en DB_BACKUP_DIR (0700 root:root) y el proceso web NO
+# lo lee. Solo lee el manifiesto y el estado, que escribe el ejecutor root en
+# /var/lib/webcmp. Las peticiones van en la direccion contraria: el panel las
+# crea y las unidades `.path` las recogen.
+DB_BACKUP_DIR = os.getenv('DB_BACKUP_DIR', '/var/backups/webcmp/db')
+DB_BACKUP_KEEP = int(os.getenv('DB_BACKUP_KEEP', '10'))
+DB_BACKUP_MANIFEST_FILE = os.getenv(
+    'DB_BACKUP_MANIFEST_FILE', '/var/lib/webcmp/backup-manifest.json'
+)
+DB_BACKUP_STATUS_FILE = os.getenv('DB_BACKUP_STATUS_FILE', '/var/lib/webcmp/backup-status.json')
+DB_BACKUP_REQUEST_FILE = os.getenv('DB_BACKUP_REQUEST_FILE', '/var/lib/webcmp/backup-request')
+DB_RESTORE_REQUEST_FILE = os.getenv('DB_RESTORE_REQUEST_FILE', '/var/lib/webcmp/restore-request')
 # Cuanto dura el resultado de `git ls-remote` en cache, y cuanto se espera al
 # remoto. El panel es de administracion: 5 minutos de cache evitan que cada
 # visita al dashboard abra una conexion, y 15 segundos acotan lo que puede

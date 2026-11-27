@@ -22,6 +22,8 @@ SCRIPTS=(
     deploy/tests/test_deploy_sh_units.sh
     deploy/tests/test_deploy_sh_progress.sh
     deploy/tests/test_deploy_sh_backup_mode.sh
+    deploy/tests/test_deploy_sh_backup_panel.sh
+    deploy/tests/test_deploy_sh_restore_mode.sh
     deploy/tests/test_autodeploy_log.sh
     deploy/tests/test_deploy_sh_health.sh
     deploy/tests/test_shell_scripts.sh
@@ -58,6 +60,10 @@ assert_eq 'deploy.sh --help sale 0' 0 "$deploy_help_rc"
 assert_contains 'deploy.sh --help explica el uso' 'webcmp-deploy <commit-sha>' "$deploy_help"
 assert_contains 'deploy.sh --help documenta el modo --backup' \
     'webcmp-deploy --backup' "$deploy_help"
+assert_contains 'deploy.sh --help documenta el respaldo del panel' \
+    'webcmp-deploy --backup-manual' "$deploy_help"
+assert_contains 'deploy.sh --help documenta la restauracion del panel' \
+    'webcmp-deploy --restore-request' "$deploy_help"
 
 apply_install_help=$(bash "$APPLY_INSTALL_SH" --help 2>&1)
 apply_install_help_rc=$?
@@ -95,6 +101,30 @@ assert_eq 'el respaldo corre antes del primer paso del deploy' 'antes' \
     "$(if [ "$backup_line" -lt "$first_deploy_step" ]; then echo antes; else echo despues; fi)"
 assert_contains 'el respaldo no exige un commit-sha' '[ "$MODE" = deploy ]' "$backup_src"
 assert_contains 'el respaldo espera el lock del deploy' 'flock -w 900 9' "$backup_src"
+
+# La restauracion vive en el mismo tramo y por la misma razon: si quedara
+# despues del `trap rollback`, el script pediria un commit-sha o intentaria un
+# deploy antes de llegar a restaurar.
+restore_line=$(grep -n 'if \[ "$MODE" = restore \] || \[ "$MODE" = restore-request \]' \
+    "$DEPLOY_SH" | tail -1 | cut -d: -f1)
+db_restore_line=$(grep -n '^db_restore()' "$DEPLOY_SH" | head -1 | cut -d: -f1)
+assert_eq 'la restauracion corre despues de definir db_restore' 'despues' \
+    "$(if [ "$restore_line" -gt "$db_restore_line" ]; then echo despues; else echo antes; fi)"
+assert_eq 'la restauracion corre antes del primer paso del deploy' 'antes' \
+    "$(if [ "$restore_line" -lt "$first_deploy_step" ]; then echo antes; else echo despues; fi)"
+# Sin este orden, un deploy en curso se lleva por delante la restauracion.
+assert_contains 'la restauracion no espera a un deploy en curso' 'flock -n 9' "$backup_src"
+
+# Las cuatro unidades del panel tienen que estar en el manifiesto del sync: una
+# unidad instalada a mano y ausente del manifiesto se queda con la version vieja
+# en el proximo deploy, sin que nadie lo note.
+root_manifest=$(cat "$REPO_ROOT/deploy/root-bundle.manifest")
+for panel_unit in webcmp-backup.path webcmp-backup-manual.service \
+    webcmp-restore.path webcmp-restore.service
+do
+    assert_contains "root-bundle.manifest incluye $panel_unit" \
+        "/etc/systemd/system/$panel_unit" "$root_manifest"
+done
 
 # El preflight de root va ANTES de cualquier mutacion. Se comprueba el codigo y
 # el mensaje, no solo "falla": un exit 1 por una variable sin definir tambien

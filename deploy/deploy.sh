@@ -10,6 +10,10 @@
 #   sudo /usr/local/sbin/webcmp-deploy --configure   # (re)escribe /etc/webcmp/deploy.env
 #   sudo /usr/local/sbin/webcmp-deploy --check        # valida la config, no despliega
 #   sudo /usr/local/sbin/webcmp-deploy --backup       # respaldo de la base (timer diario)
+#   sudo /usr/local/sbin/webcmp-deploy --backup-manual # respaldo pedido desde el panel
+#   sudo /usr/local/sbin/webcmp-deploy --backup-list   # refresca el manifiesto del panel
+#   sudo /usr/local/sbin/webcmp-deploy --restore-request # restaura el dump pedido por el panel
+#   sudo /usr/local/sbin/webcmp-deploy --restore <dump>  # restaura un dump a mano
 #
 # Que hace, en este orden (el orden ES la garantia):
 #   1. lock, para que dos despliegues no se pisen
@@ -108,6 +112,7 @@ progress() {
 
 # --------------------------------------------------------------------------
 # Modos: deploy (por defecto, el camino de CI) | --configure | --check | --backup
+#         | --backup-manual | --backup-list | --restore | --restore-request
 # --------------------------------------------------------------------------
 #
 # Se resuelve ANTES de sourcear la config y antes de todo preflight, y por una
@@ -120,12 +125,25 @@ progress() {
 # `shift` despues de cada opcion es lo que mantiene intacto el contrato de
 # argumentos que el workflow ya depende: `webcmp-deploy <sha> [ref-de-respaldo]`.
 MODE=deploy
+BACKUP_KIND=scheduled
+RESTORE_FILE=''
 while [ $# -gt 0 ]; do
     case "$1" in
         -h|--help)     usage ;;
         --configure)   MODE=configure; shift; break ;;
         --check)       MODE=check; shift; break ;;
-        --backup)      MODE=backup; shift; break ;;
+        --backup)      MODE=backup; BACKUP_KIND=scheduled; shift; break ;;
+        --backup-manual) MODE=backup; BACKUP_KIND=manual; shift; break ;;
+        --backup-list) MODE=backup-list; shift; break ;;
+        --restore)
+            MODE=restore
+            shift
+            RESTORE_FILE=${1:-}
+            [ -n "$RESTORE_FILE" ] || die "Uso: $0 --restore <archivo.dump>"
+            shift
+            break
+            ;;
+        --restore-request) MODE=restore-request; shift; break ;;
         *)             break ;;
     esac
 done
@@ -397,6 +415,14 @@ fi
 # `install-backup-units.sh` (o `install.sh`) y `--check` la busca con este nombre:
 # una unidad instalada con otro nombre deja el respaldo sin correr y sin error.
 : "${BACKUP_TIMER:=webcmp-backup}"
+# Panel de respaldo/restauracion (change 040). Los tres archivos viven en
+# /var/lib/webcmp, el mismo directorio que ya comparten deploy y apply. El
+# ejecutor root los escribe; el proceso web solo lee el manifiesto y el estado,
+# y escribe las dos peticiones.
+: "${DB_BACKUP_MANIFEST_FILE:=/var/lib/webcmp/backup-manifest.json}"
+: "${DB_BACKUP_STATUS_FILE:=/var/lib/webcmp/backup-status.json}"
+: "${DB_BACKUP_REQUEST_FILE:=/var/lib/webcmp/backup-request}"
+: "${DB_RESTORE_REQUEST_FILE:=/var/lib/webcmp/restore-request}"
 
 readonly APP_DIR DEPLOY_USER GUNICORN_UNIT HUEY_UNIT ENCRYPTION_ENV PYTHON
 readonly PUBLIC_HOSTNAME PROXY_MODE HEALTHCHECK_URL HEALTHCHECK_RESOLVE
@@ -404,9 +430,146 @@ readonly HEALTHCHECK_UNIX_SOCKET HEALTHCHECK_HOST_HEADER HEALTHCHECK_INSECURE
 readonly HEALTHCHECK_URL_DEFINED HEALTHCHECK_RESOLVE_DEFINED
 readonly PIP_CACHE_DIR MPLCONFIGDIR
 readonly DB_BACKUP_DIR DB_BACKUP_KEEP BACKUP_TIMER
+readonly DB_BACKUP_MANIFEST_FILE DB_BACKUP_STATUS_FILE
+readonly DB_BACKUP_REQUEST_FILE DB_RESTORE_REQUEST_FILE
 # El array se congela aparte: `readonly PIP_CMD` sin `-a` no protege el contenido
 # de un array en bash < 5.0.
 readonly -a PIP_CMD
+
+# --------------------------------------------------------------------------
+# Panel de respaldo/restauracion: archivos de estado y manifiesto (change 040)
+# --------------------------------------------------------------------------
+#
+# Viven aca, antes del lock, y no junto a `db_dump`, porque el rechazo por lock
+# de una restauracion tambien tiene que dejar un estado legible. Una funcion
+# definida despues del lock no existe en ese punto.
+#
+# El manifiesto y el estado los escribe root y los lee el proceso web: no
+# llevan datos de la base ni credenciales, solo nombres, tamanos y fechas.
+
+# >>> TEST-BLOCK: db-json
+json_escape() {
+    # Lo minimo para un string JSON: barra invertida y comilla. El nombre de un
+    # dump no las lleva, pero `requested_by` viene de un archivo que escribe el
+    # proceso web y no se confia en su forma.
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+# <<< TEST-BLOCK: db-json
+
+# >>> TEST-BLOCK: db-status
+DB_OP_STARTED_AT=''
+REQUESTED_BY=''
+
+write_db_status() {
+    local kind=$1 status=$2 message=${3:-} file=${4:-} safety=${5:-} tmp finished
+    local dir
+    dir=$(dirname "$DB_BACKUP_STATUS_FILE")
+    # Sin el directorio no hay donde escribir: el modo que llama ya avisa con un
+    # mensaje claro. Aca se sale en silencio para no tapar ese mensaje.
+    [ -d "$dir" ] || return 0
+    [ -n "$DB_OP_STARTED_AT" ] || DB_OP_STARTED_AT=$(date -Is)
+    if [ "$status" = running ]; then
+        finished=null
+    else
+        finished="\"$(date -Is)\""
+    fi
+    tmp=$(mktemp "${DB_BACKUP_STATUS_FILE}.XXXXXX") || return 0
+    printf '{"kind": "%s", "status": "%s", "message": "%s", "file": %s, "safety_file": %s, "requested_by": "%s", "started_at": "%s", "finished_at": %s}\n' \
+        "$(json_escape "$kind")" \
+        "$(json_escape "$status")" \
+        "$(json_escape "$message")" \
+        "$([ -n "$file" ] && printf '"%s"' "$(json_escape "$file")" || printf 'null')" \
+        "$([ -n "$safety" ] && printf '"%s"' "$(json_escape "$safety")" || printf 'null')" \
+        "$(json_escape "$REQUESTED_BY")" \
+        "$(json_escape "$DB_OP_STARTED_AT")" \
+        "$finished" > "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$DB_BACKUP_STATUS_FILE"
+}
+# <<< TEST-BLOCK: db-status
+
+# >>> TEST-BLOCK: db-manifest
+write_db_manifest() {
+    local tmp entry name size created kind first=1 dir
+    dir=$(dirname "$DB_BACKUP_MANIFEST_FILE")
+    [ -d "$dir" ] || return 0
+    tmp=$(mktemp "${DB_BACKUP_MANIFEST_FILE}.XXXXXX") || return 0
+    {
+        printf '{"generated_at": "%s", "dir": "%s", "keep": %s, "backups": [' \
+            "$(date -Is)" "$(json_escape "$DB_BACKUP_DIR")" "$DB_BACKUP_KEEP"
+        # `ls -1t` ordena por mtime: el primero es el ultimo respaldo, que es el
+        # que el operador quiere ver arriba.
+        while IFS= read -r entry; do
+            [ -n "$entry" ] || continue
+            name=$(basename "$entry")
+            size=$(stat -c %s "$entry" 2>/dev/null) || continue
+            created=$(date -u -d "@$(stat -c %Y "$entry")" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) || created=''
+            case "$name" in
+                *-scheduled.dump)   kind=scheduled ;;
+                *-manual.dump)      kind=manual ;;
+                *-pre-restore.dump) kind=pre-restore ;;
+                *-to-*.dump)        kind=pre-migrate ;;
+                *)                  kind=unknown ;;
+            esac
+            [ "$first" -eq 1 ] || printf ','
+            first=0
+            printf '{"name": "%s", "size": %s, "created_at": %s, "kind": "%s"}' \
+                "$(json_escape "$name")" "$size" \
+                "$([ -n "$created" ] && printf '"%s"' "$created" || printf 'null')" \
+                "$kind"
+        done < <(ls -1t "$DB_BACKUP_DIR"/*.dump 2>/dev/null)
+        printf ']}\n'
+    } > "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$DB_BACKUP_MANIFEST_FILE"
+}
+# <<< TEST-BLOCK: db-manifest
+
+# >>> TEST-BLOCK: db-request-reader
+read_requested_by() {
+    [ -e "$1" ] || return 0
+    sed -n 's/.*"requested_by"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$1" 2>/dev/null | head -n1
+}
+# <<< TEST-BLOCK: db-request-reader
+
+# >>> TEST-BLOCK: restore-validation
+valid_backup_name() {
+    case "$1" in
+        '' | -* | */* | *..*) return 1 ;;
+        *.dump) ;;
+        *) return 1 ;;
+    esac
+    case "$1" in
+        *[!A-Za-z0-9._-]*) return 1 ;;
+    esac
+    return 0
+}
+
+# Resuelve el nombre a una ruta REAL dentro de DB_BACKUP_DIR, o falla.
+#
+# El nombre viene de un archivo que escribe el proceso web. Se valida dos veces
+# a proposito: el patron descarta traversal y rutas absolutas, y `realpath`
+# confirma que el resultado sigue dentro del directorio. Un symlink plantado no
+# pasa: se rechaza antes de resolver.
+resolve_backup_file() {
+    local name=$1 dir file
+    valid_backup_name "$name" || return 1
+    dir=$(realpath -e "$DB_BACKUP_DIR" 2>/dev/null) || return 1
+    file=$(realpath -e "$DB_BACKUP_DIR/$name" 2>/dev/null) || return 1
+    [ "$(dirname "$file")" = "$dir" ] || return 1
+    [ -f "$file" ] || return 1
+    [ ! -L "$DB_BACKUP_DIR/$name" ] || return 1
+    [ "$(stat -c %U "$file" 2>/dev/null)" = root ] || return 1
+    printf '%s\n' "$file"
+}
+
+read_restore_file() {
+    [ -e "$1" ] || return 0
+    sed -n 's/.*"file"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$1" 2>/dev/null | head -n1
+}
+# <<< TEST-BLOCK: restore-validation
 
 # Validacion del destino del health check, en el arranque y NO solo en el punto
 # 8: en --check tiene que ser el reporte, y en un deploy fallar aqui con un
@@ -914,6 +1077,21 @@ check_db_backup() {
         # No bloquea el deploy (ver `missing_units`), asi que este es el aviso.
         check_fail "Respaldo diario no instalado ($BACKUP_TIMER.timer): la base solo se respalda antes de migrar. Instalalo con: sudo bash deploy/install-backup-units.sh"
     fi
+    if command -v pg_restore >/dev/null 2>&1; then
+        check_ok "pg_restore disponible ($(command -v pg_restore))."
+    else
+        check_fail "No hay pg_restore: el panel no podria restaurar un respaldo."
+    fi
+    # Las unidades del panel (change 040) se instalan aparte del timer. Sin
+    # ellas el boton escribe una peticion que nadie recoge.
+    local panel_unit
+    for panel_unit in webcmp-backup.path webcmp-restore.path; do
+        if [ -f "$SYSTEMD_UNIT_DIR/$panel_unit" ]; then
+            check_ok "Panel de respaldo: $panel_unit instalado."
+        else
+            check_fail "Falta $panel_unit: los botones de respaldo y restauracion del panel no funcionan. Instalalo con: sudo bash deploy/install-backup-units.sh"
+        fi
+    done
 }
 
 if [ "$MODE" = check ]; then
@@ -968,6 +1146,22 @@ exec 9>"$LOCKFILE"
 if [ "$MODE" = backup ]; then
     flock -w 900 9 \
         || die "Hay un despliegue en curso (lock $LOCKFILE) desde hace mas de 15 minutos. No se respalda mientras se migra."
+elif [ "$MODE" = backup-list ]; then
+    # Leer el directorio de respaldos no compite con un deploy: no se toma el
+    # lock para no dejar el manifiesto viejo por un deploy en curso.
+    :
+elif [ "$MODE" = restore ] || [ "$MODE" = restore-request ]; then
+    # Una restauracion NO espera a un deploy: si hay uno en curso, se aborta.
+    # Restaurar mientras se migra es la peor combinacion posible.
+    if ! flock -n 9; then
+        if [ "$MODE" = restore-request ]; then
+            REQUESTED_BY=$(read_requested_by "$DB_RESTORE_REQUEST_FILE")
+            DB_OP_STARTED_AT=$(date -Is)
+            write_db_status restore failed 'Hay un despliegue en curso; no se restauro nada.'
+            rm -f "$DB_RESTORE_REQUEST_FILE"
+        fi
+        die "Ya hay un despliegue en curso (lock $LOCKFILE). No se restaura nada."
+    fi
 else
     flock -n 9 || die "Ya hay un despliegue en curso (lock $LOCKFILE). No se toca nada."
 fi
@@ -1161,6 +1355,56 @@ sys.exit(subprocess.run(cmd, env=env).returncode)
 '
 }
 
+# Restauracion de la base desde un dump. Misma conexion y mismas credenciales
+# que `db_dump`: se leen de settings.DATABASES, no se parsea el .env otra vez.
+#
+# `--clean --if-exists` borra los objetos antes de recrearlos: sobre una base
+# que ya tiene el esquema nuevo, sin `--clean` el restore falla a mitad.
+# `--single-transaction` lo hace atomico: si algo falla, la base queda como
+# estaba. El dump de seguridad se toma igual antes, porque el `--clean` puede
+# haber borrado objetos cuando el restore falla.
+db_restore() {
+    local src=$1
+    run_in_unit \
+        --uid=root --gid=root \
+        -p "EnvironmentFile=$ENCRYPTION_ENV" \
+        -p Environment=PRODUCTION=1 \
+        -p Environment=MPLCONFIGDIR=/root/.cache/matplotlib \
+        -p "Environment=WEBCOMP_RESTORE_SRC=$src" \
+        --working-directory="$APP_DIR" \
+        "$PYTHON" -B manage.py shell -c '
+import os
+import subprocess
+import sys
+
+from django.conf import settings
+
+db = settings.DATABASES["default"]
+engine = str(db.get("ENGINE", ""))
+if "postgresql" not in engine:
+    sys.exit(f"La restauracion solo soporta PostgreSQL (ENGINE={engine}).")
+
+env = dict(os.environ)
+env.update(
+    PGHOST=str(db.get("HOST") or ""),
+    PGPORT=str(db.get("PORT") or ""),
+    PGUSER=db.get("USER") or "",
+    PGPASSWORD=db.get("PASSWORD") or "",
+    PGDATABASE=db.get("NAME") or "",
+)
+cmd = [
+    "pg_restore",
+    "--clean",
+    "--if-exists",
+    "--single-transaction",
+    "--dbname",
+    str(db.get("NAME") or ""),
+    os.environ["WEBCOMP_RESTORE_SRC"],
+]
+sys.exit(subprocess.run(cmd, env=env).returncode)
+'
+}
+
 # Rotacion: conserva los N mas nuevos. `ls -1t` ordena por mtime, asi que el
 # primero es el ultimo respaldo; `tail -n +N` salta los N que se conservan.
 # >>> TEST-BLOCK: prune-db-backups
@@ -1189,23 +1433,159 @@ prune_db_backups() {
 # abortar: un `pg_dump` que corre mientras `migrate` cambia el esquema no es un
 # respaldo, pero perder el respaldo del dia por un deploy que estaba terminando
 # tampoco sirve.
+# `--backup` (timer) y `--backup-manual` (boton del panel) comparten TODO salvo
+# el sufijo del archivo y el origen que se reporta: una segunda implementacion
+# del respaldo se desincronizaria del `db_dump` sin que nada falle.
 # >>> TEST-BLOCK: backup-mode
 if [ "$MODE" = backup ]; then
-    command -v pg_dump >/dev/null 2>&1 \
-        || die "No hay pg_dump en el PATH: sin pg_dump no hay respaldo.
+    REQUESTED_BY=''
+    if [ "$BACKUP_KIND" = manual ]; then
+        REQUESTED_BY=$(read_requested_by "$DB_BACKUP_REQUEST_FILE")
+        # Se borra ANTES de respaldar: mientras el archivo exista, el panel lo
+        # reporta como "peticion sin recoger". El ejecutor ya la tomo.
+        rm -f "$DB_BACKUP_REQUEST_FILE"
+        backup_label='Respaldo manual'
+    else
+        backup_label='Respaldo programado'
+    fi
+    DB_OP_STARTED_AT=$(date -Is)
+    write_db_status backup running "$backup_label en curso."
+
+    if ! command -v pg_dump >/dev/null 2>&1; then
+        write_db_status backup failed 'No hay pg_dump en el servidor.'
+        write_db_manifest
+        die "No hay pg_dump en el PATH: sin pg_dump no hay respaldo.
   Instalalo con: apt-get install -y postgresql-client"
-    log "Respaldo programado de la base"
-    backup_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-scheduled.dump"
+    fi
+
+    log "$backup_label de la base"
+    backup_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-${BACKUP_KIND}.dump"
     if ! db_dump "$backup_file"; then
         rm -f "$backup_file"
+        write_db_status backup failed 'El respaldo fallo. Revise el journal.'
+        write_db_manifest
         die "El respaldo de la base fallo."
     fi
     chmod 0600 "$backup_file"
     log "Respaldo: $backup_file ($(du -h "$backup_file" | cut -f1))"
+    # La rotacion va antes del manifiesto: si fuera despues, el panel listaria
+    # un archivo que ya no existe y el boton de restaurar fallaria.
     prune_db_backups
+    write_db_manifest
+    write_db_status backup ok 'Respaldo completado.' "$(basename "$backup_file")"
     exit 0
 fi
 # <<< TEST-BLOCK: backup-mode
+
+# --------------------------------------------------------------------------
+# Modo --backup-list: refresca el manifiesto sin respaldar
+# --------------------------------------------------------------------------
+#
+# Reconstruye el manifiesto si se perdio o quedo desactualizado: el directorio
+# de dumps es la fuente de verdad y el panel solo puede listar lo que hay aca.
+# >>> TEST-BLOCK: backup-list-mode
+if [ "$MODE" = backup-list ]; then
+    [ -d "$(dirname "$DB_BACKUP_MANIFEST_FILE")" ] \
+        || die "No existe $(dirname "$DB_BACKUP_MANIFEST_FILE"): el panel no tiene donde leer el manifiesto."
+    write_db_manifest
+    exit 0
+fi
+# <<< TEST-BLOCK: backup-list-mode
+
+# --------------------------------------------------------------------------
+# Modos --restore y --restore-request: restaurar un dump
+# --------------------------------------------------------------------------
+#
+# `--restore-request` es el que dispara el boton del panel: lee el nombre de un
+# archivo que escribe el proceso web, o sea ENTRADA NO CONFIABLE. Por eso el
+# nombre se valida dos veces (patron y `realpath` dentro de `DB_BACKUP_DIR`) y
+# se exige archivo regular, sin symlink y de root. Cualquier fallo escribe el
+# estado y sale SIN ejecutar `pg_restore`.
+#
+# El sitio se reinicia en un `trap EXIT` y no al final del camino feliz: si el
+# restore falla a mitad, el panel tiene que volver para que el operador vea el
+# error y restaure el respaldo de seguridad. Dejarlo caido convierte un fallo
+# recuperable en una salida por SSH.
+# >>> TEST-BLOCK: restore-mode
+restore_services_stopped=0
+
+restart_stopped_services() {
+    [ "$restore_services_stopped" -eq 1 ] || return 0
+    restore_services_stopped=0
+    "$SYSTEMCTL" start "$GUNICORN_UNIT" "$HUEY_UNIT" \
+        || warn "No se pudieron levantar $GUNICORN_UNIT y $HUEY_UNIT. Levantalos a mano: systemctl start $GUNICORN_UNIT $HUEY_UNIT"
+}
+
+if [ "$MODE" = restore ] || [ "$MODE" = restore-request ]; then
+    REQUESTED_BY=''
+    if [ "$MODE" = restore-request ]; then
+        [ -e "$DB_RESTORE_REQUEST_FILE" ] \
+            || die "No existe $DB_RESTORE_REQUEST_FILE: no hay nada que restaurar."
+        REQUESTED_BY=$(read_requested_by "$DB_RESTORE_REQUEST_FILE")
+        restore_name=$(read_restore_file "$DB_RESTORE_REQUEST_FILE")
+        # Se borra antes de trabajar: si el archivo sigue en disco, el panel lo
+        # reporta como peticion sin recoger aunque esta corriendo.
+        rm -f "$DB_RESTORE_REQUEST_FILE"
+    else
+        # La consola acepta tanto el nombre como la ruta completa; lo que se
+        # valida despues es el nombre, resuelto dentro de DB_BACKUP_DIR.
+        restore_name=$(basename "$RESTORE_FILE")
+    fi
+
+    DB_OP_STARTED_AT=$(date -Is)
+
+    if ! restore_file=$(resolve_backup_file "$restore_name"); then
+        write_db_status restore failed 'El respaldo pedido no existe o no es valido.'
+        write_db_manifest
+        die "Respaldo invalido: '$restore_name'. Tiene que ser un .dump de root dentro de $DB_BACKUP_DIR."
+    fi
+
+    if ! command -v pg_restore >/dev/null 2>&1; then
+        write_db_status restore failed 'No hay pg_restore en el servidor.'
+        write_db_manifest
+        die "No hay pg_restore en el PATH: sin pg_restore no hay restauracion.
+  Instalalo con: apt-get install -y postgresql-client"
+    fi
+
+    write_db_status restore running 'Restauracion en curso: el sitio se reinicia y vuelve solo.'
+    log "Restauracion de $(basename "$restore_file")"
+
+    # Dump de seguridad ANTES de parar nada. `--single-transaction` ya hace el
+    # restore atomico, pero el dump cubre el otro fallo: una migracion de codigo
+    # posterior que deje la base inservible.
+    safety_file="$DB_BACKUP_DIR/webcmp-$(date -u +%Y%m%dT%H%M%SZ)-pre-restore.dump"
+    if ! db_dump "$safety_file"; then
+        rm -f "$safety_file"
+        write_db_status restore failed 'No se pudo tomar el respaldo de seguridad; no se restauro nada.'
+        write_db_manifest
+        die "Fallo el respaldo de seguridad. No se toco la base."
+    fi
+    chmod 0600 "$safety_file"
+    log "Respaldo de seguridad: $safety_file"
+
+    trap restart_stopped_services EXIT
+
+    log "Parando $GUNICORN_UNIT y $HUEY_UNIT"
+    "$SYSTEMCTL" stop "$GUNICORN_UNIT" "$HUEY_UNIT" || warn "Algun servicio no estaba corriendo."
+    restore_services_stopped=1
+
+    if db_restore "$restore_file"; then
+        restore_status=ok
+        restore_message='Restauracion completada.'
+        restore_rc=0
+    else
+        restore_status=failed
+        restore_message='La restauracion fallo. El sitio se levanto igual.'
+        restore_rc=1
+    fi
+
+    restart_stopped_services
+    write_db_manifest
+    write_db_status restore "$restore_status" "$restore_message" \
+        "$(basename "$restore_file")" "$(basename "$safety_file")"
+    exit "$restore_rc"
+fi
+# <<< TEST-BLOCK: restore-mode
 
 # La trampa es EXIT y no ERR. No es indistinto: `trap ... ERR` NO se dispara
 # cuando el script hace `exit`, y `die()` -que es como termina practicamente todo

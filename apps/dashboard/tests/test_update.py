@@ -1707,6 +1707,10 @@ class DashboardUpdateScriptTest(TestCase):
                 'notification-delete-modal',
             ),
             ('apps/dashboard/templates/pages/dashboard/tasks.html', 'confirmTaskDeleteModal'),
+            (
+                'apps/dashboard/templates/pages/dashboard/database.html',
+                'db-restore-modal',
+            ),
             ('apps/core/templates/pages/core/site/environment.html', 'apply-changes-modal'),
             ('apps/core/templates/pages/core/site/settings.html', 'reset-theme-modal'),
             (

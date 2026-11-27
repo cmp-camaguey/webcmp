@@ -1,0 +1,16 @@
+[Unit]
+Description=Vigila la peticion de respaldo del panel (change 040-respaldo-base-datos)
+Documentation=file:/srv/webcmp/deploy/README-deploy.md
+
+[Path]
+# El panel (usuario `webcmp`) crea este archivo y se desentiende; systemd lo
+# recoge y arranca el servicio. Es el mismo mecanismo del boton "Actualizar":
+# el proceso web no gana privilegios y el ejecutor corre como root.
+#
+# Archivo DISTINTO del `backup-request` del timer: el respaldo diario no pasa
+# por aca, y un `.path` solo puede apuntar a una unidad.
+PathExists=/var/lib/webcmp/backup-request
+Unit=webcmp-backup-manual.service
+
+[Install]
+WantedBy=multi-user.target

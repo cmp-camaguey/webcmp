@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# Instala el respaldo diario de la base: `webcmp-backup.service` y
-# `webcmp-backup.timer`.
+# Instala el respaldo de la base: `webcmp-backup.service` y
+# `webcmp-backup.timer` (diario), y las unidades del panel
+# `webcmp-backup.path`, `webcmp-backup-manual.service`, `webcmp-restore.path`
+# y `webcmp-restore.service` (botones "Respaldar ahora" y "Restaurar").
 #
 # Por que existe si `install.sh` ya los instala: `install.sh` es un instalador
 # completo — pips, migraciones, .env, preguntas — y no se vuelve a correr en un
@@ -109,12 +111,14 @@ install_unit() {
 
 usage() {
     cat <<'EOF'
-Instala el respaldo diario de la base.
+Instala el respaldo de la base.
 
   sudo bash deploy/install-backup-units.sh
 
-Instala las unidades webcmp-backup.service y webcmp-backup.timer, recarga
-systemd y habilita el timer. No toca el .env, la base, el venv ni el codigo.
+Instala las unidades webcmp-backup.service y webcmp-backup.timer (respaldo
+diario), y webcmp-backup.path, webcmp-backup-manual.service, webcmp-restore.path
+y webcmp-restore.service (botones del panel). Recarga systemd, habilita el timer
+y arranca los dos `.path`. No toca el .env, la base, el venv ni el codigo.
 Idempotente: una segunda corrida no reescribe nada.
 
 Variables: APP_DIR, CONFIG, BACKUP_TIMER, DEPLOY_SCRIPT, UNIT_DIR, DRY_RUN=1.
@@ -141,7 +145,11 @@ install_backup_units() {
     # `/etc/systemd/system/$BACKUP_TIMER.service`. Buscar `$BACKUP_TIMER.service`
     # dentro del checkout fallaria con cualquier nombre configurado.
     for piece in "$APP_DIR/deploy/systemd/webcmp-backup.service" \
-        "$APP_DIR/deploy/systemd/webcmp-backup.timer"
+        "$APP_DIR/deploy/systemd/webcmp-backup.timer" \
+        "$APP_DIR/deploy/systemd/webcmp-backup.path" \
+        "$APP_DIR/deploy/systemd/webcmp-backup-manual.service" \
+        "$APP_DIR/deploy/systemd/webcmp-restore.path" \
+        "$APP_DIR/deploy/systemd/webcmp-restore.service"
     do
         [ -f "$piece" ] \
             || die "No existe $piece. Corre el script desde el checkout (APP_DIR=$APP_DIR)."
@@ -165,20 +173,41 @@ install_backup_units() {
         "/srv/webcmp<>$APP_DIR" \
         "Unit=webcmp-backup.service<>Unit=$BACKUP_TIMER.service"
 
+    # Panel de respaldo y restauracion (change 040). Las cuatro van juntas: el
+    # boton del panel escribe una peticion y sin la unidad `.path` que la vigila
+    # nadie la recoge, sin un solo error visible en el panel.
+    log 'Panel de respaldo y restauracion'
+    for piece in webcmp-backup.path webcmp-backup-manual.service \
+        webcmp-restore.path webcmp-restore.service
+    do
+        install_unit "$APP_DIR/deploy/systemd/$piece" "$UNIT_DIR/$piece" \
+            "/srv/webcmp<>$APP_DIR" \
+            "ExecStart=/usr/local/sbin/webcmp-deploy<>ExecStart=$DEPLOY_SCRIPT"
+    done
+
     run "$SYSTEMCTL" daemon-reload
     # `enable --now` sobre el timer: el servicio lo dispara el timer. Arrancarlo
     # ahora haria un respaldo que nadie pidio en este momento.
     run "$SYSTEMCTL" enable --now "$BACKUP_TIMER.timer"
+    # Los `.path` si se arrancan: son los que vigilan las peticiones del panel.
+    # `enable` sin `--now` los deja habilitados para el proximo arranque, o sea
+    # que los botones no funcionan hasta el proximo reinicio del servidor.
+    run "$SYSTEMCTL" enable --now webcmp-backup.path webcmp-restore.path
 
     if [ "$DRY_RUN" -eq 0 ]; then
         "$SYSTEMCTL" is-active --quiet "$BACKUP_TIMER.timer" \
             || die "El timer no quedo activo. Revisa: $SYSTEMCTL status $BACKUP_TIMER.timer"
+        for piece in webcmp-backup.path webcmp-restore.path; do
+            "$SYSTEMCTL" is-active --quiet "$piece" \
+                || die "$piece no quedo activo. Revisa: $SYSTEMCTL status $piece"
+        done
     fi
 
     log 'Listo'
     printf '  unidad:  %s (diario, 03:15 hora local)\n' "$BACKUP_TIMER.timer"
     printf '  ejecuta: %s --backup\n' "$DEPLOY_SCRIPT"
     printf '  destino: DB_BACKUP_DIR de %s\n' "$CONFIG"
+    printf '  panel:   webcmp-backup.path y webcmp-restore.path\n'
     printf '  logs:    journalctl -u %s\n' "$BACKUP_TIMER"
 }
 # <<< TEST-BLOCK: install-backup-units

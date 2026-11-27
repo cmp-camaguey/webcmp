@@ -3448,6 +3448,41 @@ setup_backup() {
     echo "  logs:    journalctl -u $BACKUP_TIMER"
 }
 
+# Panel de respaldo y restauracion (change 040-respaldo-base-datos).
+#
+# El panel no ejecuta nada: escribe una peticion y una unidad `.path` arranca el
+# ejecutor root. Estas cuatro unidades son las que convierten los botones
+# "Respaldar ahora" y "Restaurar" en algo mas que un archivo que nadie mira.
+setup_database_panel() {
+    local piece tmp
+
+    log "Panel de respaldo y restauracion de la base"
+
+    for piece in webcmp-backup.path webcmp-backup-manual.service \
+        webcmp-restore.path webcmp-restore.service
+    do
+        if [ -f "$APP_DIR/deploy/systemd/$piece" ] \
+            || need_checkout "se renderizaria $piece"
+        then
+            tmp=$(mktemp)
+            render_template "$APP_DIR/deploy/systemd/$piece" "$tmp" \
+                "/srv/webcmp<>$APP_DIR" \
+                "ExecStart=/usr/local/sbin/webcmp-deploy<>ExecStart=$SCRIPT_PATH" \
+                || { rm -f "$tmp"; die "No se pudo renderizar $piece."; }
+            install_if_changed "$tmp" "/etc/systemd/system/$piece" 0644 root root
+            rm -f "$tmp"
+        fi
+    done
+
+    run systemctl daemon-reload
+    # Los `.path` se arrancan ahora: `enable` sin `--now` recien los activa en el
+    # proximo arranque, o sea que los botones no funcionarian hasta reiniciar.
+    run systemctl enable --now webcmp-backup.path webcmp-restore.path
+
+    echo "  panel:   webcmp-backup.path y webcmp-restore.path"
+    echo "  logs:    journalctl -u webcmp-backup-manual -u webcmp-restore"
+}
+
 # --- C.11d Sync de artefactos root (deploy-runner-y-sync) ------------------
 #
 # Instala el espejo root y el timer que mantiene actualizados los scripts y
@@ -3475,12 +3510,14 @@ if [ "$SKIP_DEPLOY_SCAFFOLD" -eq 1 ]; then
     log "Boton 'Actualizar' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
     log "Boton 'Aplicar cambios' del panel: omitido (necesita el usuario $DEPLOY_LOGIN_USER)"
     log "Respaldo diario de la base: omitido (depende de webcmp-deploy, del andamiaje)"
+    log "Panel de respaldo y restauracion: omitido (depende de webcmp-deploy)"
     log "Sync de artefactos root: omitido (depende de webcmp-deploy)"
 else
     setup_deploy_scaffold
     setup_autodeploy
     setup_apply
     setup_backup
+    setup_database_panel
     setup_deploy_sync
 fi
 

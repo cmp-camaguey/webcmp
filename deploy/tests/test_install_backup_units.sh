@@ -61,6 +61,31 @@ assert_contains 'backup: el timer es persistente' 'Persistent=true' "$timer_rend
 assert_not_contains 'backup: el servicio no conserva la ruta del checkout' \
     '/srv/webcmp' "$service_rendered"
 
+# Las unidades del panel se renderizan con el mismo ejecutable y el mismo modo:
+# una ruta distinta dejaria el boton escribiendo una peticion que nadie recoge.
+(
+    eval "$backup_pure"
+    render_unit "$REPO_ROOT/deploy/systemd/webcmp-restore.service" \
+        "$backup_tmp/restore-service" \
+        '/srv/webcmp<>/opt/cmp' \
+        'ExecStart=/usr/local/sbin/webcmp-deploy<>ExecStart=/opt/bin/webcmp-deploy'
+    render_unit "$REPO_ROOT/deploy/systemd/webcmp-backup.path" \
+        "$backup_tmp/backup-path" \
+        '/srv/webcmp<>/opt/cmp'
+) || true
+
+restore_rendered=$(cat "$backup_tmp/restore-service" 2>/dev/null || true)
+backup_path_rendered=$(cat "$backup_tmp/backup-path" 2>/dev/null || true)
+
+assert_contains 'backup: el servicio de restauracion usa el modo correcto' \
+    'ExecStart=/opt/bin/webcmp-deploy --restore-request' "$restore_rendered"
+assert_not_contains 'backup: el servicio de restauracion no conserva la ruta del checkout' \
+    '/srv/webcmp' "$restore_rendered"
+assert_contains 'backup: el path vigila la peticion del panel' \
+    'PathExists=/var/lib/webcmp/backup-request' "$backup_path_rendered"
+assert_contains 'backup: el path dispara el servicio manual' \
+    'Unit=webcmp-backup-manual.service' "$backup_path_rendered"
+
 # --- Guardas de entrada ---------------------------------------------------
 
 (
@@ -82,6 +107,12 @@ assert_contains 'backup: nombra la pieza que falta' 'webcmp-backup.service' \
 mkdir -p "$backup_tmp/app/deploy/systemd" "$backup_tmp/units"
 cp "$REPO_ROOT/deploy/systemd/webcmp-backup.service" "$backup_tmp/app/deploy/systemd/"
 cp "$REPO_ROOT/deploy/systemd/webcmp-backup.timer" "$backup_tmp/app/deploy/systemd/"
+# Las cuatro unidades del panel (change 040). Van con el respaldo diario: el
+# instalador las exige todas y una copia parcial moriria en la primera que falte.
+cp "$REPO_ROOT/deploy/systemd/webcmp-backup.path" "$backup_tmp/app/deploy/systemd/"
+cp "$REPO_ROOT/deploy/systemd/webcmp-backup-manual.service" "$backup_tmp/app/deploy/systemd/"
+cp "$REPO_ROOT/deploy/systemd/webcmp-restore.path" "$backup_tmp/app/deploy/systemd/"
+cp "$REPO_ROOT/deploy/systemd/webcmp-restore.service" "$backup_tmp/app/deploy/systemd/"
 
 (
     eval "$backup_pure"
@@ -164,6 +195,19 @@ STUB
         'enable --now webcmp-backup.timer' "$(cat "$backup_tmp/systemctl.log")"
     assert_not_contains 'instalacion: no arranca el servicio' \
         'start webcmp-backup.service' "$(cat "$backup_tmp/systemctl.log")"
+    # Los `.path` del panel se arrancan, no solo se habilitan: sin `--now` los
+    # botones quedarian inertes hasta el proximo reinicio del servidor.
+    assert_contains 'instalacion: arranca los path del panel' \
+        'enable --now webcmp-backup.path webcmp-restore.path' \
+        "$(cat "$backup_tmp/systemctl.log")"
+    assert_eq 'instalacion: el path del respaldo queda instalado' '1' \
+        "$(find "$backup_tmp/units" -name 'webcmp-backup.path' -type f | wc -l | tr -d ' ')"
+    assert_eq 'instalacion: el servicio manual queda instalado' '1' \
+        "$(find "$backup_tmp/units" -name 'webcmp-backup-manual.service' -type f | wc -l | tr -d ' ')"
+    assert_eq 'instalacion: el path de restauracion queda instalado' '1' \
+        "$(find "$backup_tmp/units" -name 'webcmp-restore.path' -type f | wc -l | tr -d ' ')"
+    assert_eq 'instalacion: el servicio de restauracion queda instalado' '1' \
+        "$(find "$backup_tmp/units" -name 'webcmp-restore.service' -type f | wc -l | tr -d ' ')"
 
     before=$(stat -c '%Y %s' "$backup_tmp/units/webcmp-backup.timer")
     sleep 1

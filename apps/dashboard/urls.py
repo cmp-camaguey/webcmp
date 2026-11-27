@@ -5,6 +5,12 @@ from apps.dashboard.views.dashboard.dashboard import (
     TaskMonitoringActionView,
     TaskMonitoringView,
 )
+from apps.dashboard.views.dashboard.database import (
+    DatabaseBackupDataView,
+    DatabaseBackupRequestView,
+    DatabaseBackupView,
+    DatabaseRestoreRequestView,
+)
 from apps.dashboard.views.dashboard.notifications import (
     NotificationDeleteAllView,
     NotificationDeleteView,
@@ -46,6 +52,19 @@ urlpatterns = [
     path('update/', UpdateStatusView.as_view(), name='update_status'),
     path('update/request/', UpdateRequestView.as_view(), name='update_request'),
     path('update/log/', UpdateLogView.as_view(), name='update_log'),
+    # Respaldo y restauración de la base (change 040)
+    path('database/', DatabaseBackupView.as_view(), name='database'),
+    path('database/data/', DatabaseBackupDataView.as_view(), name='database_data'),
+    path(
+        'database/backup/',
+        DatabaseBackupRequestView.as_view(),
+        name='database_backup',
+    ),
+    path(
+        'database/restore/',
+        DatabaseRestoreRequestView.as_view(),
+        name='database_restore',
+    ),
     # Notificaciones operativas (change 026)
     path('notifications/', NotificationListView.as_view(), name='notifications'),
     path(

@@ -1,0 +1,107 @@
+{% extends 'layouts/dashboard.html' %}
+{% load static %}
+{% block page_header %}
+  <div class="row g-2 align-items-center">
+    <div class="col">
+      <div class="page-pretitle">{{ parent }}</div>
+      <h2 class="page-title">{{ title }}</h2>
+    </div>
+    <div class="col-auto ms-auto d-print-none">
+      <div class="btn-list">
+        <button type="button" class="btn bg-blue-lt" id="db-backup-button">
+          <i class="icon ti ti-database-export me-1"></i>
+          Respaldar ahora
+        </button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div id="database-backup"
+       data-data-url="{{ data_url }}"
+       data-backup-url="{{ backup_url }}"
+       data-restore-url="{{ restore_url }}"
+       data-confirmation="{{ confirmation }}"
+       data-csrf-token="{{ csrf_token }}">
+    <div id="db-status" class="alert d-none" role="status" aria-live="polite"></div>
+    <div id="db-pending" class="alert alert-warning d-none" role="alert"></div>
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Respaldos disponibles</h3>
+        <div class="card-actions text-secondary small">
+          Se conservan los últimos
+          <span id="db-keep">—</span>.
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Archivo</th>
+              <th>Fecha</th>
+              <th>Tamaño</th>
+              <th>Origen</th>
+              <th class="w-1"></th>
+            </tr>
+          </thead>
+          <tbody id="db-backups-body">
+            <tr>
+              <td colspan="5" class="text-secondary text-center py-4">Cargando…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="text-secondary small mt-3 mb-0">
+      El respaldo se guarda en el servidor y no se descarga. Restaurar detiene el sitio unos
+      segundos; antes se guarda un respaldo de seguridad automático.
+    </p>
+  </div>
+  <div class="modal modal-blur fade"
+       id="db-restore-modal"
+       tabindex="-1"
+       role="dialog"
+       aria-hidden="true"
+       aria-labelledby="db-restore-title"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="db-restore-title">Restaurar la base de datos</h5>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger" role="alert">
+            <i class="icon ti ti-alert-triangle me-1"></i>
+            Restaurar borra y recrea los objetos de la base. El sitio se detiene y vuelve solo.
+          </div>
+          <p class="mb-2">
+            Va a restaurar <strong id="db-restore-file" class="font-monospace"></strong>.
+          </p>
+          <label class="form-label" for="db-confirm-input">
+            Escriba <code id="db-confirm-word"></code> para confirmar
+          </label>
+          <input type="text"
+                 class="form-control font-monospace"
+                 id="db-confirm-input"
+                 autocomplete="off"
+                 spellcheck="false">
+          <div class="form-text text-danger d-none" id="db-confirm-error"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button"
+                  class="btn btn-link link-secondary me-auto"
+                  data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn bg-red-lt" id="db-confirm-button" disabled>Restaurar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block extrajs %}
+  <script src="{% static 'dist/js/dashboard-database.js' %}?v=3"></script>
+{% endblock %}

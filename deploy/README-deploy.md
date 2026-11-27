@@ -118,6 +118,79 @@ sudo webcmp-deploy --backup                      # el mismo respaldo, a mano
 Restaurar un respaldo programado es identico al caso anterior: `pg_restore` con
 el sitio parado y como root.
 
+### Respaldo y restauracion desde el panel
+
+El menu **Sistema → Respaldo de BD** (solo superusuarios) permite pedir un
+respaldo y restaurar uno existente sin entrar por SSH. El dump **no se descarga
+ni se sube**: sigue siendo `root:root 0600` dentro de `DB_BACKUP_DIR`
+(`0700 root:root`) y el proceso web no puede abrirlo.
+
+El mecanismo es el mismo del boton «Actualizar»: el panel escribe una peticion y
+una unidad systemd la recoge. El proceso `webcmp` no gana privilegios.
+
+| Archivo | Quien escribe | Quien lee |
+| --- | --- | --- |
+| `/var/lib/webcmp/backup-request` | panel | `webcmp-backup.path` |
+| `/var/lib/webcmp/restore-request` | panel | `webcmp-restore.path` |
+| `/var/lib/webcmp/backup-status.json` | ejecutor root | panel |
+| `/var/lib/webcmp/backup-manifest.json` | ejecutor root | panel |
+
+- **Respaldar ahora** escribe `backup-request`; `webcmp-backup.path` arranca
+  `webcmp-backup-manual.service`, que corre `webcmp-deploy --backup-manual`. El
+  archivo se llama `…-manual.dump` para distinguirlo del diario.
+- **Restaurar** exige escribir `RESTAURAR` y el nombre de un dump del
+  manifiesto. `webcmp-restore.path` arranca `webcmp-restore.service`, que corre
+  `webcmp-deploy --restore-request`.
+
+Una restauracion:
+
+1. valida el nombre contra `DB_BACKUP_DIR` (sin traversal, sin symlink, archivo
+   regular de root) y falla cerrado si no encaja;
+2. toma un dump de seguridad `…-pre-restore.dump` — si falla, no toca la base;
+3. para `webcmp` y `webcmp-huey`;
+4. corre `pg_restore --clean --if-exists --single-transaction`;
+5. vuelve a levantar los servicios **siempre**, aunque el restore falle;
+6. deja el resultado en `backup-status.json` y refresca el manifiesto.
+
+Si el restore falla, el dump de seguridad queda listado en el panel y se puede
+restaurar desde ahi: no hace falta SSH para volver atras.
+
+```bash
+sudo bash deploy/install-backup-units.sh         # instala las cuatro unidades
+systemctl status webcmp-backup.path webcmp-restore.path
+journalctl -u webcmp-backup-manual -u webcmp-restore
+sudo webcmp-deploy --restore /var/backups/webcmp/db/<archivo>.dump  # a mano
+```
+
+`webcmp-deploy --check` falla si falta alguna de las dos unidades `.path`: sin
+ellas el panel escribe una peticion que nadie recoge y el boton parece no hacer
+nada.
+
+#### En desarrollo
+
+No hay systemd ni root: el panel funciona igual, pero la petición la consume el
+worker de desarrollo en vez de una unidad `.path`.
+
+1. Apunta `DB_BACKUP_*` a un directorio escribible (los defaults de producción no
+   lo son):
+   ```dotenv
+   DB_BACKUP_DIR=tmp/db-backups
+   DB_BACKUP_MANIFEST_FILE=tmp/db-backups/backup-manifest.json
+   DB_BACKUP_STATUS_FILE=tmp/db-backups/backup-status.json
+   DB_BACKUP_REQUEST_FILE=tmp/db-backups/backup-request
+   DB_RESTORE_REQUEST_FILE=tmp/db-backups/restore-request
+   ```
+2. Crea el directorio: `mkdir -p tmp/db-backups`.
+3. Con `runserver` corriendo, procesa peticiones:
+   ```bash
+   ./run_db_backup_worker.sh   # o: python manage.py db_backup_worker --watch
+   ```
+
+El worker usa `pg_dump`/`pg_restore` con las credenciales de `settings.DATABASES`
+y escribe el mismo `status/manifest` que producción. Diferencias deliberadas: no
+detiene `webcmp/huey` y no fuerza dueño root. La restauración sigue siendo
+destructiva y toma dump de seguridad `-pre-restore`.
+
 ### Gate de migraciones en el merge a `main`
 
 El job **`Migrations safety (dev -> main)`** corre en cada PR cuya base es `main`
