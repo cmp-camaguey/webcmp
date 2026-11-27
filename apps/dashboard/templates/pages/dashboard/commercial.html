@@ -1,0 +1,245 @@
+{% extends 'layouts/dashboard.html' %}
+{% load static my_filters %}
+{% block extrastyle %}
+  <link href="{% static 'dist/css/dashboard-console.css' %}" rel="stylesheet">
+  <link href="{% static 'dist/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+{% block page_header %}
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="page-pretitle">{{ parent }}</div>
+      <h2 class="page-title">{{ title }}</h2>
+    </div>
+    <div class="col-12 col-md-auto d-flex justify-content-end">
+      <div class="btn-list">
+        {% if request.user|has_permission:'commercial.view_invoice' %}
+          <a href="{% url 'commercial:factura_list' %}" class="btn bg-blue-lt">
+            <i class="icon ti ti-file-invoice me-1" aria-hidden="true"></i>Facturas
+          </a>
+        {% endif %}
+        {% if request.user|has_permission:'commercial.view_subscription' %}
+          <a href="{% url 'commercial:suscripcion_list' %}"
+             class="btn bg-green-lt">
+            <i class="icon ti ti-repeat me-1" aria-hidden="true"></i>Suscripciones
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="row row-deck row-cards">
+    <div class="col-12">
+      <div class="card dashboard-console">
+        <div class="card-body">
+          <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg">
+              <div class="dashboard-eyebrow mb-1">Estado comercial</div>
+              <h3 class="h1 mb-1 dashboard-figure">${{ month_income|floatformat:0 }}</h3>
+              <div class="text-secondary">Ingresos cobrados este mes</div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+              <div class="dashboard-eyebrow mb-1">Activas</div>
+              <div class="h2 mb-0 dashboard-figure text-green">{{ active_subs }}</div>
+              <div class="text-secondary small">Suscripciones vigentes</div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+              <div class="dashboard-eyebrow mb-1">Por atender</div>
+              <div class="h2 mb-0 dashboard-figure text-yellow">{{ pending_subs|add:requested_subs }}</div>
+              <div class="text-secondary small">{{ pending_subs }} pendientes · {{ requested_subs }} solicitadas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card dashboard-card dashboard-kpi-card">
+        <div class="card-body">
+          <div class="dashboard-eyebrow mb-1">Ingresos del mes</div>
+          <div class="h1 mb-1 dashboard-figure text-primary">${{ month_income|floatformat:0 }}</div>
+          <div class="text-secondary small">Cobrados este mes</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card dashboard-card dashboard-kpi-card">
+        <div class="card-body">
+          <div class="dashboard-eyebrow mb-1">Suscripciones activas</div>
+          <div class="h1 mb-1 dashboard-figure text-green">{{ active_subs }}</div>
+          <div class="text-secondary small">Vigentes y al día</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card dashboard-card dashboard-kpi-card">
+        <div class="card-body">
+          <div class="dashboard-eyebrow mb-1">Pendientes de pago</div>
+          <div class="h1 mb-1 dashboard-figure text-yellow">{{ pending_subs }}</div>
+          <div class="text-secondary small">Sin confirmación</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card dashboard-card dashboard-kpi-card">
+        <div class="card-body">
+          <div class="dashboard-eyebrow mb-1">Solicitadas</div>
+          <div class="h1 mb-1 dashboard-figure text-azure">{{ requested_subs }}</div>
+          <div class="text-secondary small">Solicitudes nuevas</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div>
+              <div class="dashboard-eyebrow mb-1">Ingresos</div>
+              <h3 class="card-title mb-0">Facturado vs cobrado</h3>
+            </div>
+            <div class="ms-auto">
+              <div class="dropdown">
+                <a class="dropdown-toggle text-secondary"
+                   href="#"
+                   data-bs-toggle="dropdown"
+                   aria-haspopup="true"
+                   aria-expanded="false">
+                  {% if income_range == '1m' %}
+                    Último mes
+                  {% elif income_range == '3m' %}
+                    Últimos 3 meses
+                  {% elif income_range == '6m' %}
+                    Últimos 6 meses
+                  {% elif income_range == 'all' %}
+                    Todo el historial
+                  {% else %}
+                    Últimos 12 meses
+                  {% endif %}
+                </a>
+                <div class="dropdown-menu dropdown-menu-end">
+                  <a class="dropdown-item
+                            {% if income_range == '1m' %}active{% endif %}"
+                     href="?income_range=1m">Último mes</a>
+                  <a class="dropdown-item
+                            {% if income_range == '3m' %}active{% endif %}"
+                     href="?income_range=3m">Últimos 3 meses</a>
+                  <a class="dropdown-item
+                            {% if income_range == '6m' %}active{% endif %}"
+                     href="?income_range=6m">Últimos 6 meses</a>
+                  <a class="dropdown-item
+                            {% if income_range == '12m' %}active{% endif %}"
+                     href="?income_range=12m">Últimos 12 meses</a>
+                  <a class="dropdown-item
+                            {% if income_range == 'all' %}active{% endif %}"
+                     href="?income_range=all">Todo el historial</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="incomeChart"
+               class="dashboard-chart dashboard-chart-lg mt-3"
+               data-months="{{ income_months }}"
+               data-billed="{{ income_billed_data }}"
+               data-paid="{{ income_paid_data }}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <div class="dashboard-eyebrow mb-1">Suscripciones</div>
+          <h3 class="card-title mb-0">Estado actual</h3>
+          <div id="subscriptionsChart"
+               class="dashboard-chart dashboard-chart-lg mt-3"
+               data-active="{{ active_subs }}"
+               data-pending="{{ pending_subs }}"
+               data-requested="{{ requested_subs }}"
+               data-active-list="{{ active_subs_list }}"
+               data-pending-list="{{ pending_subs_list }}"
+               data-requested-list="{{ requested_subs_list }}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="card dashboard-card">
+        <div class="card-header">
+          <div>
+            <div class="dashboard-eyebrow mb-1">Accesos rápidos</div>
+            <h3 class="card-title mb-0">Áreas comerciales</h3>
+          </div>
+        </div>
+        <div class="list-group list-group-flush">
+          {% if request.user|has_permission:'commercial.view_customer' %}
+            <a href="{% url 'commercial:cliente_list' %}"
+               class="list-group-item list-group-item-action d-flex align-items-center">
+              <span class="avatar bg-blue-lt me-3"><i class="icon ti ti-users"></i></span>
+              <div class="flex-fill">
+                <div class="font-weight-medium">Clientes</div>
+                <div class="text-secondary small">Gestión de clientes y datos fiscales</div>
+              </div>
+              <i class="icon ti ti-chevron-right text-secondary"></i>
+            </a>
+          {% endif %}
+          {% if request.user|has_permission:'commercial.view_service' %}
+            <a href="{% url 'commercial:servicio_list' %}"
+               class="list-group-item list-group-item-action d-flex align-items-center">
+              <span class="avatar bg-green-lt me-3"><i class="icon ti ti-package"></i></span>
+              <div class="flex-fill">
+                <div class="font-weight-medium">Servicios</div>
+                <div class="text-secondary small">Catálogo y configuración de servicios</div>
+              </div>
+              <i class="icon ti ti-chevron-right text-secondary"></i>
+            </a>
+          {% endif %}
+          {% if request.user|has_permission:'commercial.view_subscription' %}
+            <a href="{% url 'commercial:suscripcion_list' %}"
+               class="list-group-item list-group-item-action d-flex align-items-center">
+              <span class="avatar bg-yellow-lt me-3"><i class="icon ti ti-repeat"></i></span>
+              <div class="flex-fill">
+                <div class="font-weight-medium">Suscripciones</div>
+                <div class="text-secondary small">Solicitudes, pagos y estado de suscripciones</div>
+              </div>
+              <i class="icon ti ti-chevron-right text-secondary"></i>
+            </a>
+          {% endif %}
+          {% if request.user|has_permission:'commercial.view_invoice' %}
+            <a href="{% url 'commercial:factura_list' %}"
+               class="list-group-item list-group-item-action d-flex align-items-center">
+              <span class="avatar bg-azure-lt me-3"><i class="icon ti ti-file-invoice"></i></span>
+              <div class="flex-fill">
+                <div class="font-weight-medium">Facturación</div>
+                <div class="text-secondary small">Facturas, cobros y documentos</div>
+              </div>
+              <i class="icon ti ti-chevron-right text-secondary"></i>
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal modal-blur fade"
+       id="subscriptionsModal"
+       tabindex="-1"
+       role="dialog"
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="subscriptionsModalLabel">Suscripciones</h5>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body p-3">
+          <div id="subscriptionsModalContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block extrajs %}
+  <script src="{% static 'dist/libs/apexcharts/dist/apexcharts.min.js' %}"></script>
+  <script src="{% static 'dist/js/dashboard.js' %}"></script>
+{% endblock %}

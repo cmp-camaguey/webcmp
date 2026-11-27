@@ -94,7 +94,7 @@ class DashboardContextTests(TestCase):
             self.assertEqual(response.context['selected_range'], rng)
 
     def test_permission_flags_enable_sections(self):
-        staff = _make_user('staffdb3', is_staff=True)
+        staff = _make_superuser('staffdb3')
         _grant(Warning, staff, 'view_warning')
         _grant(Forecasts, staff, 'view_forecast')
         _grant(ServiceSubscription, staff, 'view_subscription')

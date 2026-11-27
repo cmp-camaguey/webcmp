@@ -1,5 +1,4 @@
 import hashlib
-import html
 import json
 import logging
 
@@ -9,17 +8,24 @@ from django.contrib.auth.models import Group, User
 from django.contrib.sessions.models import Session
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
-from django.db.models import Count, Exists, OuterRef, Sum
-from django.db.models.functions import Coalesce
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.views.generic import TemplateView, View
 
-from apps.commercial.models import Customer, Invoice, InvoiceItem, ServiceSubscription
+from apps.commercial.models import Customer, Invoice, ServiceSubscription
 from apps.core.cache_utils import safe_cache_get, safe_cache_set
 from apps.core.models import TaskExecutionLog
 from apps.core.utils import local_day_window
+from apps.dashboard.services.commercial_dashboard import (
+    build_commercial_income as _build_commercial_income,
+)
+from apps.dashboard.services.commercial_dashboard import (
+    get_commercial_dashboard_context,
+    has_commercial_dashboard_access,
+)
+from apps.dashboard.services.commercial_dashboard import serialize_sub as serialize_sub
 from apps.meteo.models import Forecasts, Warning
 
 logger = logging.getLogger(__name__)
@@ -32,50 +38,6 @@ def _region_temp(f, region_key, period):
         if data and data.get(period) and data[period].get('temp')
         else 0.0
     )
-
-
-def serialize_sub(sub):
-    return {
-        # `company_name` es NULL en una persona natural: el panel mostraba
-        # "N/A" en lugar del nombre. `display_name` resuelve el nombre visible
-        # de cualquier tipo de cliente; el escape lo aplica esta función.
-        'customer': html.escape(sub.customer.display_name) if sub.customer else 'N/A',
-        'service': html.escape(sub.service.title or 'N/A') if sub.service else 'N/A',
-        # Sin vencimiento: la suscripción queda vigente hasta que se anule, así
-        # que lo único que hay que fechar es cuándo arranca el servicio.
-        'start_date': sub.start_date.strftime('%d/%m/%Y') if sub.start_date else 'N/A',
-    }
-
-
-paid_direct = Exists(
-    ServiceSubscription.objects.filter(
-        id=OuterRef('subscription_id'), payment_status='paid', record_active=True
-    )
-)
-
-
-paid_via_items = Exists(
-    InvoiceItem.objects.filter(
-        invoice_id=OuterRef('id'),
-        subscription__payment_status='paid',
-        subscription__record_active=True,
-    )
-)
-
-
-def _income_num_months(income_range, now):
-    if income_range == '1m':
-        return 1
-    if income_range == '3m':
-        return 3
-    if income_range == '6m':
-        return 6
-    if income_range == 'all':
-        earliest = Invoice.objects.filter(is_cancelled=False).order_by('issue_date').first()
-        if earliest and earliest.issue_date:
-            return max((now - earliest.issue_date).days // 30, 1)
-        return 12
-    return 12
 
 
 def _build_forecast_series(start_date):
@@ -136,54 +98,6 @@ def _build_alerts_block():
     }
 
 
-def _build_commercial_income(income_range):
-    """Expensive, user-agnostic commercial income chart. Cached by the caller."""
-    now = timezone.now()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    num_months = _income_num_months(income_range, now)
-    income_start = month_start - timezone.timedelta(days=num_months * 30)
-
-    billed_qs = (
-        Invoice.objects.filter(is_cancelled=False, issue_date__gte=income_start)
-        .values('issue_date__year', 'issue_date__month')
-        .annotate(total=Sum('amount'))
-        .order_by('issue_date__year', 'issue_date__month')
-    )
-    paid_qs = (
-        Invoice.objects.filter(is_cancelled=False, issue_date__gte=income_start)
-        .filter(paid_direct | paid_via_items)
-        .values('issue_date__year', 'issue_date__month')
-        .annotate(total=Sum('amount'))
-        .order_by('issue_date__year', 'issue_date__month')
-    )
-
-    billed_map = {}
-    paid_map = {}
-    for entry in billed_qs:
-        billed_map[(entry['issue_date__year'], entry['issue_date__month'])] = float(entry['total'])
-    for entry in paid_qs:
-        paid_map[(entry['issue_date__year'], entry['issue_date__month'])] = float(entry['total'])
-
-    months_labels = []
-    billed_data = []
-    paid_data = []
-    for i in range(num_months - 1, -1, -1):
-        m = now.month - i
-        y = now.year
-        while m < 1:
-            m += 12
-            y -= 1
-        months_labels.append(f'{m:02d}/{y}')
-        billed_data.append(billed_map.get((y, m), 0))
-        paid_data.append(paid_map.get((y, m), 0))
-
-    return {
-        'income_months': json.dumps(months_labels),
-        'income_billed_data': json.dumps(billed_data),
-        'income_paid_data': json.dumps(paid_data),
-    }
-
-
 def build_shared_kpis(time_range, income_range, *, forecast=False, alerts=False, commercial=False):
     """Return user-agnostic Dashboard aggregates, cached per (range, income_range).
 
@@ -220,7 +134,18 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         user = request.user
         if not (user.is_staff or user.groups.filter(name='Clientes').exists()):
             return self.handle_no_permission()
+        if self._should_redirect_commercial(user):
+            url = redirect('dashboard:commercial')
+            if request.META.get('QUERY_STRING'):
+                url['Location'] = f'{url["Location"]}?{request.META["QUERY_STRING"]}'
+            return url
         return super().dispatch(request, *args, **kwargs)
+
+    @staticmethod
+    def _should_redirect_commercial(user):
+        if user.is_superuser or user.groups.filter(name='Clientes').exists():
+            return False
+        return has_commercial_dashboard_access(user)
 
     def test_func(self):
         user = self.request.user
@@ -258,14 +183,12 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             and not context['is_client']
         )
 
-        now = timezone.now()
-
         shared = build_shared_kpis(
             time_range,
             income_range,
             forecast=context['show_forecast'],
             alerts=context['show_alerts'],
-            commercial=context['show_commercial'],
+            commercial=False,
         )
 
         if context['is_client']:
@@ -303,74 +226,11 @@ class DashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             context['latest_alerts'] = shared['alerts']
 
         if context['show_commercial']:
-            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-            context['selected_income_range'] = income_range
-
-            if 'commercial' in shared:
-                context.update(shared['commercial'])
-
-            # Las suscripciones no vencen: `active_subs` son las pagadas y no
-            # anuladas. Las métricas `expired_subs` y `expiring_soon` se
-            # eliminaron porque no tienen un conjunto que contar — una suscripción
-            # pagada nunca pasa a "vencida" sola.
-            context['active_subs'] = ServiceSubscription.objects.filter(
-                payment_status='paid', record_active=True
-            ).count()
-            context['pending_subs'] = ServiceSubscription.objects.filter(
-                payment_status='pending', record_active=True
-            ).count()
-            context['requested_subs'] = ServiceSubscription.objects.filter(
-                payment_status='requested', record_active=True
-            ).count()
-
-            month_end = (month_start + timezone.timedelta(days=32)).replace(day=1)
-            month_income_paid = (
-                Invoice.objects.filter(
-                    is_cancelled=False, issue_date__gte=month_start, issue_date__lt=month_end
-                )
-                .filter(paid_direct | paid_via_items)
-                .aggregate(total=Sum('amount'))['total']
-                or 0
+            commercial = get_commercial_dashboard_context(
+                self.request.user, income_range=income_range
             )
-            context['month_income'] = float(month_income_paid)
-
-            # Ordenar por la misma clave que se muestra. `company_name` sólo
-            # existe para personas jurídicas: en una natural es NULL, así que
-            # ordenar por esa columna metía a todas las naturales al principio
-            # (SQLite) o al final (PostgreSQL) según el motor y dejaba el
-            # orden entre ellas al azar. El `Coalesce` cae al apellido, luego
-            # al nombre y por último al username, que nunca es NULL.
-            orden_cliente = Coalesce(
-                'customer__company_name',
-                'customer__user__last_name',
-                'customer__user__first_name',
-                'customer__user__username',
-            )
-
-            active_subs_qs = (
-                ServiceSubscription.objects.filter(payment_status='paid', record_active=True)
-                .select_related('customer', 'service')
-                .order_by(orden_cliente)[:20]
-            )
-
-            pending_subs_qs = (
-                ServiceSubscription.objects.filter(payment_status='pending', record_active=True)
-                .select_related('customer', 'service')
-                .order_by(orden_cliente)[:20]
-            )
-
-            requested_subs_qs = (
-                ServiceSubscription.objects.filter(payment_status='requested', record_active=True)
-                .select_related('customer', 'service')
-                .order_by(orden_cliente)[:20]
-            )
-
-            context['active_subs_list'] = json.dumps([serialize_sub(s) for s in active_subs_qs])
-            context['pending_subs_list'] = json.dumps([serialize_sub(s) for s in pending_subs_qs])
-            context['requested_subs_list'] = json.dumps(
-                [serialize_sub(s) for s in requested_subs_qs]
-            )
+            context.update(commercial)
+            context['selected_income_range'] = commercial['income_range']
 
         if user.is_superuser:
             inicio_hoy, fin_hoy = local_day_window(timezone.localdate())

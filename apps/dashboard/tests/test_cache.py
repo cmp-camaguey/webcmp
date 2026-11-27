@@ -147,11 +147,12 @@ class DashboardNoClientLeakTests(TestCase):
         cache.clear()
 
     def test_shared_cache_excludes_client_keys(self):
-        # Staff populates the shared (commercial) cache.
-        self.client.force_login(self.staff)
-        self.client.get(reverse('dashboard:index'))
+        # Shared KPI cache must never contain per-client data.
+        build_shared_kpis('7d', '12m', forecast=True, alerts=True, commercial=True)
         cached = cache.get('dashboard:kpi:7d:12m')
         self.assertIsNotNone(cached)
+        for key in cached:
+            self.assertNotIn('client', key)
         self.assertNotIn('client_active_subs', cached)
         self.assertNotIn('client_invoices', cached)
         self.assertNotIn('client_pending_subs', cached)
